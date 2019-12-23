@@ -103,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\YS\Dev\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\YS\Dev\opencv\build\include;.\openCV Project\Header</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,7 +138,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\YS\Dev\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\YS\Dev\opencv\build\include;.\openCV Project\Header</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,23 +150,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="analyzer.cpp" />
-    <ClCompile Include="fileManager.cpp" />
-    <ClCompile Include="imageHandler.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="testClass.cpp" />
-    <ClCompile Include="videoHandler.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="analyzer.h" />
-    <ClInclude Include="defines.h" />
-    <ClInclude Include="fileManager.h" />
-    <ClInclude Include="imageHandler.h" />
-    <ClInclude Include="testClass.h" />
-    <ClInclude Include="videoHandler.h" />
+    <ClCompile Include="Source\analyzer.cpp" />
+    <ClCompile Include="Source\fileManager.cpp" />
+    <ClCompile Include="Source\imageHandler.cpp" />
+    <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\testClass.cpp" />
+    <ClCompile Include="Source\videoHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Memo.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\analyzer.h" />
+    <ClInclude Include="Source\defines.h" />
+    <ClInclude Include="Source\fileManager.h" />
+    <ClInclude Include="Source\imageHandler.h" />
+    <ClInclude Include="Source\testClass.h" />
+    <ClInclude Include="Source\videoHandler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
