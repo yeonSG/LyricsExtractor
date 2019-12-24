@@ -23,8 +23,8 @@ int main(int, char**)
 	//testClass.test_Video_GetContourMask2("movie1.mp4");
 
 	analyzer ana;
-	ana.videoContoursAnalyzation3("movie.mp4");
-	//ana.videoContoursAnalyzation3("movie.mp4");
+	ana.videoAnalization("movie.mp4");
+	//ana.videoAnalization("movie.mp4");
 
 	printf("%0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
 	return 0;

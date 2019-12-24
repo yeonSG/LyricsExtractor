@@ -24,7 +24,6 @@ public:
 	static int deleteDirconst(string& refcstrRootDirectory, bool bDeleteSubdirectories = true);
 	
 	static char* WideCharToChar(LPCWSTR lpWideCharStr);
-	static wstring s2ws(const std::string& s);
 
 	static string getSavePath();
 	static string getLineImagePath(string videoName);

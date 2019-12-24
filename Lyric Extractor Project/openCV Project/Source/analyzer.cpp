@@ -9,202 +9,28 @@ int analyzer::getContourCount(Mat cannyImage)
 	return contours.size();
 }
 
-/*
-	파란색으로 Line의 시작과 끝을 알아내려 했던 알고리즘이지만, 동영상에 파란색이 아닌 주황색인 MV를 발견하여 쓰지않을생각.
-*/
-bool analyzer::videoContoursAnalyzation(string videoPath)
+/// <summary>
+/// Mat의 흰색 점의 개수를 반환함
+/// </summary>
+/// <param name="binMat">The bin mat.</param>
+/// <returns>흰색 점의 개수</returns>
+int analyzer::getWihtePixelCount(Mat binMat)
 {
-	vector<int> vecContours;
-	vector<int> vecWhiteCount;
-
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
+	int height = binMat.rows;
+	int width = binMat.cols;
+	int whiteCount = 0;
+	for (int y = 0; y < height; y++)
 	{
-		cout << "fail to open the video" << endl;
-		return false;
+		uchar* yPtr = binMat.ptr<uchar>(y);
+		for (int x = 0; x < width; x++)
+			if (yPtr[x] != 0)	// 흑색이 아닌경우
+				whiteCount++;
 	}
-	videoHandler::printVideoSpec(vc);
-
-	Mat orgImage;
-	while (vc.read(orgImage))
-	{
-		videoHandler::printCurrentFrameSpec(vc);
-
-		Mat subImage = imageHandler::getSubtitleImage(orgImage);
-		Mat binImage = imageHandler::getBlueColorFilteredBinaryImage(subImage);
-		//Mat binImage = imageHandler::getBinaryImage(subImage);
-		Mat morphImage = imageHandler::getMorphImage(binImage);
-		Mat cannyImage = imageHandler::getCannyImageWithBinaryImage(morphImage);
-
-		int Contours = getContourCount(cannyImage);
-		int whiteCount = getWihtePixelCount(binImage);
-
-		vecContours.push_back(Contours);
-		vecWhiteCount.push_back(whiteCount);
-		
-		int key = waitKey(0);
-	}
-	vector<int> vecAverageWhiteCount = vectorToAverageVector(vecWhiteCount, 2);
-	getJudgedLine(vecAverageWhiteCount);
-
-	string fileName = "ContoursCount.txt";
-	fileManager::writeVector(fileName, vecContours);
-
-	fileName = "WhiteCount.txt";
-	fileManager::writeVector(fileName, vecWhiteCount);
-
-
-	return true;
+	//printf("whiteCount:%d\r\n", whiteCount);
+	return whiteCount;
 }
 
-/*
-	0번 알고리즘의 한계 때문에 생각해낸 알고리즘임.
-	순서 :
-		1. 이미지 흰색으로 이진화
-		2. x(cols)축으로 흰색 픽셀의 개수를 카운트함.
-		3. 이전 frame과 x축의 흰색 개수를 비교하여 일정 수(미정) 이상 변경된 부분만 표시한 데이터를 얻음
-		4. 변경된 부분만 표시한 데이터에서 x데이터 low->high로 올라가는 패턴을 가진 부분 추출 (Expected Line)
-		
-		5. 
-*/
-bool analyzer::videoContoursAnalyzation1(string videoPath)
-{
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
-		return false;
-	}
-	videoHandler::printVideoSpec(vc);
-
-	videoHandler::printCurrentFrameSpec(vc);
-	
-	Mat orgImage;
-	vector<vector<int>> whiteProjectionCounts;
-
-	while (vc.read(orgImage))
-	{
-		videoHandler::printCurrentFrameSpec(vc);
-
-		Mat subImage = imageHandler::getSubtitleImage(orgImage);
-		Mat binImage = imageHandler::getBinaryImage(subImage);
-		Mat morphImage = imageHandler::getMorphImage(binImage);
-		
-		vector<int> whiteProjectionCount;
-		whiteProjectionCount = getVerticalProjectionData(morphImage);	// 현 프레임의 x축 프로젝션
-		whiteProjectionCounts.push_back(whiteProjectionCount);
-
-		//int key = waitKey(0);
-	}
-	Mat changeHistogram;
-	changeHistogram = getChangeHistorgramMat(whiteProjectionCounts, 10);//= Mat::ones(orgImage.cols, 0, CV_64F);	// col, row
-
-
-	imshow("graph", changeHistogram);
-	return false;
-}
-
-/*
-	0번 알고리즘의 한계 때문에 생각해낸 알고리즘임.
-	 - 원인: 기존 알고리즘은 파랑색(HVS)값으로 판별했는데 movie1.mp4 파랑이 너무많음
-	순서 :
-*/
-bool analyzer::videoContoursAnalyzation2(string videoPath)
-{
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
-		return false;
-	}
-	videoHandler::printVideoSpec(vc);
-
-	videoHandler::printCurrentFrameSpec(vc);
-
-	Mat orgImage;
-	Mat beforeBinImage;
-	vector<int> whitePixelChangedCounts;		// 픽셀 변화값
-	vector<vector<int>> whiteProjectionCounts;	// 픽셀 변화값의 이미지화
-
-	while (vc.read(orgImage))
-	{
-		videoHandler::printCurrentFrameSpec(vc);
-
-		Mat subImage = imageHandler::getSubtitleImage(orgImage);
-		Mat binImage;	// = getBinaryImage(subImage);
-		{
-			Mat image_binAT, image_binIR;
-			Mat image_gray;
-			cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
-			adaptiveThreshold(image_gray, image_binAT, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
-			
-			Mat element5(7, 7, CV_8U, Scalar(1));
-			element5 = getStructuringElement(MORPH_ELLIPSE, Point(1, 7));	// @이 값 조정해서 지난 텍스트가 사라지지 않도록 조정해보자
-			erode(image_binAT, image_binAT, element5);
-
-			Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(image_binAT);
-
-			inRange(subImage, Scalar(185, 185, 185), Scalar(255, 255, 255), image_binIR);
-			element5 = getStructuringElement(MORPH_ELLIPSE, Point(3, 5));
-			Mat image_floodFilled_IR = imageHandler::getFloodProcessedImage(image_binIR);
-
-			// 3-1. Blue(HSV)의 이진화
-			Mat subImage_hsv;
-			cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
-			// 3. 이진화
-			//Mat image_binIR_HSV;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))
-			//inRange(subImage_hsv, Scalar(0, 0, 65), Scalar(180, 15, 255), image_binIR_HSV);
-			//Mat image_floodFilled_IR_HSV = imageHandler::getFloodProcessedImage(image_binIR_HSV.clone());
-
-			//bitwise_and(image_floodFilled_IR, image_floodFilled_AT, binImage);
-			bitwise_and(image_floodFilled_IR, image_floodFilled_AT, binImage);
-		}
-
-
-		if (beforeBinImage.empty() == true)
-		{
-			whitePixelChangedCounts.push_back(0);
-
-			whiteProjectionCounts.push_back(getVerticalProjectionData(binImage));	// temporary Image;
-		}
-		else
-		{
-			Mat ChangedToWhiteImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
-			whitePixelChangedCounts.push_back(getWihtePixelCount(ChangedToWhiteImage));
-
-			vector<int> whiteProjectionCount;
-			whiteProjectionCount = getVerticalProjectionData(ChangedToWhiteImage);	// 현 프레임의 x축 프로젝션
-			whiteProjectionCounts.push_back(whiteProjectionCount);
-		}
-
-		beforeBinImage = binImage;
-		////int key = waitKey(0);
-		//int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
-		//vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 2 - 1);
-	}
-	Mat changeHistogram; // 체인지 히스토그램
-	changeHistogram = getChangeHistorgramMat(whiteProjectionCounts, 10);//= Mat::ones(orgImage.cols, 0, CV_64F);	// col, row
-	imwrite(videoPath + "_Histogram.jpg", changeHistogram);
-
-	Mat changeHistogramWeight; // 체인지 히스토그램의 평균점
-	changeHistogramWeight = getVerticalHistogramAverageMat(changeHistogram);
-	imwrite(videoPath + "_HistogramWeight.jpg", changeHistogramWeight);
-
-	string fileName = "whitePixelChangedCounts.txt";
-	fileManager::writeVector(fileName, whitePixelChangedCounts);
-
-	vector<pair<int, int>> lines = getJudgedLine2(whitePixelChangedCounts);
-	// Save pictures
-
-	captureLines(lines, videoPath);
-	capturedLinesToText(lines.size(), videoPath);
-	makeLyrics(lines, videoPath);
-	
-	vc.release();
-	return false;
-}
-
-bool analyzer::videoContoursAnalyzation3(string videoPath)
+bool analyzer::videoAnalization(string videoPath)
 {
 	if (!setVideo(videoPath))
 	{
@@ -241,15 +67,13 @@ bool analyzer::videoContoursAnalyzation3(string videoPath)
 		else
 		{
 			Mat DifferenceImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
-			vector<int> verticalProjectionData;
-			verticalProjectionData = getVerticalProjectionData(DifferenceImage);	// 현 프레임의 vertical 프로젝션
-			verticalProjectionDatasOfDifferenceImage.push_back(verticalProjectionData);
+			verticalProjectionDatasOfDifferenceImage.push_back( getVerticalProjectionData(DifferenceImage) ); // 현 프레임의 vertical 프로젝션
 
 			vecWhitePixelChangedCounts.push_back(getWihtePixelCount(DifferenceImage));
 		}
 
 		beforeBinImage = binImage;
-	}
+	}	// end while
 
 	fileManager::initDirectory(videoPath);
 
@@ -272,7 +96,7 @@ bool analyzer::videoContoursAnalyzation3(string videoPath)
 	imwrite(savePath + "changeHistogramAverage.jpg", changeHistogramAverageMat);
 	
 	/* 라인 확정 */
-	vector<pair<int, int>> lines = getJudgedLine4(vecWhitePixelCounts, verticalHistogramAverage);
+	vector<pair<int, int>> lines = getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
 
 	// Save pictures
 	captureLines(lines, savePath);
@@ -280,28 +104,7 @@ bool analyzer::videoContoursAnalyzation3(string videoPath)
 	makeLyrics(lines, savePath);
 
 	closeVideo();
-	return false;
-}
-
-/// <summary>
-/// Mat의 흰색 점의 개수를 반환함
-/// </summary>
-/// <param name="binMat">The bin mat.</param>
-/// <returns>흰색 점의 개수</returns>
-int analyzer::getWihtePixelCount(Mat binMat)
-{
-	int height = binMat.rows;
-	int width = binMat.cols;
-	int whiteCount = 0;
-	for (int y = 0; y < height; y++)
-	{
-		uchar* yPtr = binMat.ptr<uchar>(y);
-		for (int x = 0; x < width; x++)
-			if (yPtr[x] != 0)	// 흑색이 아닌경우
-				whiteCount++;
-	}
-	//printf("whiteCount:%d\r\n", whiteCount);
-	return whiteCount;
+	return true;
 }
 
 /// <summary>
@@ -324,257 +127,13 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 	return vecAverage;
 }
 
-vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vec)
-{
-	vector<pair<int, int>> judgedLines;
-
-	int increaseJudgeValue = 40;
-	int increaseFrameJudgeCount = 25;
-	int continuouslyIncreaseFrameCount = 0;
-
-	int capturedStartPoint;
-	int expectedCapturedStartPoint = 0;
-
-	// 40pix씩 증가가 x 프래임동안 증가 시 시작점, 증가하던 pix이 
-	for (int i = 1; i < vec.size(); i++)
-	{
-		if ((vec[i] - (vec[i-1])) > increaseJudgeValue)	// 현재값 - 이전값 > 40 이면 증가로 판단
-		{
-			continuouslyIncreaseFrameCount++;
-			if (continuouslyIncreaseFrameCount == 25)	// 작점으로 판단
-			{
-				expectedCapturedStartPoint = i;
-				printf("expectedCapturedStartPoint = i;\r\n");
-			}
-		}
-		else // + 추세가 끊김 (count가 25frame 이상 지속되었다면)
-		{
-			if (expectedCapturedStartPoint != 0)
-			{
-				judgedLines.push_back(make_pair(expectedCapturedStartPoint -25, i));
-				printf("found line : Start: %4d, End: %4d\r\n", expectedCapturedStartPoint - 25, i);
-				expectedCapturedStartPoint = 0;
-			}
-			continuouslyIncreaseFrameCount = 0;
-		}
-
-		//if (continuouslyIncreaseFrameCount == 1)	// 예측 시작점 저장
-		//	expectedCapturedStartPoint = i;
-
-
-	}
-
-	for (int i = 0; i < vec.size(); i++)
-	{
-		// 증가counter 증가
-		// 감소counter 증가
-		// 데이터(시작시간, 시작 데이터, 끝시간, 최대 값)	// 시작시간이
-		// 
-	}
-
-
-		
-	return judgedLines;
-}
-
-/*
-// 입력 : 
-// 출력 : Pairs of Line
-
-	1. 특정 프레임 기준 좌우를 살핌,
-		[Fade-In, Fade-Out의 경우]
-			- 좌측에 변화량이 없고 우측에 변화량이 있다면 시작점
-			- 우측에 변화량이 없고 좌측에 변화량이 있다면 끝점
-		[Line이 변경되는 경우]
-			- 특점 지점에 좌, 우측과 대조되는 높은 Peak가 생성 (시작점이자, 끝점)
-			  (5000 이상이면서 주변(1초=25Frame)에 자기보다 큰 값이 없는 것)
-*/
-vector<pair<int, int>> analyzer::getJudgedLine2(vector<int> vec)
-{
-	vector<pair<int, int>> lines;
-	vector<int> peakValues;
-	
-	// Peak 추출
-	for (int frameNum = 0; frameNum < vec.size(); frameNum++)
-	{
-		if (vec[frameNum] > 5000)
-		{
-			bool isPeak = true;
-			for (int checkRange = (frameNum - DEFAULT_FPS/2); checkRange < frameNum + DEFAULT_FPS/2; checkRange++)
-			{
-				if (frameNum == checkRange)
-					continue;
-
-				if (checkRange<0 || checkRange>vec.size())
-				{
-					isPeak = false;
-					break;	// 시작점, 끝점은 안봄
-				}
-
-				//  조건1. 자신 주변에 자신의 70% 이상의 값을 가진것이 없슴.
-				if (vec[checkRange] > ((vec[frameNum] / 100) * 70))	
-				{
-					isPeak = false;
-					break;
-				}
-
-				//  조건2. 자신 주변에 0이 없음
-				if (getAverageOnVectorTarget(vec, frameNum-DEFAULT_FPS, 3) < 1 || getAverageOnVectorTarget(vec, frameNum + DEFAULT_FPS, 3) < 1)
-				{
-					isPeak = false;
-					break;
-				}
-			}
-			if (isPeak)
-				peakValues.push_back(frameNum);
-		}
-	}
-	
-	for (int i = 0; i < peakValues.size(); i++)
-		printf("Peak %2d : %d\r\n",i, peakValues[i]);
-	
-	/*
-		Peak
-		Frame 보정값
-			fade-in		: +15 
-			peak end	: -2
-			peak start	: +2
-			fade-out	: -15
-	*/
-	bool isStartedZero = true;	// 처음 시작일경우, zero로 피크가 끝난경우 true로 쌧
-	for (int i = 0; i < peakValues.size(); i++)
-	{
-		int nextPeak;
-		if (i == peakValues.size() - 1)
-			nextPeak = vec.size();
-		else
-			nextPeak = peakValues[i + 1];
-
-		if (isStartedZero)	// 이전Frame으로 탐색
-		{
-			for (int frame = peakValues[i]; frame > 0; frame--)
-			{
-				if (getAverageOnVectorTarget(vec, frame, 3) == 0)
-				{
-					lines.push_back(make_pair(frame +15, peakValues[i]-2));	// (0시작, 피크로끝) fade-in
-					isStartedZero = false;
-					break;
-				}
-			}
-		}
-		
-		for (int frame = peakValues[i]; frame < vec.size(); frame++)	// zero 또는 peak가 나올때까지 탐색
-		{
-			if (getAverageOnVectorTarget(vec, frame, 3) == 0)
-			{
-				lines.push_back(make_pair(peakValues[i]+2, frame-15));	// (피크시작, 0으로끝) fade-out
-				isStartedZero = true;
-				break;
-			}
-			else if (frame == nextPeak)
-			{
-				lines.push_back(make_pair(peakValues[i]+2, nextPeak-2)); // (피크시작, 피크로끝)
-				isStartedZero = false;
-				break;
-			}
-		}
-	}
-
-	for (int i = 0; i < lines.size(); i++)
-		printf("lines %2d : %d - %d\r\n", i, lines[i].first, lines[i].second);
-
-	return lines;
-}
-
-/*
-// 입력 : Frame의 white dot 수의 배열
-// 출력 : Pairs of Line
-
-	처음부터 끝 frame까지 확인
-	Line의 조건
-	1. 최대값이 1000 이상
-	2. 최소값이 200 이하
-
-	0. 값이 0이면
-*/
-vector<pair<int, int>> analyzer::getJudgedLine3(vector<int> vec)
-{
-	bool lineCatched = false;
-	int startLine, endLine = 0;
-
-	vector<int> ends, starts;
-
-	//for (int frameNum = 0; frameNum < vec.size() - 15; frameNum++)	// 1000 하항조정 (노이즈 제거)
-	//{
-	//	if(vec[frameNum]>=1000)
-	//		vec[frameNum] -= 1000;
-	//}
-
-	for (int frameNum = 0; frameNum < vec.size()-15; frameNum++)
-	{
-		if (vec[frameNum] <= vec[frameNum + 15])	// 상승추세
-			continue;
-		
-		if (vec[frameNum] > vec[frameNum + 15])	// 상승추세가 끝나고 하락.
-		{
-			int max = frameNum;
-			for (int i = 0; i <= 15; i++)	// x+ 0~15 값 탐색
-				if (vec[max] < vec[frameNum + i])
-					max = frameNum + i;
-			ends.push_back(max);
-			frameNum += 15;	// 다음 end 탐색
-			printf("endPoint: %d\r\n", max);
-		}
-	}
-
-	for (int endNum = 0; endNum < ends.size(); endNum++)
-	{	// 뒤로 탐색하면서 하강추세가 끝나는 최소지점
-		int frameNum = ends[endNum];
-		for (; frameNum >= 0+15; frameNum--)
-		{
-			if (vec[frameNum] > vec[frameNum - 15])	// 하강추세
-				continue;
-
-			if (vec[frameNum] < vec[frameNum - 15])	// 상승추세
-			{
-				int min = frameNum;
-
-				for (int i = 0; i >= 15; i--)	// x+ 0~15 값 탐색
-				{
-					if (vec[min] > vec[frameNum - i])
-						min = frameNum - i;
-				}
-				starts.push_back(min);
-				printf("startPoint: %d\r\n", min);
-				break;
-			}
-		}
-	}
-
-	printf("ends: %d \r\n starts: %d \r\n", (int)ends.size(), (int)starts.size());
-
-	vector<pair<int, int>> lines;
-	if (ends.size() == starts.size())
-	{
-		for(int i=0; ends.size(); i++)
-			lines.push_back(make_pair(starts[i], ends[i])); // (피크시작, 피크로끝)
-	}
-	   
-	return lines;
-}
-
-/*
-input:
-	- vecWhitePixcelCount	: 해당 프레임에 존재하는 흰 점 개수
-	- vecChangeAverage	: 
-*/
 /// <summary>
 /// 분석한 데이터로 가사 Line들의 시작점-끝점을 판단함
 /// </summary>
 /// <param name="vecWhitePixelCounts"> 프레임에 존재하는 흰 점의 합 </param>
 /// <param name="changeStatusAverage"> 변한 흰색의 평균 위치</param>
 /// <returns>가사 Line들의 시작점-끝점 Pair.</returns>
-vector<pair<int, int>> analyzer::getJudgedLine4(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage)
+vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage)
 {
 	vector<pair<int, int>> lines;
 	vector<int> peakValues;
@@ -1040,13 +599,8 @@ void analyzer::captureLines(vector<pair<int, int>> lines, string videoPath)
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
 
 		// make sub bin Image 
-		Mat subBinImage = ImageToSubBinImage(endImage);
+		Mat subBinImage = imageToSubBinImage(endImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", subBinImage);
-
-		//Mat subImage = getSubtitleImage(endImage);
-		//Mat binImage = getCompositeBinaryImages(subImage);
-		//imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", binImage);
-
 	}
 }
 
@@ -1055,7 +609,7 @@ void analyzer::captureLines(vector<pair<int, int>> lines, string videoPath)
 /// </summary>
 /// <param name="targetImage">The target image.</param>
 /// <returns></returns>
-Mat analyzer::ImageToSubBinImage(Mat targetImage)
+Mat analyzer::imageToSubBinImage(Mat targetImage)
 {
 	Mat subImage = imageHandler::getSubtitleImage(targetImage);
 	Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
@@ -1065,8 +619,8 @@ Mat analyzer::ImageToSubBinImage(Mat targetImage)
 	Mat binATImage;
 	adaptiveThreshold(image_gray, binATImage, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
 	
-	Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(binATImage.clone(), true);
-	Mat image_floodFilled_AT2 = imageHandler::getFloodProcessedImage(image_floodFilled_AT.clone(), false);
+	Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(binATImage, true);
+	Mat image_floodFilled_AT2 = imageHandler::getFloodProcessedImage(image_floodFilled_AT, false);
 	Mat image_floodFilled_AT2_Not;
 	bitwise_not(image_floodFilled_AT2, image_floodFilled_AT2_Not);
 
@@ -1167,7 +721,7 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	string tessdataPath = " --tessdata-dir tessdata";
 	string blackList = " -c tessedit_char_blacklist=\"|:;\" ";
 	string commandString = procName + " " + targetImage + " " + outFileName + options + blackList;
-	wstring args = s2ws(commandString);
+	wstring args = stringToWstring(commandString);
 
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
@@ -1190,7 +744,12 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	//ExitProcess(0);
 }
 
-wstring analyzer::s2ws(const std::string& s)
+/// <summary>
+/// std::string to std::wstring 
+/// </summary>
+/// <param name="s">string.</param>
+/// <returns>wstring</returns>
+wstring analyzer::stringToWstring(const std::string& s)
 {
 	int len;
 	int slength = (int)s.length() + 1;

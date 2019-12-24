@@ -14,24 +14,18 @@ using namespace std;
 class analyzer {
 public:
 	
+	/* 이미지 분석 함수 */
 	int getContourCount(Mat sourceImage);
-
-	// Utils
 	int getWihtePixelCount(Mat binMat);
 
-	bool videoContoursAnalyzation(string videoPath);
-	bool videoContoursAnalyzation1(string videoPath);
-	bool videoContoursAnalyzation2(string videoPath);
-	bool videoContoursAnalyzation3(string videoPath);
+	bool videoAnalization(string videoPath);
 
-	//Mat getWhitePixelCountArr
+	/* 데이터 분석 함수 */
 	vector<int> vectorToAverageVector(vector<int> vec, int effectiveRange);
-	vector<pair<int, int>> getJudgedLine(vector<int> vec);
-	vector<pair<int, int>> getJudgedLine2(vector<int> vec);
-	vector<pair<int, int>> getJudgedLine3(vector<int> vec);
-	vector<pair<int, int>> getJudgedLine4(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage);
 
 	/* 라인 판별 알고리즘 */
+	vector<pair<int, int>> getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage);
+
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
 	vector<pair<int, int>> getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
@@ -51,11 +45,11 @@ public:
 	float getAverageOnVectorTarget(vector<int> vec, int target, int range, bool includeZero=true);
 
 	void captureLines(vector<pair<int, int>> lines, string videoPath);
-	Mat ImageToSubBinImage(Mat targetImage);
+	Mat imageToSubBinImage(Mat targetImage);
 	Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 	void capturedLinesToText(int lineSize, string videoPath);
 	void runOCR(string targetImage, string outFileName);
-	wstring s2ws(const std::string& s);
+	wstring stringToWstring(const std::string& s);
 	void makeLyrics(vector<pair<int, int>> lines, string videoPath);
 
 	/* Inits */
@@ -67,5 +61,4 @@ public:
 	int video_Frame;
 	int video_Width;
 	int video_Height;
-
 };

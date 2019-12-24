@@ -7,7 +7,7 @@
 /// </summary>
 /// <param name="sourceImage">The source image.</param>
 /// <returns>가사 부분만 자른 이미지</returns>
-Mat imageHandler::getSubtitleImage(Mat sourceImage)
+Mat imageHandler::getSubtitleImage(Mat& sourceImage)
 {
 	Rect subRect(0, SUBTITLEAREA_Y, sourceImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
 	Mat subImage = sourceImage(subRect);
@@ -15,13 +15,12 @@ Mat imageHandler::getSubtitleImage(Mat sourceImage)
 }
 
 /// <summary>
-/// 
+/// thresold 함수로 이진화 한 이미지 반환.
 /// </summary>
-/// <param name="sourceImage">The source image.</param>
+/// <param name="sourceImage">3체널 이미지(컬러).</param>
 /// <returns></returns>
-Mat imageHandler::getBinaryImage(Mat sourceImage)
+Mat imageHandler::getBinaryImage(Mat& sourceImage)
 {
-	// 0. cvtColor - 흑백화
 	Mat image_gray;
 	cvtColor(sourceImage, image_gray, COLOR_BGR2GRAY);
 	Mat image_gray_bin;
@@ -29,7 +28,7 @@ Mat imageHandler::getBinaryImage(Mat sourceImage)
 	return image_gray_bin;
 }
 
-Mat imageHandler::getBlueColorFilteredBinaryImage(Mat sourceImage)
+Mat imageHandler::getBlueColorFilteredBinaryImage(Mat& sourceImage)
 {
 	// 3-1. Blue(HSV)의 이진화
 	Mat hsvImage;
@@ -41,13 +40,19 @@ Mat imageHandler::getBlueColorFilteredBinaryImage(Mat sourceImage)
 	return image_getBlue;
 }
 
-Mat imageHandler::getMorphImage(Mat sourceImage)
+/// <summary>
+/// 모플로지 연산 수행 (Noise 제거)
+/// </summary>
+/// <param name="sourceImage">이진화 된 이미지.</param>
+/// <returns></returns>
+Mat imageHandler::getMorphImage(Mat& sourceImage)
 {
 	Mat element(5, 5, CV_8U, Scalar(1));
 	element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
 
 	//Mat image_close;
-	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);
+	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);	// Close 연산 (침식->팽창)
+	//morphologyEx(image_getBlue, image_close, MORPH_OPEN, element5);	// Open 연산  (팽창->침식)
 	Mat image_dilateion;
 	dilate(sourceImage, image_dilateion, element);	// 팽창연산
 	//erode()	// 침식연산
@@ -56,7 +61,7 @@ Mat imageHandler::getMorphImage(Mat sourceImage)
 }
 
 
-Mat imageHandler::getCannyImageWithBinaryImage(Mat binImage)
+Mat imageHandler::getCannyImageWithBinaryImage(Mat& binImage)
 {
 	Mat image_canny;
 	Canny(binImage, image_canny, 250, 255);
@@ -64,12 +69,12 @@ Mat imageHandler::getCannyImageWithBinaryImage(Mat binImage)
 }
 
 /// <summary>
-/// 바이너리 이미지의 태두리에 floodFill(그림판의 패인트통) 연산을 한 이미지 반환(Noise 제거용)
+/// 바이너리 이미지의 태두리에 floodFill(그림판의 패인트통) 연산을 한 이미지 반환(Noise 제거)
 /// </summary>
 /// <param name="binaryMat">이진화 이미지</param>
 /// <param name="toBlack">true면 태두리를 검정으로 함</param>
 /// <returns>테두리에 floodFill 연산의 결과 이미지</returns>
-Mat imageHandler::getFloodProcessedImage(Mat binaryMat, bool toBlack)
+Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
 {
 	int nRows = binaryMat.rows;
 	int nCols = binaryMat.cols;
@@ -110,7 +115,7 @@ Mat imageHandler::getFloodProcessedImage(Mat binaryMat, bool toBlack)
 /// </summary>
 /// <param name="subImage">The subtitle image.</param>
 /// <returns>이진화 된 이미지</returns>
-Mat imageHandler::getCompositeBinaryImages(Mat subImage)
+Mat imageHandler::getCompositeBinaryImages(Mat& subImage)
 {
 	Mat image_merged;
 	Mat image_binIR_Red = getCompositeBinaryImagesRed(subImage);
@@ -125,7 +130,7 @@ Mat imageHandler::getCompositeBinaryImages(Mat subImage)
 /// </summary>
 /// <param name="subImage">The sub image.</param>
 /// <returns>빨간색으로 이진화 된 이미지</returns>
-Mat imageHandler::getCompositeBinaryImagesRed(Mat subImage)
+Mat imageHandler::getCompositeBinaryImagesRed(Mat& subImage)
 {
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
@@ -140,8 +145,8 @@ Mat imageHandler::getCompositeBinaryImagesRed(Mat subImage)
 	inRange(subImage_hsv, Scalar(160, 140, 180), Scalar(179, 255, 255), image_binIR_HSV_R_1); // binarize by hsv
 	bitwise_or(image_binIR_HSV_R_0, image_binIR_HSV_R_1, image_binIR_HSV_R);	// 총 빨강색 범위 hue = (0~1 + 160~179)
 
-	Mat image_binIR_HSV_R_Filterd = getFloodProcessedImage(image_binIR_HSV_R.clone());
-	Mat image_binIR_RGB_R_Filterd = getFloodProcessedImage(image_binIR_RGB_R.clone());
+	Mat image_binIR_HSV_R_Filterd = getFloodProcessedImage(image_binIR_HSV_R);
+	Mat image_binIR_RGB_R_Filterd = getFloodProcessedImage(image_binIR_RGB_R);
 
 	Mat image_binIR_Red;
 	bitwise_and(image_binIR_RGB_R_Filterd, image_binIR_HSV_R_Filterd, image_binIR_Red);
@@ -155,7 +160,7 @@ Mat imageHandler::getCompositeBinaryImagesRed(Mat subImage)
 /// </summary>
 /// <param name="subImage">The sub image.</param>
 /// <returns>파란색의 이진화 된 이미지</returns>
-Mat imageHandler::getCompositeBinaryImagesBlue(Mat subImage)
+Mat imageHandler::getCompositeBinaryImagesBlue(Mat& subImage)
 {
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
@@ -166,8 +171,8 @@ Mat imageHandler::getCompositeBinaryImagesBlue(Mat subImage)
 	Mat image_binIR_HSV_B;
 	inRange(subImage_hsv, Scalar(118, 240, 100), Scalar(140, 255, 255), image_binIR_HSV_B);	// binarize by hsv
 
-	Mat image_binIR_HSV_B_Filterd = getFloodProcessedImage(image_binIR_HSV_B.clone());
-	Mat image_binIR_RGB_B_Filterd = getFloodProcessedImage(image_binIR_RGB_B.clone());
+	Mat image_binIR_HSV_B_Filterd = getFloodProcessedImage(image_binIR_HSV_B);
+	Mat image_binIR_RGB_B_Filterd = getFloodProcessedImage(image_binIR_RGB_B);
 	Mat image_binIR_Blue;
 	bitwise_and(image_binIR_RGB_B_Filterd, image_binIR_HSV_B_Filterd, image_binIR_Blue);
 
@@ -185,7 +190,7 @@ Mat imageHandler::getCompositeBinaryImagesBlue(Mat subImage)
 /// <param name="binImageA">The bin image A.</param>
 /// <param name="binImageB">The bin image B.</param>
 /// <returns></returns>
-Mat imageHandler::getDifferenceImage(Mat binImageA, Mat binImageB)
+Mat imageHandler::getDifferenceImage(Mat& binImageA, Mat& binImageB)
 {
 	Mat changedToWhiteImage;
 	Mat xorImage;

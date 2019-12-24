@@ -10,18 +10,17 @@ class imageHandler
 {
 public:
 	// imageHander & ImageProcesser 
-	static Mat getSubtitleImage(Mat sourceImage);
-	static Mat getBinaryImage(Mat sourceImage);
-	static Mat getBlueColorFilteredBinaryImage(Mat sourceImage);
-	static Mat getMorphImage(Mat sourceImage);
-	static Mat getCannyImageWithBinaryImage(Mat binImage);
-	static Mat getFloodProcessedImage(Mat binaryMat, bool toBlack = true);
+	static Mat getSubtitleImage(static Mat& sourceImage);
+	static Mat getBinaryImage(static Mat& sourceImage);
+	static Mat getBlueColorFilteredBinaryImage(static Mat& sourceImage);
+	static Mat getMorphImage(static Mat& sourceImage);
+	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
+	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
 
-	static Mat getCompositeBinaryImages(Mat subImage);
-	static Mat getCompositeBinaryImagesRed(Mat subImage);
-	static Mat getCompositeBinaryImagesBlue(Mat subImage);
+	static Mat getCompositeBinaryImages(static Mat& subImage);
+	static Mat getCompositeBinaryImagesRed(static Mat& subImage);
+	static Mat getCompositeBinaryImagesBlue(static Mat& subImage);
 
-	static Mat getDifferenceImage(Mat binImageA, Mat binImageB);
-
+	static Mat getDifferenceImage(static Mat& binImageA, static Mat& binImageB);
 };
 
