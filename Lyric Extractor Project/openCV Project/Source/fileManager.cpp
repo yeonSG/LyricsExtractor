@@ -189,6 +189,7 @@ bool fileManager::writeVector(string& fileName, vector<int>& vec)
 	{
 		for (int i = 0; i < vec.size(); i++)
 			(*outStream) << vec.at(i) << "\n";
+		outStream->close();
 		return true;
 	}
 	else
@@ -212,6 +213,7 @@ bool fileManager::writeVector(string& fileName, vector<string>& vec)
 	{
 		for (int i = 0; i < vec.size(); i++)
 			(*outStream) << vec.at(i) << "\n";
+		outStream->close();
 		return true;
 	}
 	else

@@ -47,6 +47,11 @@ bool analyzer::videoAnalization(string videoPath)
 	vector<int> vecWhitePixelChangedCounts;		// 이전 프래임 대비 흰색 변화량
 	vector<vector<int>> verticalProjectionDatasOfDifferenceImage;	// 디프런트 이미지의 흰색 vertical Projection데이터의 모임
 
+	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
+	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
+	//verticalProjectionDatasOfDifferenceImage.push_back(vecWhitePixelCounts);	// 프래임과 동기화 위해 배열 0번은 더미
+	verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
+
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
 	{
@@ -256,7 +261,7 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 			}
 		}
 
-		lines.push_back(make_pair(minIndex, peaks[i] + 1));
+		lines.push_back(make_pair(minIndex, peaks[i]));	
 	}
 
 	return lines;
@@ -687,7 +692,7 @@ void analyzer::capturedLinesToText(int lineSize, string videoPath)
 
 /// <summary>
 /// OCR 수행함
-///  Command line 예 : tesseract/tesseract_5.0.exe Output/movie.mp4/Captures/Line18_bin.jpg 0 -L tha+eng --oem 1 --psm 7 -c tessedit_char_blacklist=ABCDE
+///  Command line 예 : tesseract/tesseract_5.0.exe Output/movie.mp4/Captures/Line18_bin.jpg 0 -L tha+eng -c tessedit_char_blacklist=ABCDE--oem 1 --psm 7
 ///  Options :
 ///  OCR Engine modes(–oem) :
 ///  	0 - Legacy engine only.

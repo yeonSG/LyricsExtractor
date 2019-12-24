@@ -8,25 +8,25 @@
 #include <zlib.h>
 #include "testClass.h"
 #include "analyzer.h"
+#include "fileManager.h"
 
 using namespace std;
 using namespace cv;
 
 int main(int, char**)
 {
-
 	clock_t startClock = (int)clock();
 	testClass testClass;
 	//testClass.test_Image();
 	//testClass.test_Image2();
 	//testClass.test_Video3();
-	//testClass.test_Video_GetContourMask2("movie1.mp4");
+	testClass.test_Video_GetContourMask2("movie.mp4");
 
 	analyzer ana;
 	ana.videoAnalization("movie.mp4");
-	//ana.videoAnalization("movie.mp4");
+	ana.videoAnalization("movie1.mp4");
 
-	printf("%0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
+	printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
 	return 0;
 }
 

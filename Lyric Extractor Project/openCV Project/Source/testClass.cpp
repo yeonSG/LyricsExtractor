@@ -632,7 +632,7 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		// 5. contour 검출
 		vector<vector<cv::Point>> contours;
 		findContours(image_canny, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
-		printf("Contours Count: %3d\r\n", contours.size());
+		//printf("Contours Count: %3d\r\n", contours.size());
 
 		Mat image_contours;
 		image_contours = subImage.clone();
@@ -672,6 +672,7 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		// 두개 or한 이미지로 사용.
 		Mat image_merged;
 		bitwise_or(image_binIR_Blue, image_binIR_Red, image_merged);
+		printf("WhitePixelCount: %d\r\n",getWhitePixels(image_merged));
 
 		Mat image_sontursFilterAlgorism1;	// getBinImageByFloodfillAlgorism
 		image_sontursFilterAlgorism1 = floodFillFilterAlgorism(image_floodFilled_AT2_Not, image_merged);
@@ -710,6 +711,12 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 10 - 1);
 		else if (key == 'f')	// -10th frame
 			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 10 - 1);
+		else if (key == 'e')	// +500th frame
+			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 500 - 1);
+		else if (key == 'q')	// -500th frame
+			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 500 - 1);
+		else if (key == '?')
+			videoHandler::printVideoSpec(vc);
 	}
 
 	vc.release();
@@ -864,7 +871,7 @@ int testClass::getWhitePixels(Mat image)
 			if (0 != yPtr[x])	// 흑색이 아닌경우
 				whiteCount++;
 	}
-	printf("whiteCount:%d\r\n", whiteCount);
+	//printf("whiteCount:%d\r\n", whiteCount);
 	return whiteCount;
 }
 
