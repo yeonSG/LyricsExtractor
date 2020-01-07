@@ -7,6 +7,7 @@
 #include "videoHandler.h"
 #include "fileManager.h"
 #include "imageHandler.h"
+#include <boost/filesystem/path.hpp>
 
 using namespace cv;
 using namespace std;

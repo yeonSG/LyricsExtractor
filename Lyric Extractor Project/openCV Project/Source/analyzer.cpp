@@ -36,7 +36,6 @@ bool analyzer::videoAnalization(string videoPath)
 	{
 		return false;
 	}
-	fileManager::videoName = videoPath; // 비디오 이름만 넣어줘야함
 	string savePath = fileManager::getSavePath();
 
 	Mat orgImage;
@@ -950,6 +949,9 @@ bool analyzer::setVideo(string videoPath)
 		cout << "fail to open the video" << endl;
 		return false;
 	}
+	boost::filesystem::path p(videoPath);
+	fileManager::videoName = p.filename().string();
+
 	video_Frame = (int)videoCapture->get(CAP_PROP_FRAME_COUNT);
 	video_Width = (int)videoCapture->get(CAP_PROP_FRAME_WIDTH);
 	video_Height = (int)videoCapture->get(CAP_PROP_FRAME_HEIGHT);
