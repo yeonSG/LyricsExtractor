@@ -18,6 +18,10 @@ public:
 	int getContourCount(Mat sourceImage);
 	int getWihtePixelCount(Mat binMat);
 
+	int getLeftistWhitePixel_x(Mat binImage);
+	int getRightistWhitePixel_x(Mat binImage);
+	int getWhitePixelAverage(Mat binImage);
+
 	bool videoAnalization(string videoPath);
 
 	/* 데이터 분석 함수 */
@@ -28,7 +32,11 @@ public:
 
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
 	vector<pair<int, int>> getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
+	void lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps = DEFAULT_FPS);
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
+
+	void calibrateLines(vector<pair<int, int>>& lines);
+	void lineCalibration(int& startFrame, int& endFrame);
 	/* 라인 판별 알고리즘 끝 */
 
 	/* 이미지 분석 함수image analization  */
@@ -45,6 +53,8 @@ public:
 	float getAverageOnVectorTarget(vector<int> vec, int target, int range, bool includeZero=true);
 
 	void captureLines(vector<pair<int, int>> lines, string videoPath);
+	void catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string videoPath);
+
 	Mat imageToSubBinImage(Mat targetImage);
 	Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 	void capturedLinesToText(int lineSize, string videoPath);

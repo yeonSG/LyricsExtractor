@@ -49,13 +49,13 @@ bool analyzer::videoAnalization(string videoPath)
 
 	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
 	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
-	//verticalProjectionDatasOfDifferenceImage.push_back(vecWhitePixelCounts);	// 프래임과 동기화 위해 배열 0번은 더미
 	verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
 
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
 	{
 		videoHandler::printCurrentFrameSpec(*videoCapture);
+
 
 		subImage = imageHandler::getSubtitleImage(orgImage);
 		binImage = imageHandler::getCompositeBinaryImages(subImage);
@@ -100,10 +100,14 @@ bool analyzer::videoAnalization(string videoPath)
 	Mat changeHistogramAverageMat = averageVectorToBinaryMat(verticalHistogramAverage, changeHistogramMat.cols); // 체인지 히스토그램의 평균점 이미지
 	imwrite(savePath + "changeHistogramAverage.jpg", changeHistogramAverageMat);
 	
-	/* 라인 확정 */
+	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
 	vector<pair<int, int>> lines = getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
+	catpureBinaryImageOfLinesEnd(lines, savePath);
 
-	// Save pictures
+	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
+	calibrateLines(lines);
+	
+	/* Save pictures */
 	captureLines(lines, savePath);
 	capturedLinesToText(lines.size(), savePath);
 	makeLyrics(lines, savePath);
@@ -154,6 +158,7 @@ vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, 
 
 	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
 
+	lineRejudgeByLineLength(lines);
 	lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);
 
 	vector<string> lines_string;
@@ -216,11 +221,19 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 
 			if (isPeak && isHaveDrop)
 			{
+				int index = 0;
+				while (true)
+				{	
+					if (vecWhitePixelCounts[frameNum] < vecWhitePixelCounts[frameNum + 1] + 200)	// 이전값과 별 차이 안나면 가장 나중값으로 정함
+						frameNum++;
+					else
+						break;
+				}
+
 				if (!peakValues.empty())
 				{
-
-					if (vecWhitePixelCounts[peakValues.back()] == vecWhitePixelCounts[frameNum])
-						peakValues.back() = frameNum;
+					if (peakValues.back() == frameNum)
+						peakValues.back() = frameNum;	// update
 					else
 						peakValues.push_back(frameNum);
 				}
@@ -268,6 +281,36 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 }
 
 /// <summary>
+/// 가사 라인들 중 특정 프래임동안 지속되지 않는 line을 걸러냄
+/// </summary>
+/// <param name="judgedLines">The judged lines.</param>
+/// <param name="fps">The FPS.</param>
+void analyzer::lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps)
+{
+	int limitMSec = 400;
+	int limitFrame = limitMSec / (1000 / fps);
+	printf("Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
+
+	int lineCount = 0;
+	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
+	{
+		int lineLenght = it->second - it->first;
+
+		printf("lines %2d Length: %d \r\n", lineCount, lineLenght);
+		if (lineLenght < limitFrame)
+		{
+			printf("exceptionLine: %d(%dframe)\r\n", lineCount, lineLenght);
+			it = judgedLines.erase(it);
+			lineCount++;
+			continue;
+		}
+
+		++it;
+		lineCount++;
+	}
+}
+
+/// <summary>
 /// 가사 라인들을 히스토그램 데이터를 통해 다시한번 걸러냄
 /// </summary>
 /// <param name="judgedLines">가사 Line들</param>
@@ -302,7 +345,7 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 		}
 		if (avgLeft == 0 || avgRight == 0)
 		{
-			printf("exceptionLine(div by zero : %d\r\n", lineCount);
+			printf("exceptionLine: %d(div by zero)\r\n", lineCount);
 			it = judgedLines.erase(it);
 			lineCount++;
 			continue;
@@ -314,7 +357,7 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 		printf("lines %2d : Left:%d  Right:%d \t", lineCount, avgLeft, avgRight);
 		printf("(ratio : %3.2f)\r\n", ratio);
 
-		if (ratio > 0.90)
+		if (ratio > 0.85)
 		{
 			printf("exceptionLine : %d\r\n", lineCount);
 			it = judgedLines.erase(it);
@@ -325,6 +368,92 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 		lineCount++;
 	}
 }
+
+void analyzer::calibrateLines(vector<pair<int, int>>& lines)
+{
+	for (int i = 0; i < lines.size(); i++)
+	{
+		printf("Cal Line%d : %d - %d\r\n", i, lines[i].first, lines[i].second);
+		lineCalibration(lines[i].first, lines[i].second);
+		printf("Cal Line%d : %d - %d updated.\r\n\r\n", i, lines[i].first, lines[i].second);
+	}
+}
+
+/// <summary>
+/// 0. mask값에서 최좌측, 최우측 x 좌표 구함(기준으로 함)
+/// while()
+/// 1. 이전 프레임 저장
+/// 2. Diff Image 생성 (현재프래임binImage-이전프래임binImage)
+/// 3. Diff Image에서 흰색점의 평균 x좌표 구함	-- 
+/// 4. 평균 x변경점이 mask의 최좌측 과 최우측 기준으로 몇 % 쯤에 속하는지 구함(가장 높은 퍼센테이지를 갖는 곳이 끝점, whiteCount가 0이 나오는 부분이 시작점)
+/// </summary>
+/// <param name="startFrame">The start frame.</param>
+/// <param name="endFrame">The end frame.</param>
+void analyzer::lineCalibration(int& startFrame, int& endFrame)
+{
+	Mat readImage;
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)endFrame-1);
+	videoCapture->read(readImage);
+	Mat maskImage = imageToSubBinImage(readImage);
+
+	int maskImage_leftist_x = getLeftistWhitePixel_x(maskImage);
+	int maskImage_rightest_x = getRightistWhitePixel_x(maskImage);
+	int maskImage_middle_x = (maskImage_leftist_x + maskImage_rightest_x) / 2;
+	printf("MaskImage Info - left: %d right: %d middle: %d(%d) \r\n", maskImage_leftist_x, maskImage_rightest_x, maskImage_middle_x, readImage.cols / 2);
+
+	Mat subImage;
+	Mat binImage, beforeBinImage;
+	int beforePixelCount=0;
+	int diffImage_avgPoint_PerMax = 0;
+
+	int frameIndex = endFrame;
+	while (true)
+	{
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex-1);	// frameIndex-1
+		videoCapture->read(readImage);
+		subImage = imageHandler::getSubtitleImage(readImage);
+
+		Mat image_binIR_RGB_R;
+		inRange(subImage, Scalar(0, 0, 130), Scalar(50, 50, 255), image_binIR_RGB_R);	// binarize by rgb
+		Mat image_binIR_RGB_B;
+		inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);	// binarize by rgb
+
+		bitwise_or(image_binIR_RGB_B, image_binIR_RGB_R, binImage, maskImage);
+
+		if (beforeBinImage.empty())
+			beforeBinImage = binImage;
+
+		Mat DifferenceImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
+
+		Mat image_dilateion;
+		Mat element(3, 3, CV_8U, Scalar(1));
+		element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
+		erode(DifferenceImage, image_dilateion, element);	// 침식연산 - 노이즈제거 
+
+		int pixelCount = getWihtePixelCount(binImage);
+		int diffImage_avgPoint = getWhitePixelAverage(image_dilateion);
+		int diffImage_avgPoint_Per = (int)((diffImage_avgPoint - maskImage_leftist_x) / ( (maskImage_rightest_x - maskImage_leftist_x) / 100.0));
+
+		printf("frame %d - diffAvgPoint: %d, pixelCount: %d \r\n", frameIndex, diffImage_avgPoint_Per, pixelCount);
+
+		if (diffImage_avgPoint_PerMax <= diffImage_avgPoint_Per)
+		{
+			endFrame = frameIndex;
+			diffImage_avgPoint_PerMax = diffImage_avgPoint_Per;
+		}
+
+		if (pixelCount == 0)
+		{
+			startFrame = frameIndex;
+			break;
+		}
+		
+		beforeBinImage = binImage.clone();
+
+		frameIndex --;		
+	}
+}
+
 
 /// <summary>
 /// 이진 이미지의 Vertical projection 데이터로 변환 
@@ -596,13 +725,27 @@ void analyzer::captureLines(vector<pair<int, int>> lines, string videoPath)
 	for (int i = 0; i < lines.size(); i++)
 	{
 		Mat startImage, endImage;
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].first);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].first -1);		
 		videoCapture->read(startImage);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].second);
 		videoCapture->read(endImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
+	}
+}
 
+/// <summary>
+/// 끝점의 binary 이미지를 저장함.
+/// </summary>
+/// <param name="lines">라인들(시작점 프레임, 끝점 프레임).</param>
+/// <param name="videoPath">비디오 경로.</param>
+void analyzer::catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string videoPath)
+{
+	for (int i = 0; i < lines.size(); i++)
+	{
+		Mat startImage, endImage;
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].second -1);
+		videoCapture->read(endImage);
 		// make sub bin Image 
 		Mat subBinImage = imageToSubBinImage(endImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", subBinImage);
@@ -820,6 +963,65 @@ void analyzer::closeVideo()
 		videoCapture->release();
 
 	delete videoCapture;
+}
+
+int analyzer::getLeftistWhitePixel_x(Mat binImage)
+{
+	int leftist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = 0; width < binImage.cols; width++)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return leftist_x;
+}
+
+int analyzer::getRightistWhitePixel_x(Mat binImage)
+{
+	int rightist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = binImage.cols -1; width > 0; width--)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return 	rightist_x = 0;
+}
+
+int analyzer::getWhitePixelAverage(Mat binImage)
+{
+	int height = binImage.rows;
+	int width = binImage.cols;
+	int whiteCount = 0;
+	int whitePixelXSum = 0;
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = binImage.ptr<uchar>(y);
+		for (int x = 0; x < width; x++)
+			if (yPtr[x] != 0)	// 흑색이 아닌경우
+			{
+				whiteCount++;
+				whitePixelXSum += x;
+			}
+	}
+	
+	if (whiteCount == 0)
+		return 0;
+	else 
+		return whitePixelXSum/whiteCount;
 }
 
 

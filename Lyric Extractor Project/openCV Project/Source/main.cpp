@@ -20,7 +20,7 @@ int main(int, char**)
 	//testClass.test_Image();
 	//testClass.test_Image2();
 	//testClass.test_Video3();
-	testClass.test_Video_GetContourMask2("movie.mp4");
+	//testClass.test_Video_GetContourMask2("movie1.mp4");
 
 	analyzer ana;
 	ana.videoAnalization("movie.mp4");

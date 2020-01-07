@@ -615,8 +615,8 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		Mat image_moph_AT = image_binAT;
 		// 3-1 노이즈 제거
 		//Mat element5(7, 7, CV_8U, Scalar(1));
-		//element5 = getStructuringElement(MORPH_ELLIPSE, Point(1, 7));	// @이 값 조정해서 지난 텍스트가 사라지지 않도록 조정해보자
-		//erode(image_binAT, image_moph_AT, element5);	// 침
+		//element5 = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));	// @이 값 조정해서 지난 텍스트가 사라지지 않도록 조정해보자
+		//erode(image_binAT.clone(), image_moph_AT, element5);	// 침
 
 		Mat image_floodFilled_AT = GetFloodFilledImage(image_moph_AT.clone(), true);
 		Mat image_floodFilled_AT2 = GetFloodFilledImage(image_floodFilled_AT.clone(), false);
