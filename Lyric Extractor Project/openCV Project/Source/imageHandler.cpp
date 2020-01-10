@@ -1,6 +1,22 @@
 #include "imageHandler.h"
 
 
+Mat imageHandler::resizeImageToAnalize(Mat& sourceImage)
+{
+	Mat resizedImage; 
+
+	if (sourceImage.rows != 720)
+	{
+		float size = 720 / (float)sourceImage.rows;
+		resize(sourceImage, resizedImage, cv::Size(sourceImage.cols * size, 720), 0, 0, cv::INTER_CUBIC);
+	}
+	else
+	{
+		resizedImage = sourceImage;
+	}
+	return resizedImage;
+}
+
 /// <summary>
 /// 이미지의 가사 부분만 잘라 반환함.
 /// 자를 부분은 고정 값이기 때문에 주의해야함 (만약 자를 부분이 동적으로 변한다면 자를 부분 찾을 알고리즘 구현 필요)

@@ -55,6 +55,8 @@ bool analyzer::videoAnalization(string videoPath)
 	{
 		videoHandler::printCurrentFrameSpec(*videoCapture);
 
+		if (orgImage.rows != 720)
+			orgImage = imageHandler::resizeImageToAnalize(orgImage);
 
 		subImage = imageHandler::getSubtitleImage(orgImage);
 		binImage = imageHandler::getCompositeBinaryImages(subImage);
@@ -94,7 +96,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 	vector<int> verticalHistogramAverage = getVerticalHistogramAverageData(changeHistorgramData);	// getChangeStatusAverage -> getChangeAverageHistogramData
 	fileName = "WhitePixelChangedCountAverage.txt";
-	fileManager::writeVector(fileName, verticalHistogramAverage);
+	fileManager::writeVector(fileName, verticalHistogramAverage); 
 
 	Mat changeHistogramAverageMat = averageVectorToBinaryMat(verticalHistogramAverage, changeHistogramMat.cols); // 체인지 히스토그램의 평균점 이미지
 	imwrite(savePath + "changeHistogramAverage.jpg", changeHistogramAverageMat);
@@ -106,6 +108,7 @@ bool analyzer::videoAnalization(string videoPath)
 	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
 	calibrateLines(lines);
 	
+	//catpureBinaryImageOfLinesEnd(lines, savePath);
 	/* Save pictures */
 	captureLines(lines, savePath);
 	capturedLinesToText(lines.size(), savePath);
@@ -157,8 +160,12 @@ vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, 
 
 	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
 
+	for (int i = 0; i < lines.size(); i++)
+		printf("Line%d : %d - %d\r\n", i, lines[i].first, lines[i].second);
+
 	lineRejudgeByLineLength(lines);
-	lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);
+	lineRejudgeByPixelCount(lines, vecWhitePixelCounts);
+	// lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);	// 왼쪽의 점 좌표 평균, 오른쪽의 점 좌표평균
 
 	vector<string> lines_string;
 	for (int i = 0; i < lines.size(); i++)
@@ -186,11 +193,11 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 	// Peak 추출
 	for (int frameNum = 0; frameNum < vecWhitePixelCounts.size(); frameNum++)
 	{
-		if (vecWhitePixelCounts[frameNum] > 1000)	// 노이즈 레벨
+		if (vecWhitePixelCounts[frameNum] > 500)	// 노이즈 레벨
 		{
 			bool isPeak = true;
 			bool isHaveDrop = false;
-			for (int checkRange = (frameNum - DEFAULT_FPS / 2); checkRange < frameNum + DEFAULT_FPS / 2; checkRange++)
+			for (int checkRange = (frameNum - DEFAULT_FPS / 2); checkRange < frameNum + DEFAULT_FPS / 2; checkRange++)	// x-12
 			{
 				if (frameNum == checkRange)
 					continue;
@@ -265,9 +272,9 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 			minRange = peaks[i - 1];
 
 		int minIndex = minRange;
-		for (int index = minRange; index < peaks[i]; index++)
+		for (int index = minRange; index < peaks[i]; index++)	// 이전 피크부터 현재 피크까지의 값중 가장 흰점이 작은 점 중 가장 뒤에 있는 곳.
 		{
-			if (vecWhitePixelCounts[minIndex] >= vecWhitePixelCounts[index])
+			if (vecWhitePixelCounts[minIndex] >= vecWhitePixelCounts[index])	// 가장 마지막 0이 됨
 			{
 				minIndex = index;
 			}
@@ -286,9 +293,9 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 /// <param name="fps">The FPS.</param>
 void analyzer::lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps)
 {
-	int limitMSec = 400;
+	const int limitMSec = 400;	// 400ms = 10frame
 	int limitFrame = limitMSec / (1000 / fps);
-	printf("Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
+	printf("@@lineRejudgeByLineLength_Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
 
 	int lineCount = 0;
 	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
@@ -298,7 +305,30 @@ void analyzer::lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int 
 		printf("lines %2d Length: %d \r\n", lineCount, lineLenght);
 		if (lineLenght < limitFrame)
 		{
-			printf("exceptionLine: %d(%dframe)\r\n", lineCount, lineLenght);
+			printf("exceptionLine: %d\r\n", lineCount);
+			it = judgedLines.erase(it);
+			lineCount++;
+			continue;
+		}
+
+		++it;
+		lineCount++;
+	}
+}
+
+void analyzer::lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts)
+{
+	printf("@@lineRejudgeByPixelCount_ \r\n");
+	int lineCount = 0;
+
+	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
+	{
+		float pixelRatio = vecWhitePixelCounts[it->first] / (float)vecWhitePixelCounts[it->second];
+
+		printf("lines %2d pixelRatio: %.2f (%d/%f) \r\n", lineCount, pixelRatio, vecWhitePixelCounts[it->first] ,(float)vecWhitePixelCounts[it->second]);
+		if (0.5 < pixelRatio)	// startframe픽셀값 / endframe픽셀값 이 0.5보다 높다면 라인이 아닌걸로 판단.
+		{
+			printf("exceptionLine: %d\r\n", lineCount);
 			it = judgedLines.erase(it);
 			lineCount++;
 			continue;
@@ -370,11 +400,22 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 
 void analyzer::calibrateLines(vector<pair<int, int>>& lines)
 {
-	for (int i = 0; i < lines.size(); i++)
+	int lineCount = 0;
+	for (vector<pair<int, int>>::iterator it = lines.begin(); it != lines.end(); /*it++*/)
 	{
-		printf("Cal Line%d : %d - %d\r\n", i, lines[i].first, lines[i].second);
-		lineCalibration(lines[i].first, lines[i].second);
-		printf("Cal Line%d : %d - %d updated.\r\n\r\n", i, lines[i].first, lines[i].second);
+		printf("Cal Line%d : %d - %d\r\n", lineCount, it->first, it->second);
+		if (lineCalibration(it->first, it->second)==false)
+		{
+			printf("Cal Line%d : false.\r\n\r\n", lineCount);
+			//printf("Cal Line%d : removed.\r\n\r\n", lineCount);
+			//it = lines.erase(it);
+			//lineCount++;
+			//continue;
+		}
+
+		printf("Cal Line%d : %d - %d updated.\r\n\r\n", lineCount, it->first, it->second);
+		++it;
+		lineCount++;
 	}
 }
 
@@ -384,32 +425,51 @@ void analyzer::calibrateLines(vector<pair<int, int>>& lines)
 /// 1. 이전 프레임 저장
 /// 2. Diff Image 생성 (현재프래임binImage-이전프래임binImage)
 /// 3. Diff Image에서 흰색점의 평균 x좌표 구함	-- 
-/// 4. 평균 x변경점이 mask의 최좌측 과 최우측 기준으로 몇 % 쯤에 속하는지 구함(가장 높은 퍼센테이지를 갖는 곳이 끝점, whiteCount가 0이 나오는 부분이 시작점)
+/// 4. 평균 x변경점이 mask의 최좌측 과 최우측 기준으로 몇 % 쯤에 속하는지 구함(가장 높은 퍼센테이지를 갖는 곳이 끝점, whiteCount가 가장작은 부분이 시작점)
 /// </summary>
 /// <param name="startFrame">The start frame.</param>
 /// <param name="endFrame">The end frame.</param>
-void analyzer::lineCalibration(int& startFrame, int& endFrame)
+bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 {
+	bool isEffictiveLine = true;
 	Mat readImage;
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)endFrame-1);
 	videoCapture->read(readImage);
+	if (readImage.rows != 720)
+		readImage = imageHandler::resizeImageToAnalize(readImage);
 	Mat maskImage = imageToSubBinImage(readImage);
 
 	int maskImage_leftist_x = getLeftistWhitePixel_x(maskImage);
 	int maskImage_rightest_x = getRightistWhitePixel_x(maskImage);
 	int maskImage_middle_x = (maskImage_leftist_x + maskImage_rightest_x) / 2;
+
+	int maskImage_pixelCount = getWihtePixelCount(maskImage);
+
 	printf("MaskImage Info - left: %d right: %d middle: %d(%d) \r\n", maskImage_leftist_x, maskImage_rightest_x, maskImage_middle_x, readImage.cols / 2);
+	printf("MaskImage Info - whiteCount: %d \r\n", maskImage_pixelCount);
+	if (maskImage_pixelCount < 500)
+	{
+		isEffictiveLine = false;
+		printf("line Exception : MaskImage whiteCount is 500 Under.\r\n");
+		return isEffictiveLine;
+	}
 
 	Mat subImage;
 	Mat binImage, beforeBinImage;
 	int beforePixelCount=0;
-	int diffImage_avgPoint_PerMax = 0;
+	int diffImage_avgPoint_PerMax = 0;	
+	int MinimumPixelCount = 500;	// 임의 초기값
+	int startframe_org = startFrame;
 
 	int frameIndex = endFrame;
 	while (true)
 	{
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex-1);	// frameIndex-1
 		videoCapture->read(readImage);
+
+		if (readImage.rows != 720)
+			readImage = imageHandler::resizeImageToAnalize(readImage);
+
 		subImage = imageHandler::getSubtitleImage(readImage);
 
 		Mat image_binIR_RGB_R;
@@ -433,7 +493,8 @@ void analyzer::lineCalibration(int& startFrame, int& endFrame)
 		int diffImage_avgPoint = getWhitePixelAverage(image_dilateion);
 		int diffImage_avgPoint_Per = (int)((diffImage_avgPoint - maskImage_leftist_x) / ( (maskImage_rightest_x - maskImage_leftist_x) / 100.0));
 
-		printf("frame %d - diffAvgPoint: %d, pixelCount: %d \r\n", frameIndex, diffImage_avgPoint_Per, pixelCount);
+		printf("frame %d - diffAvgPoint: %d, diffImage_avgPoint_Per: %d \r\n", frameIndex, diffImage_avgPoint, diffImage_avgPoint_Per);
+		printf("frame %d - pixelCount: %d \r\n", frameIndex, pixelCount);
 
 		if (diffImage_avgPoint_PerMax <= diffImage_avgPoint_Per)
 		{
@@ -441,16 +502,20 @@ void analyzer::lineCalibration(int& startFrame, int& endFrame)
 			diffImage_avgPoint_PerMax = diffImage_avgPoint_Per;
 		}
 
-		if (pixelCount == 0)
+		if (MinimumPixelCount >= pixelCount)
 		{
+			MinimumPixelCount = pixelCount;
 			startFrame = frameIndex;
-			break;
 		}
 		
 		beforeBinImage = binImage.clone();
 
 		frameIndex --;		
+		if (frameIndex < startframe_org)
+			break;
 	}
+
+	return isEffictiveLine;
 }
 
 
@@ -758,22 +823,33 @@ void analyzer::catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string
 /// <returns></returns>
 Mat analyzer::imageToSubBinImage(Mat targetImage)
 {
+	if (targetImage.rows != 720)
+		targetImage = imageHandler::resizeImageToAnalize(targetImage);
+
 	Mat subImage = imageHandler::getSubtitleImage(targetImage);
 	Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
 
 	Mat image_gray;
 	cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
 	Mat binATImage;
-	adaptiveThreshold(image_gray, binATImage, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
+	adaptiveThreshold(image_gray, binATImage, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);	// 11 -> 9
 	
-	Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(binATImage, true);
-	Mat image_floodFilled_AT2 = imageHandler::getFloodProcessedImage(image_floodFilled_AT, false);
+	Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(binATImage, true);				// 
+	Mat image_floodFilled_AT2 = imageHandler::getFloodProcessedImage(image_floodFilled_AT, false);	//
 	Mat image_floodFilled_AT2_Not;
 	bitwise_not(image_floodFilled_AT2, image_floodFilled_AT2_Not);
 
+	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
+	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
+	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);
+	//imshow("image_HSV_S", image_HSV_S);
+
 	Mat image_out;
-	image_out = getBinImageByFloodfillAlgorism(image_floodFilled_AT2_Not, binCompositeImage);
-	
+	//image_out = getBinImageByFloodfillAlgorism(image_floodFilled_AT2_Not, binCompositeImage);
+	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
+
+	image_out = imageHandler::getFloodProcessedImage(image_out, true);
+
 	return image_out;
 }
 

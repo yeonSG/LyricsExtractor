@@ -605,18 +605,35 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 	Mat orgImage;
 	while (vc.read(orgImage))
 	{
-		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
+		orgImage = imageHandler::resizeImageToAnalize(orgImage);
+		Rect subRect(0, SUBTITLEAREA_Y, orgImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
 		Mat subImage = orgImage(subRect);
+		double mask3[3][3] = { {-1,-1,-1}, {-1,9,-1}, {-1,-1,-1} };
+		Mat kernal3 = Mat(3, 3, CV_64FC1, mask3);
+		Mat subImage1;
+		Mat subImage2;
+		filter2D(subImage, subImage1, -1, kernal3);
+		imshow("1", subImage);
+		imshow("2", subImage1);
 
 		Mat image_binAT;
+		Mat image_binAT3, image_binAT7;
 		Mat image_gray;
 		cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
-		adaptiveThreshold(image_gray, image_binAT, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
+		adaptiveThreshold(image_gray, image_binAT, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 9, 5);
+		adaptiveThreshold(image_gray, image_binAT3, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 9, 5);
+		adaptiveThreshold(image_gray, image_binAT7, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 9, 5);
+		imshow("image_binAT3", image_binAT3);
+		imshow("image_binAT", image_binAT);
+		imshow("image_binAT7", image_binAT7);
 		Mat image_moph_AT = image_binAT;
 		// 3-1 노이즈 제거
 		//Mat element5(7, 7, CV_8U, Scalar(1));
 		//element5 = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));	// @이 값 조정해서 지난 텍스트가 사라지지 않도록 조정해보자
 		//erode(image_binAT.clone(), image_moph_AT, element5);	// 침
+
+		Mat image_moph_AT_Not;
+		bitwise_not(image_moph_AT, image_moph_AT_Not);
 
 		Mat image_floodFilled_AT = GetFloodFilledImage(image_moph_AT.clone(), true);
 		Mat image_floodFilled_AT2 = GetFloodFilledImage(image_floodFilled_AT.clone(), false);
@@ -624,6 +641,8 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 
 		Mat image_floodFilled_AT2_Not;
 		bitwise_not(image_floodFilled_AT2, image_floodFilled_AT2_Not);
+
+		imshow("image_moph_AT_Not", image_moph_AT_Not);	// 이 이미지랑
 		imshow("image_floodFilled_AT2_Not", image_floodFilled_AT2_Not);	// 이 이미지랑
 
 		// 4. canny 엣지 검출
@@ -648,8 +667,16 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		Mat image_binIR_RGB_B;
 		inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);
 
-		Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))
+		Mat subImage_hsv, subImage_hsv1;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색, 
 		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
+		cvtColor(subImage1, subImage_hsv1, COLOR_BGR2HSV);
+		Mat image_HSV_S, image_HSV_S1;
+		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), image_HSV_S);
+		//inRange(subImage_hsv1, Scalar(0, 0, 100), Scalar(255, 150, 255), image_HSV_S1);	흰색 범위
+		inRange(subImage_hsv1, Scalar(0, 170, 100), Scalar(255, 255, 255), image_HSV_S1);
+		imshow("image_HSV_S", image_HSV_S);
+		imshow("image_HSV_S1", image_HSV_S1);
+
 		Mat image_binIR_HSV_R_0;
 		Mat image_binIR_HSV_R_1;
 		Mat image_binIR_HSV_R;
@@ -675,7 +702,16 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		printf("WhitePixelCount: %d\r\n",getWhitePixels(image_merged));
 
 		Mat image_sontursFilterAlgorism1;	// getBinImageByFloodfillAlgorism
-		image_sontursFilterAlgorism1 = floodFillFilterAlgorism(image_floodFilled_AT2_Not, image_merged);
+		Mat image_sontursFilterAlgorism2;	// getBinImageByFloodfillAlgorism
+		image_sontursFilterAlgorism1 = floodFillFilterAlgorism(image_floodFilled_AT2_Not, image_merged);	// at 대신
+		image_sontursFilterAlgorism2 = floodFillFilterAlgorism(image_moph_AT_Not, image_merged);
+		// 1. image_sontursFilterAlgorism2 floodfill
+		Mat image_sontursFilterAlgorism2_floodfile = GetFloodFilledImage(image_sontursFilterAlgorism2, true);
+		// 2. 위 이미지분석 (흰점의 좌측, 우측 점 중 작은것)
+		int maskImage_leftist_x = getLeftistWhitePixel_x(image_sontursFilterAlgorism2_floodfile);
+		int maskImage_rightest_x = getRightistWhitePixel_x(image_sontursFilterAlgorism2_floodfile);
+		int maskImage_middle_x = image_sontursFilterAlgorism2_floodfile.cols/2;//(maskImage_leftist_x + maskImage_rightest_x) / 2;
+
 
 		imshow("subImage", subImage);
 
@@ -690,6 +726,8 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 
 		imshow("image_merged", image_merged);
 		imshow("image_sontursFilterAlgorism1", image_sontursFilterAlgorism1);
+		imshow("image_sontursFilterAlgorism2", image_sontursFilterAlgorism2);
+		imshow("image_sontursFilterAlgorism2_floodfile", image_sontursFilterAlgorism2_floodfile);
 
 
 		videoHandler::printCurrentFrameSpec(vc);
@@ -1204,4 +1242,63 @@ Mat testClass::floodFillFilterAlgorism(Mat ATImage, Mat mergedImage)
 	inRange(filteredImage_BGR, Scalar(0, 0, 254), Scalar(0, 0, 255), filteredImageToWhite);	// binarize by rgb
 
 	return filteredImageToWhite;
+}
+
+int testClass::getLeftistWhitePixel_x(Mat binImage)
+{
+	int leftist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = 0; width < binImage.cols; width++)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return leftist_x;
+}
+
+int testClass::getRightistWhitePixel_x(Mat binImage)
+{
+	int rightist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = binImage.cols - 1; width > 0; width--)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return 	rightist_x = 0;
+}
+
+int testClass::getWhitePixelAverage(Mat binImage)
+{
+	int height = binImage.rows;
+	int width = binImage.cols;
+	int whiteCount = 0;
+	int whitePixelXSum = 0;
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = binImage.ptr<uchar>(y);
+		for (int x = 0; x < width; x++)
+			if (yPtr[x] != 0)	// 흑색이 아닌경우
+			{
+				whiteCount++;
+				whitePixelXSum += x;
+			}
+	}
+
+	if (whiteCount == 0)
+		return 0;
+	else
+		return whitePixelXSum / whiteCount;
 }

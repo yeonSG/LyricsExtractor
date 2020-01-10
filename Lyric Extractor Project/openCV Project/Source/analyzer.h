@@ -34,10 +34,11 @@ public:
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
 	vector<pair<int, int>> getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
 	void lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps = DEFAULT_FPS);
+	void lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts);
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
 
 	void calibrateLines(vector<pair<int, int>>& lines);
-	void lineCalibration(int& startFrame, int& endFrame);
+	bool lineCalibration(int& startFrame, int& endFrame);
 	/* 라인 판별 알고리즘 끝 */
 
 	/* 이미지 분석 함수image analization  */

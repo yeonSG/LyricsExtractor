@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include "videoHandler.h"
+#include "imageHandler.h"
 #include "defines.h"
 
 using namespace cv;
@@ -56,4 +57,8 @@ public:
 	ExtremePoint getExtremePoint(vector<Point> contour);
 	vector<vector<Point>> getContursContainExtremepoint(vector<vector<Point>> targetConturs, vector<extremePoint> extremePoints);
 	Mat floodFillFilterAlgorism(Mat ATImage, Mat mergedImage);
+
+	int getLeftistWhitePixel_x(Mat binImage);
+	int getRightistWhitePixel_x(Mat binImage);
+	int getWhitePixelAverage(Mat binImage);
 };
