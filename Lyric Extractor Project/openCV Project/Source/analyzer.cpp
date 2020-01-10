@@ -812,6 +812,7 @@ void analyzer::catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string
 		videoCapture->read(endImage);
 		// make sub bin Image 
 		Mat subBinImage = imageToSubBinImage(endImage);
+		bitwise_not(subBinImage, subBinImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", subBinImage);
 	}
 }
