@@ -14,7 +14,7 @@ public:
 	static Mat getSubtitleImage(static Mat& sourceImage);
 	static Mat getBinaryImage(static Mat& sourceImage);
 	static Mat getBlueColorFilteredBinaryImage(static Mat& sourceImage);
-	static Mat getMorphImage(static Mat& sourceImage);
+	static Mat getMorphImage(static Mat& sourceImage, MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
 	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
 

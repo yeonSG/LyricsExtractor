@@ -61,19 +61,32 @@ Mat imageHandler::getBlueColorFilteredBinaryImage(Mat& sourceImage)
 /// </summary>
 /// <param name="sourceImage">이진화 된 이미지.</param>
 /// <returns></returns>
-Mat imageHandler::getMorphImage(Mat& sourceImage)
+Mat imageHandler::getMorphImage(Mat& sourceImage, MorphTypes type)
 {
-	Mat element(5, 5, CV_8U, Scalar(1));
+	Mat element(3, 3, CV_8U, Scalar(1));
 	element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
+	//element = { {0, 1, 0},{1, 1,0},
 
-	//Mat image_close;
-	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);	// Close 연산 (침식->팽창)
-	//morphologyEx(image_getBlue, image_close, MORPH_OPEN, element5);	// Open 연산  (팽창->침식)
-	Mat image_dilateion;
-	dilate(sourceImage, image_dilateion, element);	// 팽창연산
+	Mat image_morp;
+
+	switch (type)
+	{
+	case MORPH_DILATE:
+		dilate(sourceImage, image_morp, element);	// 팽창연산
+		break;
+	case MORPH_ERODE:
+		erode(sourceImage, image_morp, element);	// 팽창연산
+		break;
+	case MORPH_CLOSE:
+		morphologyEx(sourceImage, image_morp, MORPH_CLOSE, element);
+		break;
+	case MORPH_OPEN:
+		morphologyEx(sourceImage, image_morp, MORPH_OPEN, element);
+		break;
+	}
 	//erode()	// 침식연산
 
-	return image_dilateion;
+	return image_morp;
 }
 
 

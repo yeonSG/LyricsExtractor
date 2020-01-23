@@ -608,13 +608,44 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		orgImage = imageHandler::resizeImageToAnalize(orgImage);
 		Rect subRect(0, SUBTITLEAREA_Y, orgImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
 		Mat subImage = orgImage(subRect);
-		double mask3[3][3] = { {-1,-1,-1}, {-1,9,-1}, {-1,-1,-1} };
+		double mask3[3][3] = { {-1,-1,-1}, {-1,9,-1}, {-1,-1,-1} };	// shapen mask
 		Mat kernal3 = Mat(3, 3, CV_64FC1, mask3);
 		Mat subImage1;
 		Mat subImage2;
-		filter2D(subImage, subImage1, -1, kernal3);
+		Mat subImage3;
+		filter2D(subImage, subImage1, -1, kernal3);	// shapen
+		filter2D(subImage1, subImage2, -1, kernal3);	// shapen
+		filter2D(subImage2, subImage3, -1, kernal3);	// shapen
 		imshow("1", subImage);
 		imshow("2", subImage1);
+
+		Mat bgr[3];
+		split(subImage, bgr);
+		imshow("blueC", bgr[0]);
+
+		//
+		Mat blur1;
+		GaussianBlur(subImage1, blur1, Size(5, 5), 5, 5);
+		imshow("3", blur1);
+		Mat blur1_gray;
+		cvtColor(blur1, blur1_gray, COLOR_BGR2GRAY);
+		Mat sobel1_x, sobel1_y;
+		Sobel(blur1_gray, sobel1_x, CV_16S, 1, 0, 3);
+		convertScaleAbs(sobel1_x, sobel1_x);
+		Sobel(blur1_gray, sobel1_y, CV_16S, 0, 1, 3);
+		convertScaleAbs(sobel1_y, sobel1_y);
+		Mat gred;
+		addWeighted(sobel1_x, 0.5, sobel1_y, 0.5, 0, gred);
+		imshow("sobel", gred);
+
+		Mat blur2;
+		medianBlur(blur1, blur2, 5);
+		double maskBlur[3][3] = { {1,1,1}, {1,8,1}, {1,1,1} };	// 
+		Mat kernalBlur = Mat(3, 3, CV_64FC1, maskBlur);
+		Mat blur3;
+		filter2D(blur2, blur3, -1, kernalBlur);
+		Mat blur4;
+		filter2D(blur3, blur4, -1, kernalBlur);
 
 		Mat image_binAT;
 		Mat image_binAT3, image_binAT7;
@@ -632,6 +663,10 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		//element5 = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));	// @이 값 조정해서 지난 텍스트가 사라지지 않도록 조정해보자
 		//erode(image_binAT.clone(), image_moph_AT, element5);	// 침
 
+		Mat subImage_hsv_forFA;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
+		cvtColor(subImage, subImage_hsv_forFA, COLOR_BGR2HSV);
+		inRange(subImage_hsv_forFA, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv_forFA);
+
 		Mat image_moph_AT_Not;
 		bitwise_not(image_moph_AT, image_moph_AT_Not);
 
@@ -642,7 +677,7 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		Mat image_floodFilled_AT2_Not;
 		bitwise_not(image_floodFilled_AT2, image_floodFilled_AT2_Not);
 
-		imshow("image_moph_AT_Not", image_moph_AT_Not);	// 이 이미지랑
+		//imshow("image_moph_AT_Not", image_moph_AT_Not);	// 이 이미지랑
 		imshow("image_floodFilled_AT2_Not", image_floodFilled_AT2_Not);	// 이 이미지랑
 
 		// 4. canny 엣지 검출
@@ -704,7 +739,7 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		Mat image_sontursFilterAlgorism1;	// getBinImageByFloodfillAlgorism
 		Mat image_sontursFilterAlgorism2;	// getBinImageByFloodfillAlgorism
 		image_sontursFilterAlgorism1 = floodFillFilterAlgorism(image_floodFilled_AT2_Not, image_merged);	// at 대신
-		image_sontursFilterAlgorism2 = floodFillFilterAlgorism(image_moph_AT_Not, image_merged);
+		image_sontursFilterAlgorism2 = floodFillFilterAlgorism(subImage_hsv_forFA, image_merged);
 		// 1. image_sontursFilterAlgorism2 floodfill
 		Mat image_sontursFilterAlgorism2_floodfile = GetFloodFilledImage(image_sontursFilterAlgorism2, true);
 		// 2. 위 이미지분석 (흰점의 좌측, 우측 점 중 작은것)
@@ -842,6 +877,496 @@ void testClass::test_Video3()
 
 		beforeBinImage = adopt.clone();
 	}
+}
+
+void testClass::test_Video4(string videoPath)
+{
+	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
+	VideoCapture vc(videoPath);
+	if (!vc.isOpened())
+	{
+		cout << "fail to open the video" << endl;
+		return;
+	}
+	videoHandler::printVideoSpec(vc);
+
+	Mat orgImage;
+	Mat stackBinImage;
+	Mat FCImage_before;
+
+	while (vc.read(orgImage))
+	{
+	videoHandler::printCurrentFrameSpec(vc);
+	int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+	
+	orgImage = imageHandler::resizeImageToAnalize(orgImage);
+	Rect subRect(0, SUBTITLEAREA_Y, orgImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
+	Mat subImage = orgImage(subRect);	
+	imshow("subImage", subImage);
+
+	if (stackBinImage.empty() == true)
+		stackBinImage = imageHandler::getCompositeBinaryImages(subImage);
+	//if (beforeFCImage.empty() == true)
+		
+
+	// sharpen image using "unsharp mask" algorithm
+	Mat blurred; 
+	GaussianBlur(subImage, blurred, Size(), sigma, sigma);
+	Mat lowContrastMask = abs(subImage - blurred) < threshold;
+	Mat sharpened = subImage * (1 + amount) + blurred * (-amount);
+	subImage.copyTo(sharpened, lowContrastMask);
+
+	imshow("sharpened", sharpened);
+	imshow("lowContrastMask", lowContrastMask);
+
+	Mat fullContrastimage;
+	fullContrastimage = getFullContrastIMage(sharpened);
+	imshow("fullContrastimage", fullContrastimage);
+	
+	Mat fullContrastimage_NotBulr;
+	fullContrastimage_NotBulr = getFullContrastIMage(subImage);
+	imshow("fullContrastimage_NotBulr", fullContrastimage_NotBulr);
+	
+	//if(FCImage_before.empty()==false)
+	//	stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
+	//imshow("stackBinImage", stackBinImage);
+	Mat algorismMk1 = AlgolismMk1(fullContrastimage_NotBulr);
+	imshow("AlgolismMk1", algorismMk1);
+
+	Mat reTouch;
+	GaussianBlur(fullContrastimage, reTouch, Size(3, 3), 2);
+	imshow("reTouch", reTouch);
+
+	Mat blurred1;
+	GaussianBlur(reTouch, blurred1, Size(), sigma, sigma);
+	Mat lowContrastMask1 = abs(reTouch - blurred1) < threshold;
+	Mat sharpened1 = reTouch * (1 + amount) + blurred1 * (-amount);
+	reTouch.copyTo(sharpened1, lowContrastMask1);
+
+	Mat fullContrastimage1;
+	fullContrastimage1 = getFullContrastIMage(sharpened1);
+	imshow("fullContrastimage1", fullContrastimage1);
+
+
+	Mat subImage_hsv;
+	Mat subImage_gray;
+	cvtColor(fullContrastimage1, subImage_gray, COLOR_BGR2GRAY);
+	cvtColor(fullContrastimage1, subImage_hsv, COLOR_BGR2HSV);
+	Mat hsvfiltered;
+	inRange(subImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), hsvfiltered);
+
+	Mat outImage;
+	outImage = removeLint(hsvfiltered, subImage_gray);
+	imshow("outImage", outImage);
+
+
+	//int key = waitKey(1);
+	int key = waitKey(0);
+	if (key == KEY_ESC)
+		break;
+	else if (key == 'a')	// before frame
+		curFrame -= 1;
+	else if (key == 'd')	// next frame
+		curFrame += 1;
+	else if (key == 'w')	// +50th frame
+		curFrame += 50;
+	else if (key == 's')	// -50th frame
+		curFrame -= 50;
+	else if (key == 'r')	// +10th frame
+		curFrame += 10;
+	else if (key == 'f')	// -10th frame
+		curFrame -= 10;
+	else if (key == 'e')	// +500th frame
+		curFrame += 500;
+	else if (key == 'q')	// -500th frame
+		curFrame -= 500;
+	else if (key == '?')
+		videoHandler::printVideoSpec(vc);
+	else if (key == '7')
+		sigma+=1;
+	else if (key == '4')
+		sigma-=1;
+	else if (key == '8')
+		threshold+=1;
+	else if (key == '5')
+		threshold-=1;
+	else if (key == '9')
+		amount+=1;
+	else if (key == '6')
+		amount-=1;
+	else if( key== '0')
+		sigma = 5, threshold = 0, amount = 5;
+
+	vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+	printf("sigma=%f, threshold=%f, amount=%f\r\n", sigma, threshold, amount);
+
+	FCImage_before = fullContrastimage_NotBulr.clone();
+	}
+
+vc.release();
+}
+
+Mat testClass::getFullContrastIMage(Mat srcImage)
+{
+	// RGB 분리
+	Mat bgr[3];
+	split(srcImage, bgr);
+	// 각각의 128 임계로 한 이미지 얻음
+	threshold(bgr[0], bgr[0], 127, 255, THRESH_BINARY);
+	threshold(bgr[1], bgr[1], 127, 255, THRESH_BINARY);
+	threshold(bgr[2], bgr[2], 127, 255, THRESH_BINARY);
+	// RGB 합침
+	Mat mergedImage;
+	merge(bgr, 3, mergedImage);
+	return mergedImage;
+}
+
+Mat testClass::removeLint(Mat srcImage, Mat refImage)
+{
+	int height = srcImage.rows;
+	int width = srcImage.cols;
+	Mat outLintedImage = srcImage.clone();
+
+	for (int y = 1; y < height-1; y++)
+	{
+		uchar* yPtr = srcImage.ptr<uchar>(y);
+		uchar* yPtr_up = srcImage.ptr<uchar>(y-1);
+		uchar* yPtr_down = srcImage.ptr<uchar>(y+1);
+		for (int x = 1; x < width - 1; x++)
+		{
+			if (refImage.ptr<uchar>(y)[x] == 255)	// 완전 흰색인경우 연산에서 제외
+				continue;
+
+			bool isLint = false;
+			if (0 != yPtr[x])	// 흑색이 아닌경우
+			{
+				if (yPtr[x - 1] == 0 && yPtr[x + 1] == 0)	// 좌 우
+					isLint = true;
+				else if (yPtr_up[x] == 0 && yPtr_down[x] == 0) // 상 하
+					isLint = true;
+				else if (yPtr_up[x - 1] == 0 && yPtr_down[x + 1] == 0)	// 좌상 우하
+					isLint = true;
+				else if (yPtr_down[x - 1] == 0 && yPtr_up[x + 1] == 0) // 좌하 우상
+					isLint = true;
+
+				if (isLint)
+					outLintedImage.ptr<uchar>(y)[x] = 0;
+			}
+		}
+	}
+	return outLintedImage;
+}
+
+void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage)
+{
+	int height = stackBinImage.rows;
+	int width = stackBinImage.cols;
+
+	for (int y = 0; y < height ; y++)
+	{
+		uchar* yPtr = stackBinImage.ptr<uchar>(y);
+		Vec3d* yPtr_FC = FCImage.ptr<Vec3d>(y);
+		Vec3d* yPtr_FC_before = FCImage_before.ptr<Vec3d>(y);
+		for (int x = 0; x < width; x++)
+		{
+			/*printf("%d ", yPtr_FC_before[x][0]);
+			printf("%d ", yPtr_FC_before[x][1]);
+			printf("%d \r\n", yPtr_FC_before[x][2]);*/
+			if (yPtr[x] == 0)
+			{
+				if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isBlue(FCImage.at<cv::Vec3b>(y, x)))
+				{
+					yPtr[x] = 10;
+				}
+				else if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isRed(FCImage.at<cv::Vec3b>(y, x)))
+				{
+					yPtr[x] = 10;
+				}
+			}
+			else
+			{
+				if (isBlue(FCImage.at<cv::Vec3b>(y, x)) || isRed(FCImage.at<cv::Vec3b>(y, x)))
+				{
+					if (yPtr[x] <= 245)	// 증감
+						yPtr[x] += 10;
+					else
+						yPtr[x] = 255;
+				}
+				else
+					yPtr[x] = 0;
+			}
+			//if (yPtr[x] == 0)
+			//{
+			//	if (isWhite(FCImage_before.ptr<Vec3d>(y)[x]) && isBlue(FCImage.ptr<Vec3d>(y)[x])
+			//		|| isWhite(FCImage_before.ptr<Vec3d>(y)[x]) && isRed(FCImage.ptr<Vec3d>(y)[x]))
+			//		yPtr[x] = 255;
+			//}
+			//else
+			//{
+			//	if (isBlue(FCImage.ptr<Vec3d>(y)[x]) || isRed(FCImage.ptr<Vec3d>(y)[x]))
+			//		;	// 유지
+			//	else
+			//		yPtr[x] = 0;
+			//}
+
+		}
+	}
+	;
+}
+
+bool testClass::isWhite(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 255 && ptr[2] == 255)
+		return true;
+	return false;
+}
+
+bool testClass::isBlack(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool testClass::isBlue(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool testClass::isRed(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
+		return true;
+	return false;
+}
+
+// getPaintedBinImage()
+Mat testClass::AlgolismMk1(Mat FCImage)
+{
+	int height = FCImage.rows;
+	int width = FCImage.cols;
+	Mat outImage;
+	cvtColor(FCImage, outImage, COLOR_BGR2GRAY);
+	
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = FCImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			bool isRight = false;	// 조건만족?
+			if(isWhite( yPtr_FCImage[x]) )////if (isWhite(FCImage.at<cv::Vec3b>(y, x)))	
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+				while (x - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x - count];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (x+ count < width)	// 위쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			else
+				yPtr[x] = 0;
+		}
+	}
+
+	// 열연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = FCImage.ptr<Vec3b>(y); //
+
+		for (int x = 0; x < width; x++)
+		{
+			if (isWhite(yPtr[x]))	// 이미 흰색인곳
+				continue;
+
+			bool isRight = false;	// 조건만족?
+			if (isWhite(yPtr_FCImage[x]))
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+
+				while (y - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = FCImage.ptr<Vec3b>(y - count)[x];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = FCImage.ptr<Vec3b>(y - (count + 1))[x];//yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = FCImage.ptr<Vec3b>(y - (count + 1))[x]; //yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (y + count < height)	// 위쪽 색 확인
+				{
+					Vec3b v3p = FCImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = FCImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = FCImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			//else
+			//	yPtr[x] = 0;
+		}
+		// yPtr[5] = 255;
+	}
+
+	return outImage;
 }
 
 void testClass::print_videoSpec(VideoCapture vc)

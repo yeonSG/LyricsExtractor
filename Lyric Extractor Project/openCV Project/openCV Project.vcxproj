@@ -153,6 +153,7 @@
     <ClCompile Include="Source\analyzer.cpp" />
     <ClCompile Include="Source\fileManager.cpp" />
     <ClCompile Include="Source\imageHandler.cpp" />
+    <ClCompile Include="Source\loger.cpp" />
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\testClass.cpp" />
     <ClCompile Include="Source\videoHandler.cpp" />
@@ -166,6 +167,8 @@
     <ClInclude Include="Source\defines.h" />
     <ClInclude Include="Source\fileManager.h" />
     <ClInclude Include="Source\imageHandler.h" />
+    <ClInclude Include="Source\line.h" />
+    <ClInclude Include="Source\loger.h" />
     <ClInclude Include="Source\testClass.h" />
     <ClInclude Include="Source\videoHandler.h" />
   </ItemGroup>

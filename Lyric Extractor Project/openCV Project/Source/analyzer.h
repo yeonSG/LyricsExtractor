@@ -24,6 +24,7 @@ public:
 	int getWhitePixelAverage(Mat binImage);
 
 	bool videoAnalization(string videoPath);
+	bool videoAnalization1(string videoPath);
 
 	/* 데이터 분석 함수 */
 	vector<int> vectorToAverageVector(vector<int> vec, int effectiveRange);
@@ -33,12 +34,13 @@ public:
 
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
 	vector<pair<int, int>> getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
-	void lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps = DEFAULT_FPS);
+	void linesRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps = DEFAULT_FPS);
+	bool lineRejudgeByLineLength(int startFrame, int endFrame, int fps = DEFAULT_FPS);
 	void lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts);
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
 
 	void calibrateLines(vector<pair<int, int>>& lines);
-	bool lineCalibration(int& startFrame, int& endFrame);
+	bool lineCalibration(int& startFrame, int& endFrame, Mat& maskImage);
 	/* 라인 판별 알고리즘 끝 */
 
 	/* 이미지 분석 함수image analization  */
@@ -56,9 +58,11 @@ public:
 
 	void captureLines(vector<pair<int, int>> lines, string videoPath);
 	void catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string videoPath);
+	void catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoPath);
 
 	Mat imageToSubBinImage(Mat targetImage);
 	Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
+	Mat getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat compositeImage, int limitX);
 	void capturedLinesToText(int lineSize, string videoPath);
 	void runOCR(string targetImage, string outFileName);
 	wstring stringToWstring(const std::string& s);
@@ -67,6 +71,20 @@ public:
 	/* Inits */
 	bool setVideo(string videoPath);
 	void closeVideo();
+
+	Mat getLyricMask(Mat imageToCopy, int startX, int endX);
+
+	Mat getSharpenAndContrastImage(int frameNum);
+	Mat getSharpenImage(Mat srcImage);
+	Mat getFullyContrastImage(Mat srcImage);
+	Mat removeLint(Mat srcImage, Mat refImage);
+
+	//
+	Mat getPaintedBinImage(Mat srcImage);
+	bool isWhite(const Vec3b& ptr);
+	bool isBlack(const Vec3b& ptr);
+	bool isBlue(const Vec3b& ptr);
+	bool isRed(const Vec3b& ptr);
 
 public:
 	VideoCapture *videoCapture;

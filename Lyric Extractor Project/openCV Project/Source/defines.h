@@ -1,6 +1,6 @@
 #pragma once
 
-enum Color
+enum Color	// BGR
 {
 	BLUE,
 	GREEN,

@@ -36,7 +36,6 @@ bool analyzer::videoAnalization(string videoPath)
 	{
 		return false;
 	}
-	string savePath = fileManager::getSavePath();
 
 	Mat orgImage;
 	Mat subImage;
@@ -48,7 +47,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
 	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
-	verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
+	verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(720) );	// 프래임과 동기화 위해 배열 0번은 더미
 
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
@@ -59,7 +58,7 @@ bool analyzer::videoAnalization(string videoPath)
 			orgImage = imageHandler::resizeImageToAnalize(orgImage);
 
 		subImage = imageHandler::getSubtitleImage(orgImage);
-		binImage = imageHandler::getCompositeBinaryImages(subImage);
+		binImage = imageHandler::getCompositeBinaryImages(subImage);	// 파빨간색으로 
 
 		//White dot Count
 		vecWhitePixelCounts.push_back(getWihtePixelCount(binImage));
@@ -92,29 +91,62 @@ bool analyzer::videoAnalization(string videoPath)
 	Mat changeHistogramMat; // 체인지 히스토그램	//changeHistogram = getChangeHistorgramMat(verticalProjectionDatasOfDifferenceImage, 10);//= Mat::ones(orgImage.cols, 0, CV_64F);	// col, row
 	vector<vector<bool>> changeHistorgramData = getChangeHistorgramData(verticalProjectionDatasOfDifferenceImage, 10);
 	changeHistogramMat = vectorToBinaryMat(changeHistorgramData);
-	imwrite(savePath + "ChangeHistogram.jpg", changeHistogramMat);
+	imwrite(fileManager::getSavePath() + "ChangeHistogram.jpg", changeHistogramMat);
 
 	vector<int> verticalHistogramAverage = getVerticalHistogramAverageData(changeHistorgramData);	// getChangeStatusAverage -> getChangeAverageHistogramData
 	fileName = "WhitePixelChangedCountAverage.txt";
 	fileManager::writeVector(fileName, verticalHistogramAverage); 
 
 	Mat changeHistogramAverageMat = averageVectorToBinaryMat(verticalHistogramAverage, changeHistogramMat.cols); // 체인지 히스토그램의 평균점 이미지
-	imwrite(savePath + "changeHistogramAverage.jpg", changeHistogramAverageMat);
+	imwrite(fileManager::getSavePath() + "changeHistogramAverage.jpg", changeHistogramAverageMat);
 	
 	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
 	vector<pair<int, int>> lines = getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
-	catpureBinaryImageOfLinesEnd(lines, savePath);
 
 	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
 	calibrateLines(lines);
 	
-	//catpureBinaryImageOfLinesEnd(lines, savePath);
 	/* Save pictures */
-	captureLines(lines, savePath);
-	capturedLinesToText(lines.size(), savePath);
-	makeLyrics(lines, savePath);
+	captureLines(lines, fileManager::getSavePath());
+	capturedLinesToText(lines.size(), fileManager::getSavePath());
+	makeLyrics(lines, fileManager::getSavePath());
 
 	closeVideo();
+	return true;
+}
+
+bool analyzer::videoAnalization1(string videoPath)
+{
+	if (!setVideo(videoPath))
+	{
+		return false;
+	}
+
+	Mat orgImage, subImage;
+	Mat paintedBinImage;
+	vector<int> vecPaintedPixelCounts;		// 흰점수
+		// 체인지 영역 
+
+	vecPaintedPixelCounts.push_back(0);
+
+	while (videoCapture->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*videoCapture);
+
+		if (orgImage.rows != 720)
+			orgImage = imageHandler::resizeImageToAnalize(orgImage);
+
+		subImage = imageHandler::getSubtitleImage(orgImage);
+		
+
+		paintedBinImage = getPaintedBinImage(subImage);
+		vecPaintedPixelCounts.push_back(getWihtePixelCount(paintedBinImage));	// 픽셀 수 구함
+
+	}
+
+	string fileName = "PaintedPixelCount.txt";
+	fileManager::writeVector(fileName, vecPaintedPixelCounts);
+
 	return true;
 }
 
@@ -163,7 +195,7 @@ vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, 
 	for (int i = 0; i < lines.size(); i++)
 		printf("Line%d : %d - %d\r\n", i, lines[i].first, lines[i].second);
 
-	lineRejudgeByLineLength(lines);
+	linesRejudgeByLineLength(lines);
 	lineRejudgeByPixelCount(lines, vecWhitePixelCounts);
 	// lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);	// 왼쪽의 점 좌표 평균, 오른쪽의 점 좌표평균
 
@@ -291,19 +323,17 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 /// </summary>
 /// <param name="judgedLines">The judged lines.</param>
 /// <param name="fps">The FPS.</param>
-void analyzer::lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps)
+void analyzer::linesRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps)
 {
 	const int limitMSec = 400;	// 400ms = 10frame
 	int limitFrame = limitMSec / (1000 / fps);
-	printf("@@lineRejudgeByLineLength_Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
+	printf("@@linesRejudgeByLineLength_Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
 
 	int lineCount = 0;
 	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
 	{
-		int lineLenght = it->second - it->first;
-
-		printf("lines %2d Length: %d \r\n", lineCount, lineLenght);
-		if (lineLenght < limitFrame)
+		printf("lines %2d \r\n", lineCount);
+		if (lineRejudgeByLineLength(it->first, it->second, fps) == false)
 		{
 			printf("exceptionLine: %d\r\n", lineCount);
 			it = judgedLines.erase(it);
@@ -314,6 +344,22 @@ void analyzer::lineRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int 
 		++it;
 		lineCount++;
 	}
+}
+
+bool analyzer::lineRejudgeByLineLength(int startFrame, int endFrame, int fps)
+{
+	const int limitMSec = 400;	// 400ms = 10frame
+	int limitFrame = limitMSec / (1000 / fps);
+
+	int lineLenght = endFrame - startFrame;
+
+	if (lineLenght < limitFrame)
+	{
+		printf("Line Lenghth is short: %d (Limit:%d)\r\n", lineLenght, limitFrame);
+		return false;
+	}
+
+	return true;
 }
 
 void analyzer::lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts)
@@ -401,22 +447,45 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 void analyzer::calibrateLines(vector<pair<int, int>>& lines)
 {
 	int lineCount = 0;
+	Mat maskImage;
 	for (vector<pair<int, int>>::iterator it = lines.begin(); it != lines.end(); /*it++*/)
 	{
 		printf("Cal Line%d : %d - %d\r\n", lineCount, it->first, it->second);
-		if (lineCalibration(it->first, it->second)==false)
+		if (lineCalibration(it->first, it->second, maskImage) == false)
 		{
 			printf("Cal Line%d : false.\r\n\r\n", lineCount);
-			//printf("Cal Line%d : removed.\r\n\r\n", lineCount);
-			//it = lines.erase(it);
-			//lineCount++;
-			//continue;
+			printf("Cal Line%d : removed.\r\n\r\n", lineCount);
+			it = lines.erase(it);		
+			lineCount++;
+			continue;
+		}
+		else
+		{
+			Mat newMaskImage =  getSharpenAndContrastImage(it->first);
+			
+			Mat newMaskImage_hsv, newMaskImage_gray;
+			cvtColor(newMaskImage, newMaskImage_hsv, COLOR_BGR2HSV);
+			cvtColor(newMaskImage, newMaskImage_gray, COLOR_BGR2GRAY);
+			Mat newMaskImage_bin;
+			inRange(newMaskImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), newMaskImage_bin);
+			// 부족하면 이전or다음 프레임 동원하여 해결할것.
+			newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);
+
+			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
+
+			Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
+			//newMaskImage_bin
+
+			catpureBinaryImageForOCR(newMaskImage, it-lines.begin(), fileManager::getSavePath());
 		}
 
 		printf("Cal Line%d : %d - %d updated.\r\n\r\n", lineCount, it->first, it->second);
 		++it;
 		lineCount++;
 	}
+	
+	linesRejudgeByLineLength(lines);
+
 }
 
 /// <summary>
@@ -429,7 +498,7 @@ void analyzer::calibrateLines(vector<pair<int, int>>& lines)
 /// </summary>
 /// <param name="startFrame">The start frame.</param>
 /// <param name="endFrame">The end frame.</param>
-bool analyzer::lineCalibration(int& startFrame, int& endFrame)
+bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 {
 	bool isEffictiveLine = true;
 	Mat readImage;
@@ -437,15 +506,37 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 	videoCapture->read(readImage);
 	if (readImage.rows != 720)
 		readImage = imageHandler::resizeImageToAnalize(readImage);
-	Mat maskImage = imageToSubBinImage(readImage);
+	maskImage = imageToSubBinImage(readImage);
 
-	int maskImage_leftist_x = getLeftistWhitePixel_x(maskImage);
-	int maskImage_rightest_x = getRightistWhitePixel_x(maskImage);
-	int maskImage_middle_x = (maskImage_leftist_x + maskImage_rightest_x) / 2;
+	int maskImage_leftDot_x = getLeftistWhitePixel_x(maskImage);
+	int maskImage_rightDot_x = getRightistWhitePixel_x(maskImage);
+	int maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
+	int image_center_x = readImage.cols / 2;
+
+	if ( (maskImage_middleDot_x > (image_center_x)+10) || (maskImage_middleDot_x < (image_center_x)-10) )
+	{	// 두 지점(가장 왼, 가장 오른쪽) 중 중앙에 가까운 쪽을 기준으로 대칭하여 자름
+		int lengthOfLine;
+		int leftLength = image_center_x - maskImage_leftDot_x;
+		int rightLength = maskImage_rightDot_x - image_center_x;
+		Mat lyricMask;
+		if (leftLength > rightLength)
+		{
+			lyricMask = getLyricMask(maskImage.clone(), image_center_x - (rightLength + 10), image_center_x + (rightLength + 10));// middle - (rightLength +30) ~ middle + (rightLength + 30) == 이미지 범위
+		}
+		else
+		{
+			lyricMask = getLyricMask(maskImage.clone(), image_center_x-(leftLength+10), image_center_x +(leftLength+10));// middle - (leftLength +30) ~ middle + (leftLength + 30) == 이미지 범위
+		}
+		maskImage = getBinImageByFloodfillAlgorism(maskImage, lyricMask);
+
+		maskImage_leftDot_x = getLeftistWhitePixel_x(maskImage);
+		maskImage_rightDot_x = getRightistWhitePixel_x(maskImage);
+		maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
+	}
 
 	int maskImage_pixelCount = getWihtePixelCount(maskImage);
 
-	printf("MaskImage Info - left: %d right: %d middle: %d(%d) \r\n", maskImage_leftist_x, maskImage_rightest_x, maskImage_middle_x, readImage.cols / 2);
+	printf("MaskImage Info - left: %d right: %d middle: %d(%d) \r\n", maskImage_leftDot_x, maskImage_rightDot_x, maskImage_middleDot_x, image_center_x);
 	printf("MaskImage Info - whiteCount: %d \r\n", maskImage_pixelCount);
 	if (maskImage_pixelCount < 500)
 	{
@@ -454,6 +545,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 		return isEffictiveLine;
 	}
 
+
 	Mat subImage;
 	Mat binImage, beforeBinImage;
 	int beforePixelCount=0;
@@ -461,6 +553,12 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 	int MinimumPixelCount = 500;	// 임의 초기값
 	int startframe_org = startFrame;
 
+	bool additionalNoiseRemovedAtPer[10] = { false, };
+	additionalNoiseRemovedAtPer[9] = true;	// 100 이하에서 한번 진행
+	additionalNoiseRemovedAtPer[8] = true;	// 90 이하에서 한번 진행
+	additionalNoiseRemovedAtPer[7] = true;	// 80 이하에서 한번 진행
+	additionalNoiseRemovedAtPer[6] = true;	// 70 이하에서 한번 진행
+	additionalNoiseRemovedAtPer[5] = true;	// 60 이하에서 한번 진행
 	int frameIndex = endFrame;
 	while (true)
 	{
@@ -491,22 +589,43 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 
 		int pixelCount = getWihtePixelCount(binImage);
 		int diffImage_avgPoint = getWhitePixelAverage(image_dilateion);
-		int diffImage_avgPoint_Per = (int)((diffImage_avgPoint - maskImage_leftist_x) / ( (maskImage_rightest_x - maskImage_leftist_x) / 100.0));
+		int diffImage_avgPoint_Per = (int)((diffImage_avgPoint - maskImage_leftDot_x) / ( (maskImage_rightDot_x - maskImage_leftDot_x) / 100.0));
 
 		printf("frame %d - diffAvgPoint: %d, diffImage_avgPoint_Per: %d \r\n", frameIndex, diffImage_avgPoint, diffImage_avgPoint_Per);
 		printf("frame %d - pixelCount: %d \r\n", frameIndex, pixelCount);
 
-		if (diffImage_avgPoint_PerMax <= diffImage_avgPoint_Per)
+		if (diffImage_avgPoint_PerMax <= diffImage_avgPoint_Per)	// 가장 큰 Percent 변경점이 시작점,
 		{
 			endFrame = frameIndex;
 			diffImage_avgPoint_PerMax = diffImage_avgPoint_Per;
 		}
 
-		if (MinimumPixelCount >= pixelCount)
+		if (MinimumPixelCount >= pixelCount)	// 가장 작은 pixel수 부분이 끝점, 
 		{
 			MinimumPixelCount = pixelCount;
 			startFrame = frameIndex;
 		}
+
+		// 노이즈 제거 알고리즘
+		/*	변경방향
+		 - 라인 끝지점부터 시작지점까지 계속 진행 (100% 아래로 내려가면 그때부터 시작, difPoint가 양수이면 cutLineX업데이트)
+		 
+		 + 추가로 흰색으로 필터링 한 이미지로 floodfill 진행 ( cutLineX 우측만 검사)
+
+		 - 
+		*/
+		//if (diffImage_avgPoint_Per > 0)		
+		//{
+		//	if (additionalNoiseRemovedAtPer[diffImage_avgPoint_Per / 10] == true)
+		//	{
+		//		;	// (diffImage_avgPoint_Per / 10 -1) *10 % 에 해당하는 x 축 기준으로 왼쪽만 flood fill 진행 //
+		//		int cutLineX = (maskImage_rightDot_x - maskImage_leftDot_x) / 10 * ((diffImage_avgPoint_Per / 10) - 1) + maskImage_leftDot_x;	//  ( 오른쪽-왼쪽 / 10 * x ) + 왼쪽
+		//		Mat postMaskImage = getBinImageByFloodfillAlgorismforNoiseRemove(maskImage, binImage, cutLineX);	// x좌표 이전까지만 검사함
+
+		//		maskImage = postMaskImage;
+		//		additionalNoiseRemovedAtPer[diffImage_avgPoint_Per / 10] = false;
+		//	}
+		//}
 		
 		beforeBinImage = binImage.clone();
 
@@ -515,6 +634,46 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame)
 			break;
 	}
 
+	// 마스크 다시 만듦?
+	// start -> end 까지 pixel 각각의 누적값으로 
+	// 어떤 값을 쓸것인가?
+	//		1. 엣지의 누적
+	//		2. RGB색의 누적 (흰, 파, 빨 전부 or한 값)
+	//		3. HSV색의 누적 (흰, 파, 빨 전부 or한 값)
+
+	if (isEffictiveLine)		// 
+	{
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)startFrame - 1);	// frameIndex-1
+		videoCapture->read(readImage);
+
+		if (readImage.rows != 720)
+			readImage = imageHandler::resizeImageToAnalize(readImage);
+
+		subImage = imageHandler::getSubtitleImage(readImage);
+		// 1. 흰색의 이진화한 이미지 구함
+		// 2. floodfill (maskImage, 1번한것)
+	// inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), image_bin_inRange);	
+		inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), binImage);
+		maskImage = getBinImageByFloodfillAlgorism(maskImage, binImage);
+	}	// 
+
+	// 
+	maskImage_pixelCount = getWihtePixelCount(maskImage);
+	if (maskImage_pixelCount < 500)
+	{
+		isEffictiveLine = false;
+		printf("MaskImage Info - whiteCount: %d \r\n", maskImage_pixelCount);
+		printf("line Exception : MaskImage whiteCount is 500 Under.\r\n");
+		return isEffictiveLine;
+	}
+
+	if (lineRejudgeByLineLength(startFrame, endFrame) == false)
+	{
+		isEffictiveLine = false;
+		printf("line Exception : LineLength is unter 400ms.\r\n");
+		return isEffictiveLine;
+	}
+	// save 
 	return isEffictiveLine;
 }
 
@@ -817,6 +976,22 @@ void analyzer::catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string
 	}
 }
 
+void analyzer::catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoPath)
+{
+
+
+	bitwise_not(binImage, binImage);
+	// resize
+
+	//resize(binImage, binImage, cv::Size(binImage.cols * 0.6, binImage.rows * 0.6), 0, 0, cv::INTER_CUBIC);
+
+	//resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
+
+	//threshold(binImage, binImage, 128, 255, THRESH_BINARY);
+
+	imwrite(videoPath + "/Captures/Line" + to_string(lineNum) + "_Bin.jpg", binImage);
+}
+
 /// <summary>
 /// TargetImage에서 subtitle부분을 자르고 흑백연산 + 노이즈 제거 의 결과 이미지 반환.
 /// </summary>
@@ -828,7 +1003,7 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 		targetImage = imageHandler::resizeImageToAnalize(targetImage);
 
 	Mat subImage = imageHandler::getSubtitleImage(targetImage);
-	Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
+	Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);	
 
 	Mat image_gray;
 	cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
@@ -842,7 +1017,7 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
-	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);
+	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
 	//imshow("image_HSV_S", image_HSV_S);
 
 	Mat image_out;
@@ -850,6 +1025,12 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
 
 	image_out = imageHandler::getFloodProcessedImage(image_out, true);
+
+	Mat element(5, 5, CV_8U, Scalar(1));
+	element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
+	//Mat image_close;
+	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);	// Close 연산 (침식->팽창)
+	morphologyEx(image_out, image_out, MORPH_CLOSE, element);	// Open 연산  (팽창->침식)
 
 	return image_out;
 }
@@ -877,6 +1058,41 @@ Mat analyzer::getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage)
 			Vec3b color = filteredImage_BGR.at<Vec3b>(Point(x, y));
 			if (compositeImage.at<uchar>(Point(x, y)) == 255 && color == whiteColor)	// 좌표색이 흰색이면
 				floodFill(filteredImage_BGR, Point(x, y), redColor);
+		}
+	}
+	// 2. 빨간색으로 inRange() 하여 다시 흰색 이미지를 얻음
+	Mat filteredImageToWhite;
+	inRange(filteredImage_BGR, Scalar(0, 0, 254), Scalar(0, 0, 255), filteredImageToWhite);	// binarize by rgb
+
+	return filteredImageToWhite;
+}
+
+Mat analyzer::getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat compositeImage, int limitX)
+{
+	Mat filteredImage_BGR = ATImage.clone();
+	cvtColor(filteredImage_BGR, filteredImage_BGR, COLOR_GRAY2BGR);
+
+	// 1. outimage에 mergedImage에 흰색인 점 좌표에 빨간색으로 floodfill() 수행 
+	int height = filteredImage_BGR.rows;
+	int width = filteredImage_BGR.cols;
+
+	Vec3b whiteColor = { 255, 255, 255 };
+	Vec3b redColor = { 0, 0, 255 };
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			Vec3b color = filteredImage_BGR.at<Vec3b>(Point(x, y));
+			if (x < limitX)	// 
+			{
+				if (compositeImage.at<uchar>(Point(x, y)) == 255 && color == whiteColor)	// 좌표색이 흰색이면
+					floodFill(filteredImage_BGR, Point(x, y), redColor);
+			}
+			else	// 
+			{
+				if (ATImage.at<uchar>(Point(x, y)) == 255 && color == whiteColor)	// 원래이미지
+					floodFill(filteredImage_BGR, Point(x, y), redColor);
+			}
 		}
 	}
 	// 2. 빨간색으로 inRange() 하여 다시 흰색 이미지를 얻음
@@ -938,15 +1154,15 @@ void analyzer::capturedLinesToText(int lineSize, string videoPath)
 /// <param name="outFileName">출력 OCR 파일 경로.</param>
 void analyzer::runOCR(string targetImage, string outFileName)
 {
-	// $tesseract o.jpg o.out -l kor
+	// tesseract_5.0.exe . . 
+	// $tesseract o.jpg o.out -l kor -l tha+eng --oem 1 --psm 7 -c 
 	// 인자 : "인풋이미지" + "아웃.txt경로" + "-l tha+eng"
 	string procName = "tesseract_5.0.exe";		// tesseract 경로
 	string options = " -l tha+eng --oem 1 --psm 7";
 	string tessdataPath = " --tessdata-dir tessdata";
-	string blackList = " -c tessedit_char_blacklist=\"|:;\" ";
-	string commandString = procName + " " + targetImage + " " + outFileName + options + blackList;
+	string params = " -c tessedit_char_blacklist=\"|:;\" -c preserve_interword_spaces=1  -c load_system_dawg=0 -c load_freq_dawg=0";	// 블랙리스트, 띄어쓰기 제거
+	string commandString = procName + " " + targetImage + " " + outFileName + options + params;
 	wstring args = stringToWstring(commandString);
-
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 	HANDLE H;
@@ -1042,6 +1258,368 @@ void analyzer::closeVideo()
 		videoCapture->release();
 
 	delete videoCapture;
+}
+
+Mat analyzer::getLyricMask(Mat imageToCopy, int startX, int endX)
+{
+	int height = imageToCopy.rows;
+	int width = imageToCopy.cols;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			// row.at<uchar>(0, imageWidth / 2) = 255;	// 가운데 줄긋기
+			if (x < startX || x > endX)
+				imageToCopy.at<uchar>(y, x) = 0;
+			else
+				imageToCopy.at<uchar>(y, x) = 255;
+		}
+	}
+	return imageToCopy;
+}
+
+Mat analyzer::getSharpenAndContrastImage(int frameNum)
+{			// 빵구매꾸기 위해 두번 함
+	Mat sourceImg;
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameNum - 1);
+	videoCapture->read(sourceImg);
+	if (sourceImg.rows != 720)
+		sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
+
+	sourceImg = imageHandler::getSubtitleImage(sourceImg);
+
+	Mat sharpenImage;
+	sharpenImage = getSharpenImage(sourceImg);
+	Mat contrastImage;
+	contrastImage = getFullyContrastImage(sharpenImage);
+
+	Mat reTouch;
+	GaussianBlur(contrastImage, reTouch, Size(3, 3), 2);
+	Mat sharpenImage1;
+	sharpenImage1 = getSharpenImage(reTouch);
+	Mat contrastImage1;
+	contrastImage1 = getFullyContrastImage(sharpenImage1);
+
+	return contrastImage1;
+}
+
+Mat analyzer::getSharpenImage(Mat srcImage)
+{
+	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
+	// sharpen image using "unsharp mask" algorithm
+	Mat blurred;
+	GaussianBlur(srcImage, blurred, Size(), sigma, sigma);
+	Mat lowContrastMask = abs(srcImage - blurred) < threshold;
+	Mat sharpened = srcImage * (1 + amount) + blurred * (-amount);
+	//srcImage.copyTo(sharpened, lowContrastMask);
+
+	return sharpened;
+}
+
+Mat analyzer::getFullyContrastImage(Mat srcImage)
+{
+	// RGB 분리
+	Mat bgr[3];
+	split(srcImage, bgr);
+	// 각각의 128 임계로 한 이미지 얻음
+	threshold(bgr[0], bgr[0], 127, 255, THRESH_BINARY);
+	threshold(bgr[1], bgr[1], 127, 255, THRESH_BINARY);
+	threshold(bgr[2], bgr[2], 127, 255, THRESH_BINARY);
+	// RGB 합침
+	Mat mergedImage;
+	merge(bgr, 3, mergedImage);
+	return mergedImage;
+}
+
+Mat analyzer::removeLint(Mat srcImage, Mat refImage)
+{
+	int height = srcImage.rows;
+	int width = srcImage.cols;
+	Mat outLintedImage = srcImage.clone();
+
+	for (int y = 1; y < height - 1; y++)
+	{
+		uchar* yPtr = srcImage.ptr<uchar>(y);
+		uchar* yPtr_up = srcImage.ptr<uchar>(y - 1);
+		uchar* yPtr_down = srcImage.ptr<uchar>(y + 1);
+		for (int x = 1; x < width - 1; x++)
+		{
+			if (refImage.ptr<uchar>(y)[x] == 255)	// 완전 흰색인경우 연산에서 제외
+				continue;
+
+			bool isLint = false;
+			if (0 != yPtr[x])	// 흑색이 아닌경우
+			{
+				if (yPtr[x - 1] == 0 && yPtr[x + 1] == 0)	// 좌 우
+					isLint = true;
+				else if (yPtr_up[x] == 0 && yPtr_down[x] == 0) // 상 하
+					isLint = true;
+				else if (yPtr_up[x - 1] == 0 && yPtr_down[x + 1] == 0)	// 좌상 우하
+					isLint = true;
+				else if (yPtr_down[x - 1] == 0 && yPtr_up[x + 1] == 0) // 좌하 우상
+					isLint = true;
+
+				if (isLint)
+					outLintedImage.ptr<uchar>(y)[x] = 0;
+			}
+		}
+	}
+	return outLintedImage;
+}
+
+Mat analyzer::getPaintedBinImage(Mat srcImage)
+{
+	Mat fullyContrastImage = getFullyContrastImage(srcImage);
+
+	int height = fullyContrastImage.rows;
+	int width = fullyContrastImage.cols;
+	Mat outImage;
+	cvtColor(fullyContrastImage, outImage, COLOR_BGR2GRAY);
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			bool isRight = false;	// 조건만족?
+			if (isWhite(yPtr_FCImage[x]))////if (isWhite(FCImage.at<cv::Vec3b>(y, x)))	
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+				while (x - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x - count];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (x + count < width)	// 위쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			else
+				yPtr[x] = 0;
+		}
+	}
+
+	// 열연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+
+		for (int x = 0; x < width; x++)
+		{
+			if (isWhite(yPtr[x]))	// 이미 흰색인곳
+				continue;
+
+			bool isRight = false;	// 조건만족?
+			if (isWhite(yPtr_FCImage[x]))
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+
+				while (y - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y - count)[x];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x];//yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x]; //yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (y + count < height)	// 위쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			//else
+			//	yPtr[x] = 0;
+		}
+	}
+
+	return outImage;
+}
+
+bool analyzer::isWhite(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 255 && ptr[2] == 255)
+		return true;
+	return false;
+}
+
+bool analyzer::isBlack(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool analyzer::isBlue(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool analyzer::isRed(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
+		return true;
+	return false;
 }
 
 int analyzer::getLeftistWhitePixel_x(Mat binImage)

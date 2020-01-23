@@ -9,6 +9,7 @@
 #include "testClass.h"
 #include "analyzer.h"
 #include "fileManager.h"
+#include "loger.h"
 
 using namespace std;
 using namespace cv;
@@ -16,15 +17,31 @@ using namespace cv;
 int main(int, char**)
 {
 	clock_t startClock = (int)clock();
+	loger_init();
+	_logging("start", severity_level::normal);
+
+
 	testClass testClass;
 	//testClass.test_Image();
 	//testClass.test_Image2();
 	//testClass.test_Video3();
-	//testClass.test_Video_GetContourMask2("movie1.mp4");
+	//testClass.test_Video_GetContourMask2("40009.mp4");
+	//testClass.test_Video4("movie1.mp4");
 
 	analyzer ana;
-	ana.videoAnalization("movie.mp4");
+	//ana.videoAnalization1("movie1.mp4");
+	//ana.videoAnalization1("40009.mp4");
+
+	//ana.videoAnalization("movie.mp4");
 	ana.videoAnalization("movie1.mp4");
+	//ana.videoAnalization("40011.mp4");
+	//ana.videoAnalization("40009.mp4");
+	
+
+	/*named_scope_logging();
+	tagged_logging();
+	timed_logging();*/
+	
 
 	printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
 	return 0;
