@@ -926,6 +926,10 @@ void testClass::test_Video4(string videoPath)
 	Mat fullContrastimage_NotBulr;
 	fullContrastimage_NotBulr = getFullContrastIMage(subImage);
 	imshow("fullContrastimage_NotBulr", fullContrastimage_NotBulr);
+
+	Mat fullContrastimage_yCbCr;
+	fullContrastimage_yCbCr = getFullContrastImage_YCbCr(subImage);
+	imshow("fullContrastimage_yCbCr", fullContrastimage_yCbCr);
 	
 	//if(FCImage_before.empty()==false)
 	//	stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
@@ -1019,6 +1023,25 @@ Mat testClass::getFullContrastIMage(Mat srcImage)
 	Mat mergedImage;
 	merge(bgr, 3, mergedImage);
 	return mergedImage;
+}
+
+Mat testClass::getFullContrastImage_YCbCr(Mat srcImage)
+{
+	Mat yCbCrMat;
+	cvtColor(srcImage, yCbCrMat, COLOR_BGR2YCrCb);
+	vector<Mat> ycrcb_planes;
+
+	split(yCbCrMat, ycrcb_planes);
+	float alpha = (200 - 100) / 10;	// alpha = (x-100) / 10;
+	ycrcb_planes[0] = ycrcb_planes[0] + (ycrcb_planes[0] - 128) * alpha;
+
+	Mat dst_ycrcb;
+	merge(ycrcb_planes, dst_ycrcb);
+
+	Mat dst;
+	cvtColor(dst_ycrcb, dst, COLOR_YCrCb2BGR);
+
+	return dst;
 }
 
 Mat testClass::removeLint(Mat srcImage, Mat refImage)

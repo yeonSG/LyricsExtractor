@@ -52,13 +52,14 @@
      1. 라인따는 알고리즘 수정 (더 정확한 버전)
         :: videoAnalization1()
 
-     2. OCR 입력이미지 두깨 수정
-        :: catpureBinaryImageForOCR()
+     2. * 워드 단위로 시간 뽑아내기
+        2-1. Line측정에 사용된 mask이미지로 x축 프로잭션 진행
+        2-2. 시작x~끝x 사이에 빈 픽샐이 약 10개정도 있는 부분을 Separation으로 함
+        2-3. word calibration 진행
+        2-4. 저장
 
      3. 클래스 구조 수정
         .
 
      4. OCR 결과 개선
         :: 
-
-     

@@ -37,6 +37,7 @@ public:
 	// (Èò»ö±âÁØ)
 	void test_Video4(string videoPath);	
 	Mat getFullContrastIMage(Mat srcImage);
+	Mat getFullContrastImage_YCbCr(Mat srcImage);
 	Mat removeLint(Mat srcImage, Mat refImage);
 
 	/*

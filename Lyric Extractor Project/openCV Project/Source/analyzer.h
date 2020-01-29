@@ -8,12 +8,16 @@
 #include "fileManager.h"
 #include "imageHandler.h"
 #include <boost/filesystem/path.hpp>
+#include "Line.h"
+#include "lyric.h"
 
 using namespace cv;
 using namespace std;
 
 class analyzer {
 public:
+
+	void initVariables();
 	
 	/* 이미지 분석 함수 */
 	int getContourCount(Mat sourceImage);
@@ -30,16 +34,16 @@ public:
 	vector<int> vectorToAverageVector(vector<int> vec, int effectiveRange);
 
 	/* 라인 판별 알고리즘 */
-	vector<pair<int, int>> getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage);
+	void getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage);
 
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
-	vector<pair<int, int>> getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
-	void linesRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps = DEFAULT_FPS);
+	void getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
+	void linesRejudgeByLineLength(int fps = DEFAULT_FPS);
 	bool lineRejudgeByLineLength(int startFrame, int endFrame, int fps = DEFAULT_FPS);
-	void lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts);
+	void lineRejudgeByPixelCount(vector<int> vecWhitePixelCounts);
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
 
-	void calibrateLines(vector<pair<int, int>>& lines);
+	void calibrateLines();
 	bool lineCalibration(int& startFrame, int& endFrame, Mat& maskImage);
 	/* 라인 판별 알고리즘 끝 */
 
@@ -56,17 +60,17 @@ public:
 
 	float getAverageOnVectorTarget(vector<int> vec, int target, int range, bool includeZero=true);
 
-	void captureLines(vector<pair<int, int>> lines, string videoPath);
+	void captureLines(string videoPath);
 	void catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string videoPath);
 	void catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoPath);
 
 	Mat imageToSubBinImage(Mat targetImage);
 	Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 	Mat getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat compositeImage, int limitX);
-	void capturedLinesToText(int lineSize, string videoPath);
+	void capturedLinesToText(string videoPath);
 	void runOCR(string targetImage, string outFileName);
 	wstring stringToWstring(const std::string& s);
-	void makeLyrics(vector<pair<int, int>> lines, string videoPath);
+	void makeLyrics(string videoPath);
 
 	/* Inits */
 	bool setVideo(string videoPath);
@@ -86,9 +90,13 @@ public:
 	bool isBlue(const Vec3b& ptr);
 	bool isRed(const Vec3b& ptr);
 
+	void wordJudge();
+
 public:
 	VideoCapture *videoCapture;
 	int video_Frame;
 	int video_Width;
 	int video_Height;
+
+	lyric m_lyric;
 };

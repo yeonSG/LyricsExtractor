@@ -153,10 +153,14 @@
     <ClCompile Include="Source\analyzer.cpp" />
     <ClCompile Include="Source\fileManager.cpp" />
     <ClCompile Include="Source\imageHandler.cpp" />
+    <ClCompile Include="Source\Line.cpp" />
     <ClCompile Include="Source\loger.cpp" />
+    <ClCompile Include="Source\lyric.cpp" />
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\testClass.cpp" />
+    <ClCompile Include="Source\videoAnalyzer.cpp" />
     <ClCompile Include="Source\videoHandler.cpp" />
+    <ClCompile Include="Source\Word.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Info.txt" />
@@ -167,10 +171,13 @@
     <ClInclude Include="Source\defines.h" />
     <ClInclude Include="Source\fileManager.h" />
     <ClInclude Include="Source\imageHandler.h" />
-    <ClInclude Include="Source\line.h" />
+    <ClInclude Include="Source\Line.h" />
     <ClInclude Include="Source\loger.h" />
+    <ClInclude Include="Source\lyric.h" />
     <ClInclude Include="Source\testClass.h" />
+    <ClInclude Include="Source\videoAnalyzer.h" />
     <ClInclude Include="Source\videoHandler.h" />
+    <ClInclude Include="Source\Word.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

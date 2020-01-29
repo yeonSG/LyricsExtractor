@@ -230,3 +230,282 @@ Mat imageHandler::getDifferenceImage(Mat& binImageA, Mat& binImageB)
 	return xorImage;
 	//return changedToWhiteImage;
 }
+
+/// <summary>
+/// 색칠된 부분찾아 흑백으로 표시한 이미지
+/// 흰점 : 단순화된 이미지(FullyContrast)에서 흰점 기준 좌우상하 검사함
+/// 조건 : 흰점기준으로 한쪽은 빨강or파랑이 2점 이상 연속되고, 반대쪽은 검정이 2점 이상 연속됨 
+/// </summary>
+/// <param name="srcImage">The source image.</param>
+/// <returns></returns>
+Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
+{
+	Mat fullyContrastImage = getFullyContrastImage(rgbImage);
+
+	int height = fullyContrastImage.rows;
+	int width = fullyContrastImage.cols;
+	Mat outImage;
+	cvtColor(fullyContrastImage, outImage, COLOR_BGR2GRAY);
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			bool isRight = false;	// 조건만족?
+			if (isWhite(yPtr_FCImage[x]))////if (isWhite(FCImage.at<cv::Vec3b>(y, x)))	
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+				while (x - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x - count];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (x + count < width)	// 위쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			else
+				yPtr[x] = 0;
+		}
+	}
+
+	// 열연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+
+		for (int x = 0; x < width; x++)
+		{
+			if (isWhite(yPtr[x]))	// 이미 흰색인곳
+				continue;
+
+			bool isRight = false;	// 조건만족?
+			if (isWhite(yPtr_FCImage[x]))
+			{
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+
+				while (y - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y - count)[x];
+					if (isWhite(v3p))
+					{
+						count++;//x_m--;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x];//yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_m = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x]; //yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_m = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (y + count < height)	// 위쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if (isWhite(v3p))
+					{
+						count++;//x_p++;
+						if (count > 4)
+							break;
+					}
+					else if (isBlue(v3p) || isRed(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlue(v3p_) || isRed(v3p_))
+							{
+								color_p = 1;	// B or R
+							}
+						}
+						break;
+					}
+					else if (isBlack(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isBlack(v3p_))
+							{
+								color_p = 2;	// Black
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
+					isRight = true;	// 조건만족
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			//else
+			//	yPtr[x] = 0;
+		}
+	}
+
+	return outImage;
+}
+
+Mat imageHandler::getFullyContrastImage(Mat rgbImage)
+{
+	// RGB 분리
+	Mat bgr[3];
+	split(rgbImage, bgr);
+	// 각각의 128 임계로 한 이미지 얻음
+	threshold(bgr[0], bgr[0], 127, 255, THRESH_BINARY);
+	threshold(bgr[1], bgr[1], 127, 255, THRESH_BINARY);
+	threshold(bgr[2], bgr[2], 127, 255, THRESH_BINARY);
+	// RGB 합침
+	Mat mergedImage;
+	merge(bgr, 3, mergedImage);
+	return mergedImage;
+}
+
+bool imageHandler::isWhite(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 255 && ptr[2] == 255)
+		return true;
+	return false;
+}
+
+bool imageHandler::isBlack(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool imageHandler::isBlue(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 255 && ptr[1] == 0 && ptr[2] == 0)
+		return true;
+	return false;
+}
+
+bool imageHandler::isRed(const Vec3b& ptr)
+{	// BGR 
+	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
+		return true;
+	return false;
+}
+
+

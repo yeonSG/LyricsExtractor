@@ -23,5 +23,13 @@ public:
 	static Mat getCompositeBinaryImagesBlue(static Mat& subImage);
 
 	static Mat getDifferenceImage(static Mat& binImageA, static Mat& binImageB);
+
+	static Mat getPaintedBinImage(static Mat& rgbImage);	
+	static Mat getFullyContrastImage(Mat rgbImage);
+	static bool isWhite(const Vec3b& ptr);
+	static bool isBlack(const Vec3b& ptr);
+	static bool isBlue(const Vec3b& ptr);
+	static bool isRed(const Vec3b& ptr);
+
 };
 

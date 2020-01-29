@@ -1,6 +1,11 @@
 ﻿#include "analyzer.h"
 #include "testClass.h"
 
+void analyzer::initVariables()
+{
+	m_lyric.init();
+}
+
 int analyzer::getContourCount(Mat cannyImage)
 {
 	vector<vector<Point>> contours;
@@ -36,6 +41,8 @@ bool analyzer::videoAnalization(string videoPath)
 	{
 		return false;
 	}
+	
+	initVariables();
 
 	Mat orgImage;
 	Mat subImage;
@@ -47,7 +54,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
 	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
-	verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(720) );	// 프래임과 동기화 위해 배열 0번은 더미
+	//verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
 
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
@@ -65,6 +72,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 		if (beforeBinImage.empty() == true)
 		{
+			verticalProjectionDatasOfDifferenceImage.push_back(vector<int>(binImage.cols));	// 프래임과 동기화 위해 배열 0번은 더미
 			verticalProjectionDatasOfDifferenceImage.push_back(getVerticalProjectionData(binImage));	// insert zero row
 
 			vecWhitePixelChangedCounts.push_back(0);
@@ -101,15 +109,20 @@ bool analyzer::videoAnalization(string videoPath)
 	imwrite(fileManager::getSavePath() + "changeHistogramAverage.jpg", changeHistogramAverageMat);
 	
 	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
-	vector<pair<int, int>> lines = getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
+	getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
 
 	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
-	calibrateLines(lines);
+	calibrateLines();
+
+	// 단어 나누기 wordJudge();
+	wordJudge();
 	
 	/* Save pictures */
-	captureLines(lines, fileManager::getSavePath());
-	capturedLinesToText(lines.size(), fileManager::getSavePath());
-	makeLyrics(lines, fileManager::getSavePath());
+	captureLines(fileManager::getSavePath());
+	// new code
+	capturedLinesToText(fileManager::getSavePath());
+
+	makeLyrics(fileManager::getSavePath());
 
 	closeVideo();
 	return true;
@@ -125,7 +138,7 @@ bool analyzer::videoAnalization1(string videoPath)
 	Mat orgImage, subImage;
 	Mat paintedBinImage;
 	vector<int> vecPaintedPixelCounts;		// 흰점수
-		// 체인지 영역 
+	// 체인지 영역 
 
 	vecPaintedPixelCounts.push_back(0);
 
@@ -175,10 +188,8 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 /// </summary>
 /// <param name="vecWhitePixelCounts"> 프레임에 존재하는 흰 점의 합 </param>
 /// <param name="changeStatusAverage"> 변한 흰색의 평균 위치</param>
-/// <returns>가사 Line들의 시작점-끝점 Pair.</returns>
-vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage)
+void analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage)
 {
-	vector<pair<int, int>> lines;
 	vector<int> peakValues;
 
 	// Peak 추출
@@ -190,26 +201,22 @@ vector<pair<int, int>> analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, 
 	string fileName = "peak.txt";
 	fileManager::writeVector(fileName, peakValues);
 
-	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
+	getLinesFromPeak(peakValues, vecWhitePixelCounts);
 
-	for (int i = 0; i < lines.size(); i++)
-		printf("Line%d : %d - %d\r\n", i, lines[i].first, lines[i].second);
-
-	linesRejudgeByLineLength(lines);
-	lineRejudgeByPixelCount(lines, vecWhitePixelCounts);
+	linesRejudgeByLineLength();
+	lineRejudgeByPixelCount(vecWhitePixelCounts);
 	// lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);	// 왼쪽의 점 좌표 평균, 오른쪽의 점 좌표평균
 
 	vector<string> lines_string;
-	for (int i = 0; i < lines.size(); i++)
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		string line_string = to_string(lines[i].first) + "\t" + to_string(lines[i].second);
+		Line* line = m_lyric.getLine(i);
+		string line_string = to_string(line->startFrame) + "\t" + to_string(line->endFrame);
 		lines_string.push_back(line_string);// ("lines %2d : %d - %d\r\n", i, lines[i].first, lines[i].second);
 	}
 
 	fileName = "lineStart_End.txt";
 	fileManager::writeVector(fileName, lines_string);
-
-	return lines;
 }
 
 /// <summary>
@@ -289,11 +296,8 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 /// </summary>
 /// <param name="vecWhitePixelCounts">">프래임 별 흰 점의 테이터</param>
 /// <param name="peaks">피크</param>
-/// <returns>가사 Line들</returns>
-vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCounts)
+void analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCounts)
 {
-	vector<pair<int, int>> lines;
-
 	for (int i = 0; i < peaks.size(); i++)	// find start point
 	{
 		// 이전peak값 index보다 큼
@@ -311,39 +315,35 @@ vector<pair<int, int>> analyzer::getLinesFromPeak(vector<int> peaks, vector<int>
 				minIndex = index;
 			}
 		}
-
-		lines.push_back(make_pair(minIndex, peaks[i]));	
+		
+		// new code
+		Line line;
+		line.startFrame = minIndex;
+		line.endFrame = peaks[i];
+		m_lyric.addLine(line);
 	}
-
-	return lines;
 }
 
 /// <summary>
 /// 가사 라인들 중 특정 프래임동안 지속되지 않는 line을 걸러냄
 /// </summary>
-/// <param name="judgedLines">The judged lines.</param>
 /// <param name="fps">The FPS.</param>
-void analyzer::linesRejudgeByLineLength(vector<pair<int, int>>& judgedLines, int fps)
+void analyzer::linesRejudgeByLineLength(int fps)
 {
-	const int limitMSec = 400;	// 400ms = 10frame
-	int limitFrame = limitMSec / (1000 / fps);
-	printf("@@linesRejudgeByLineLength_Line minimum frame length(msec) : %d(%d)\r\n", limitFrame, limitMSec);
-
-	int lineCount = 0;
-	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
+	for (int i =0; i<m_lyric.getLinesSize(); i++)
 	{
-		printf("lines %2d \r\n", lineCount);
-		if (lineRejudgeByLineLength(it->first, it->second, fps) == false)
-		{
-			printf("exceptionLine: %d\r\n", lineCount);
-			it = judgedLines.erase(it);
-			lineCount++;
-			continue;
-		}
+		Line* line = m_lyric.getLine(i);
+		printf("lines (%d - %d )\r\n", line->startFrame, line->endFrame);
 
-		++it;
-		lineCount++;
+		if (lineRejudgeByLineLength(line->startFrame, line->endFrame, fps) == false)
+		{
+			printf("exceptionLine: (%d - %d)\r\n", line->startFrame, line->endFrame);
+			line->isValid = false;
+		}
+		else
+			line->isValid = true;
 	}
+	m_lyric.removeInvalidLines();
 }
 
 bool analyzer::lineRejudgeByLineLength(int startFrame, int endFrame, int fps)
@@ -362,27 +362,29 @@ bool analyzer::lineRejudgeByLineLength(int startFrame, int endFrame, int fps)
 	return true;
 }
 
-void analyzer::lineRejudgeByPixelCount(vector<pair<int, int>>& judgedLines, vector<int> vecWhitePixelCounts)
+void analyzer::lineRejudgeByPixelCount(vector<int> vecWhitePixelCounts)
 {
 	printf("@@lineRejudgeByPixelCount_ \r\n");
 	int lineCount = 0;
 
-	for (vector<pair<int, int>>::iterator it = judgedLines.begin(); it != judgedLines.end(); /*it++*/)
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		float pixelRatio = vecWhitePixelCounts[it->first] / (float)vecWhitePixelCounts[it->second];
+		Line* line = m_lyric.getLine(i);
+		float pixelRatio = vecWhitePixelCounts[line->startFrame] / (float)vecWhitePixelCounts[line->endFrame];
 
-		printf("lines %2d pixelRatio: %.2f (%d/%f) \r\n", lineCount, pixelRatio, vecWhitePixelCounts[it->first] ,(float)vecWhitePixelCounts[it->second]);
+		printf("lines (%d - %d) pixelRatio: %.2f (%d/%f) \r\n", line->startFrame, line->endFrame, pixelRatio, vecWhitePixelCounts[line->startFrame], (float)vecWhitePixelCounts[line->endFrame]);
 		if (0.5 < pixelRatio)	// startframe픽셀값 / endframe픽셀값 이 0.5보다 높다면 라인이 아닌걸로 판단.
 		{
-			printf("exceptionLine: %d\r\n", lineCount);
-			it = judgedLines.erase(it);
-			lineCount++;
-			continue;
+			line->isValid = false;
+			printf("lines (%d - %d) invaild \r\n", line->startFrame, line->endFrame);
 		}
-
-		++it;
-		lineCount++;
+		else
+		{
+			line->isValid = true;
+		}
 	}
+	m_lyric.removeInvalidLines();
+
 }
 
 /// <summary>
@@ -444,47 +446,48 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 	}
 }
 
-void analyzer::calibrateLines(vector<pair<int, int>>& lines)
+void analyzer::calibrateLines()
 {
-	int lineCount = 0;
 	Mat maskImage;
-	for (vector<pair<int, int>>::iterator it = lines.begin(); it != lines.end(); /*it++*/)
+	int invaildCount = 0;
+
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		printf("Cal Line%d : %d - %d\r\n", lineCount, it->first, it->second);
-		if (lineCalibration(it->first, it->second, maskImage) == false)
+		Line* line = m_lyric.getLine(i);
+		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+		if (lineCalibration(line->startFrame, line->endFrame, maskImage) == false)
 		{
-			printf("Cal Line%d : false.\r\n\r\n", lineCount);
-			printf("Cal Line%d : removed.\r\n\r\n", lineCount);
-			it = lines.erase(it);		
-			lineCount++;
-			continue;
+			line->isValid = false;
+			printf("Caled Line%d is invaild will be removed.\r\n", i);
+			invaildCount++;
 		}
 		else
 		{
-			Mat newMaskImage =  getSharpenAndContrastImage(it->first);
-			
+			line->isValid = true;
+			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+
+			Mat newMaskImage = getSharpenAndContrastImage(line->startFrame);	// 1. 라인 시작지점으로 마스크 얻음
+								// 1-1. get ContrastImage
+
 			Mat newMaskImage_hsv, newMaskImage_gray;
 			cvtColor(newMaskImage, newMaskImage_hsv, COLOR_BGR2HSV);
 			cvtColor(newMaskImage, newMaskImage_gray, COLOR_BGR2GRAY);
 			Mat newMaskImage_bin;
-			inRange(newMaskImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), newMaskImage_bin);
+			inRange(newMaskImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), newMaskImage_bin);	// 1-2. ContrastImage->hsv filtering
 			// 부족하면 이전or다음 프레임 동원하여 해결할것.
-			newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);
+			newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);	// 튀어나온것 제거
 
 			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
 
-			Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
-			//newMaskImage_bin
+			//Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
 
-			catpureBinaryImageForOCR(newMaskImage, it-lines.begin(), fileManager::getSavePath());
+			line->maskImage = newMaskImage.clone();
+			catpureBinaryImageForOCR(newMaskImage, i-invaildCount, fileManager::getSavePath());
 		}
-
-		printf("Cal Line%d : %d - %d updated.\r\n\r\n", lineCount, it->first, it->second);
-		++it;
-		lineCount++;
 	}
-	
-	linesRejudgeByLineLength(lines);
+	m_lyric.removeInvalidLines();
+	   	
+	linesRejudgeByLineLength();
 
 }
 
@@ -514,7 +517,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 	int image_center_x = readImage.cols / 2;
 
 	if ( (maskImage_middleDot_x > (image_center_x)+10) || (maskImage_middleDot_x < (image_center_x)-10) )
-	{	// 두 지점(가장 왼, 가장 오른쪽) 중 중앙에 가까운 쪽을 기준으로 대칭하여 자름
+	{	// 두 지점(가장 왼, 가장 오른쪽) 중 중앙에 가까운 쪽을 기준으로 대칭하여 자름 - 노이즈 제거
 		int lengthOfLine;
 		int leftLength = image_center_x - maskImage_leftDot_x;
 		int rightLength = maskImage_rightDot_x - image_center_x;
@@ -659,7 +662,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 
 	// 
 	maskImage_pixelCount = getWihtePixelCount(maskImage);
-	if (maskImage_pixelCount < 500)
+	if (maskImage_pixelCount < 500)	// 마스크 픽셀이 500개 이하
 	{
 		isEffictiveLine = false;
 		printf("MaskImage Info - whiteCount: %d \r\n", maskImage_pixelCount);
@@ -667,7 +670,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 		return isEffictiveLine;
 	}
 
-	if (lineRejudgeByLineLength(startFrame, endFrame) == false)
+	if (lineRejudgeByLineLength(startFrame, endFrame) == false)	// 길이가 400 이하 
 	{
 		isEffictiveLine = false;
 		printf("line Exception : LineLength is unter 400ms.\r\n");
@@ -939,18 +942,18 @@ float analyzer::getAverageOnVectorTarget(vector<int> vec, int target, int effect
 }
 
 /// <summary>
-/// Line들의 시작점, 끝점의 이미지 + 끝점의 binary 이미지를 저장함.
+/// Line들의 시작점, 끝점의 이미지 + 끝점의 이미지를 저장함.
 /// </summary>
-/// <param name="lines">라인들(시작점 프레임, 끝점 프레임).</param>
 /// <param name="videoPath">비디오 경로.</param>
-void analyzer::captureLines(vector<pair<int, int>> lines, string videoPath)
+void analyzer::captureLines(string videoPath)
 {
-	for (int i = 0; i < lines.size(); i++)
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
+		Line* line = m_lyric.getLine(i);
 		Mat startImage, endImage;
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].first -1);		
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->startFrame - 1);
 		videoCapture->read(startImage);
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)lines[i].second);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->endFrame);
 		videoCapture->read(endImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
@@ -985,7 +988,7 @@ void analyzer::catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoP
 
 	//resize(binImage, binImage, cv::Size(binImage.cols * 0.6, binImage.rows * 0.6), 0, 0, cv::INTER_CUBIC);
 
-	//resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
+	resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
 
 	//threshold(binImage, binImage, 128, 255, THRESH_BINARY);
 
@@ -1108,10 +1111,10 @@ Mat analyzer::getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat comp
 /// </summary>
 /// <param name="lineSize">Size of the line.</param>
 /// <param name="videoPath">The video path.</param>
-void analyzer::capturedLinesToText(int lineSize, string videoPath)
+void analyzer::capturedLinesToText(string videoPath)
 {
 	// "Output/Captures/LineX_bin.jpg"
-	for (int i = 0; i < lineSize; i++)
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		string targetPath = videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
 		if (fileManager::isExist(targetPath) != true)
@@ -1204,12 +1207,11 @@ wstring analyzer::stringToWstring(const std::string& s)
 /// <summary>
 /// line의 text 파일을 종합하여 .lrc 포맷의 파일로 반환.
 /// </summary>
-/// <param name="lines">The lines.</param>
 /// <param name="videoPath">The video path.</param>
-void analyzer::makeLyrics(vector<pair<int, int>> lines, string videoPath)
+void analyzer::makeLyrics(string videoPath)
 {
 	vector<string> vecLyricLine;
-	for (int i = 0; i < lines.size(); i++)
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		string lineFileName = videoPath + "/Lines/Line" + to_string(i) + ".txt";
 		if (fileManager::isExist(lineFileName) != true)
@@ -1217,19 +1219,23 @@ void analyzer::makeLyrics(vector<pair<int, int>> lines, string videoPath)
 			printf("%s is not exist. \r\n", lineFileName.c_str());
 			continue;
 		}
-		string line;
-		fileManager::readLine(lineFileName, line);
+		string ocredText;
+		fileManager::readLine(lineFileName, ocredText);
+		Line* line = m_lyric.getLine(i);
 
-		String startTime = videoHandler::frameToTime(lines[i].first, *videoCapture);
-		String endTime = videoHandler::frameToTime(lines[i].second, *videoCapture);
+		line->text = ocredText;
+		
+		String startTime = videoHandler::frameToTime(line->startFrame, *videoCapture);
+		String endTime = videoHandler::frameToTime(line->endFrame, *videoCapture);
 
 		//string lyricLine = "[" + to_string(lines[i].first) + "]\t" + line + "\t[" + to_string(lines[i].second) + "]";
-		string lyricLine = "[" + startTime + "]\t" + line + "\t[" + endTime + "]";
+		string lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
 
 		printf("Line%d: %s\r\n", i, lyricLine.c_str());
 
 		vecLyricLine.push_back(lyricLine);
 	}
+
 	string filename = "Lyrics.txt";
 	fileManager::writeVector(filename, vecLyricLine);
 }
@@ -1331,6 +1337,10 @@ Mat analyzer::getFullyContrastImage(Mat srcImage)
 	return mergedImage;
 }
 
+/*
+	보풀 제거 : 특점 흰점의 좌우 또는 위아래가 흑색인 경우 흑색으로 변경 and HSV필터링 한 이미지가 흰색이 아닌 경우
+
+*/
 Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 {
 	int height = srcImage.rows;
@@ -1367,6 +1377,13 @@ Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 	return outLintedImage;
 }
 
+/// <summary>
+/// 색칠된 부분찾아 흑백으로 표시한 이미지
+/// 흰점 : 단순화된 이미지(FullyContrast)에서 흰점 기준 좌우상하 검사함
+/// 조건 : 흰점기준으로 한쪽은 빨강or파랑이 2점 이상 연속되고, 반대쪽은 검정이 2점 이상 연속됨 
+/// </summary>
+/// <param name="srcImage">The source image.</param>
+/// <returns></returns>
 Mat analyzer::getPaintedBinImage(Mat srcImage)
 {
 	Mat fullyContrastImage = getFullyContrastImage(srcImage);
@@ -1620,6 +1637,27 @@ bool analyzer::isRed(const Vec3b& ptr)
 	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
 		return true;
 	return false;
+}
+
+
+/// <summary>
+/// 성공적으로 Calibration 된 라인에서 word를 나눕니다.
+/// 1. Line측정에 사용된 mask이미지로 x축 프로잭션 진행
+/// 2. 시작x~끝x 사이에 빈 픽샐이 약 10개정도 있는 부분을 Separation으로 함
+/// </summary>
+void analyzer::wordJudge()
+{
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
+	{
+		Line* line = m_lyric.getLine(i);
+		// 1. Line측정에 사용된 mask이미지로 x축 프로잭션 진행
+		vector<int> vecProjectionData = getVerticalProjectionData(line->maskImage);
+
+	
+		// 2. 시작x~끝x 사이에 빈 픽샐이 약 10개정도 있는 부분을 Separation으로 함
+
+	}
+
 }
 
 int analyzer::getLeftistWhitePixel_x(Mat binImage)

@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\data">
+      <UniqueIdentifier>{58f7782a-9e7d-428e-9e0e-bcf08033698e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\data">
+      <UniqueIdentifier>{82e7aaf9-ecba-4026-9ad8-ef8b8695b103}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\analyzer.cpp">
@@ -35,6 +41,18 @@
     </ClCompile>
     <ClCompile Include="Source\loger.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\videoAnalyzer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\lyric.cpp">
+      <Filter>소스 파일\data</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Line.cpp">
+      <Filter>소스 파일\data</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Word.cpp">
+      <Filter>소스 파일\data</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -63,8 +81,17 @@
     <ClInclude Include="Source\loger.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Source\line.h">
+    <ClInclude Include="Source\videoAnalyzer.h">
       <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\lyric.h">
+      <Filter>헤더 파일\data</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Line.h">
+      <Filter>헤더 파일\data</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Word.h">
+      <Filter>헤더 파일\data</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
