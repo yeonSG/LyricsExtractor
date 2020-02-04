@@ -2,22 +2,30 @@
 
 #include <stdlib.h>
 #include <opencv2/opencv.hpp>
+#include "imageHandler.h"
 #include "word.h"
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace cv;
 
-class Line
+class Line : public Word
 {
 public:
 	//int peak;
-	int startFrame;
-	int endFrame;
 	bool isValid; 
-	vector<Word> words;
-	string text;
 
+	vector<Word> words;
+	vector<int> spacingWords;		// 스페이스바 위치
+	
 	Mat maskImage;
+
+	void splitLineTextToWord();
+
+public:
+	void getSpacingWordsFromMaskImage();
+
+	static Word lineToWord(Line line);
 
 private:
 	;

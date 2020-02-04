@@ -893,25 +893,61 @@ void testClass::test_Video4(string videoPath)
 	Mat orgImage;
 	Mat stackBinImage;
 	Mat FCImage_before;
+	Mat bin_before;
+	Mat testBinBefore;
+	Mat testmask = imread("Line26_Bin.jpg", IMREAD_GRAYSCALE);
+	bitwise_not(testmask, testmask);
 
 	while (vc.read(orgImage))
 	{
 	videoHandler::printCurrentFrameSpec(vc);
 	int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+
+	if (orgImage.rows != 720)
+		orgImage = imageHandler::resizeImageToAnalize(orgImage);
 	
-	orgImage = imageHandler::resizeImageToAnalize(orgImage);
-	Rect subRect(0, SUBTITLEAREA_Y, orgImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
-	Mat subImage = orgImage(subRect);	
+	Mat subImage = imageHandler::getSubtitleImage(orgImage);
 	imshow("subImage", subImage);
 
-	if (stackBinImage.empty() == true)
-		stackBinImage = imageHandler::getCompositeBinaryImages(subImage);
+	/* test */
+	//Mat TestfullContrastimage_NotBulr = getFullContrastIMage(subImage);
+	//Mat image_binIR_RGB_R;
+	//inRange(TestfullContrastimage_NotBulr, Scalar(0, 0, 250), Scalar(0, 0, 255), image_binIR_RGB_R);	// binarize by rgb
+	//Mat image_binIR_RGB_B;
+	//inRange(TestfullContrastimage_NotBulr, Scalar(250, 0, 0), Scalar(255, 0, 0), image_binIR_RGB_B);	// binarize by rgb
+
+	////Mat image_binIR_RGB_R;
+	////inRange(subImage, Scalar(0, 0, 130), Scalar(50, 50, 255), image_binIR_RGB_R);	// binarize by rgb
+	////Mat image_binIR_RGB_B;
+	////inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);	// binarize by rgb
+
+	//Mat testBin;
+	//bitwise_or(image_binIR_RGB_B, image_binIR_RGB_R, testBin, testmask);
+	//if(testBinBefore.empty())
+	//	testBinBefore = testBin ;
+	//Mat TestDifferenceImage = imageHandler::getDifferenceImage(testBin, testBinBefore);
+	//testBinBefore = testBin;
+
+	//Mat testimage_dilateion;
+	//Mat element(3, 3, CV_8U, Scalar(1));
+	//element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
+	//erode(TestDifferenceImage, testimage_dilateion, element);	// 침식연산 - 노이즈제거 
+	//imshow("testimage_dilateion", testimage_dilateion);
+
+	/*if (stackBinImage.empty() == true)
+		stackBinImage = imageHandler::getCompositeBinaryImages(subImage);*/
+
+	Mat CompositeBinaryImage = imageHandler::getCompositeBinaryImages(subImage);
+	imshow("CompositeBinaryImage", CompositeBinaryImage);
+	printf("whiteCount : %d \r\n", imageHandler::getWihtePixelCount(CompositeBinaryImage));
 	//if (beforeFCImage.empty() == true)
 		
+	
 
 	// sharpen image using "unsharp mask" algorithm
 	Mat blurred; 
 	GaussianBlur(subImage, blurred, Size(), sigma, sigma);
+	imshow("blurred", blurred);
 	Mat lowContrastMask = abs(subImage - blurred) < threshold;
 	Mat sharpened = subImage * (1 + amount) + blurred * (-amount);
 	subImage.copyTo(sharpened, lowContrastMask);
@@ -927,15 +963,36 @@ void testClass::test_Video4(string videoPath)
 	fullContrastimage_NotBulr = getFullContrastIMage(subImage);
 	imshow("fullContrastimage_NotBulr", fullContrastimage_NotBulr);
 
+	Mat fullContrastimage_NotBulr_bin;
+	inRange(fullContrastimage_NotBulr, Scalar(254, 254, 254), Scalar(255, 255, 255), fullContrastimage_NotBulr_bin);
+	imshow("fullContrastimage_NotBulr_bin", fullContrastimage_NotBulr_bin);
+
+	if (bin_before.empty() == true)
+	{
+		bin_before = fullContrastimage_NotBulr_bin;
+	}
+	Mat DifferenceImage = imageHandler::getDifferenceImage(fullContrastimage_NotBulr_bin, bin_before);
+	imshow("DifferenceImage", DifferenceImage);
+
 	Mat fullContrastimage_yCbCr;
 	fullContrastimage_yCbCr = getFullContrastImage_YCbCr(subImage);
-	imshow("fullContrastimage_yCbCr", fullContrastimage_yCbCr);
+	imshow("fullContrastiㅇmage_yCbCr", fullContrastimage_yCbCr);
 	
-	//if(FCImage_before.empty()==false)
-	//	stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
-	//imshow("stackBinImage", stackBinImage);
+	if (stackBinImage.empty() == true)
+		stackBinImage = DifferenceImage.clone();	//dummy
+	if (FCImage_before.empty() != true)
+	{
+		stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
+		imshow("stackBinImage", stackBinImage);
+	}		
+
 	Mat algorismMk1 = AlgolismMk1(fullContrastimage_NotBulr);
 	imshow("AlgolismMk1", algorismMk1);
+
+	Mat algoANDDiff;
+	bitwise_and(algorismMk1, DifferenceImage, algoANDDiff);
+	imshow("algoANDDiff", algoANDDiff);
+
 
 	Mat reTouch;
 	GaussianBlur(fullContrastimage, reTouch, Size(3, 3), 2);
@@ -1005,6 +1062,7 @@ void testClass::test_Video4(string videoPath)
 	printf("sigma=%f, threshold=%f, amount=%f\r\n", sigma, threshold, amount);
 
 	FCImage_before = fullContrastimage_NotBulr.clone();
+	bin_before = fullContrastimage_NotBulr_bin.clone();
 	}
 
 vc.release();
@@ -1095,29 +1153,34 @@ void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage
 			/*printf("%d ", yPtr_FC_before[x][0]);
 			printf("%d ", yPtr_FC_before[x][1]);
 			printf("%d \r\n", yPtr_FC_before[x][2]);*/
+
+			// 누적법
 			if (yPtr[x] == 0)
 			{
 				if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isBlue(FCImage.at<cv::Vec3b>(y, x)))
 				{
-					yPtr[x] = 10;
+					//yPtr[x] = 10;
+					yPtr[x] = 255;
 				}
 				else if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isRed(FCImage.at<cv::Vec3b>(y, x)))
 				{
-					yPtr[x] = 10;
+					//yPtr[x] = 10;
+					yPtr[x] = 255;
 				}
 			}
 			else
 			{
 				if (isBlue(FCImage.at<cv::Vec3b>(y, x)) || isRed(FCImage.at<cv::Vec3b>(y, x)))
 				{
-					if (yPtr[x] <= 245)	// 증감
-						yPtr[x] += 10;
-					else
+					//if (yPtr[x] <= 245)	// 증감
+					//	yPtr[x] += 10;
+					//else
 						yPtr[x] = 255;
 				}
 				else
 					yPtr[x] = 0;
 			}
+
 			//if (yPtr[x] == 0)
 			//{
 			//	if (isWhite(FCImage_before.ptr<Vec3d>(y)[x]) && isBlue(FCImage.ptr<Vec3d>(y)[x])

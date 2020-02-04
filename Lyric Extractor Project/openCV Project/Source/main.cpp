@@ -14,6 +14,7 @@
 using namespace std;
 using namespace cv;
 
+
 int main(int, char**)
 {
 	clock_t startClock = (int)clock();
@@ -26,12 +27,16 @@ int main(int, char**)
 	//testClass.test_Image2();
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
-	//testClass.test_Video4("movie1.mp4");
+
+	//testClass.test_Video4("40009.mp4");
+	//testClass.test_Video4("movie1_forTest.mp4");
+	//testClass.test_Video4("movie.mp4");
 
 	analyzer ana;
 	//ana.videoAnalization1("movie1.mp4");
 	//ana.videoAnalization1("40009.mp4");
 
+	//ana.videoAnalization("movie1_forTest.mp4");
 	//ana.videoAnalization("movie.mp4");
 	ana.videoAnalization("movie1.mp4");
 	//ana.videoAnalization("40011.mp4");
@@ -175,3 +180,4 @@ int main(int, char**)
 //
 //}
 ////√‚√≥: https://eehoeskrap.tistory.com/280 [Enough is not enough]
+

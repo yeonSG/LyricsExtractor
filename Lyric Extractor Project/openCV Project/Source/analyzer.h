@@ -21,10 +21,10 @@ public:
 	
 	/* 이미지 분석 함수 */
 	int getContourCount(Mat sourceImage);
-	int getWihtePixelCount(Mat binMat);
 
 	int getLeftistWhitePixel_x(Mat binImage);
 	int getRightistWhitePixel_x(Mat binImage);
+	int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);
 	int getWhitePixelAverage(Mat binImage);
 
 	bool videoAnalization(string videoPath);
@@ -48,8 +48,6 @@ public:
 	/* 라인 판별 알고리즘 끝 */
 
 	/* 이미지 분석 함수image analization  */
-	vector<int> getVerticalProjectionData(Mat binImage);
-	vector<int> getHorizontalProjectionData(Mat binImage);
 	Mat getChangeHistorgramMat(vector<vector<int>> histogramData, int threshold);
 	vector<vector<bool>> getChangeHistorgramData(vector<vector<int>> histogramData, int threshold);
 	vector<int> getVerticalHistogramAverageData(vector<vector<bool>> histogramData);
@@ -71,6 +69,7 @@ public:
 	void runOCR(string targetImage, string outFileName);
 	wstring stringToWstring(const std::string& s);
 	void makeLyrics(string videoPath);
+	void makeLyrics_withWord();
 
 	/* Inits */
 	bool setVideo(string videoPath);
@@ -91,6 +90,7 @@ public:
 	bool isRed(const Vec3b& ptr);
 
 	void wordJudge();
+	void wordCalibration(Line& line);
 
 public:
 	VideoCapture *videoCapture;

@@ -63,3 +63,20 @@
 
      4. OCR 결과 개선
         :: 
+
+
+     5. 관심영역 설정하는 코드 추가
+        - 동적 관심범위 ()
+
+
+
+    * 정의
+        - 라인의 시작 frame : 색칠이 시작된 frame
+        - 라인의 끝 frame   : 색칠이 완료된 frame
+        ex)
+         frame1
+         frame2 -> 색칠 시작됨
+         frame3
+         frame4 -> 색칠 완료됨
+         frame4
+         ==> LineX의 (start, end) => (2, 4);

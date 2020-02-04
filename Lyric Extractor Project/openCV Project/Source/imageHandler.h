@@ -14,9 +14,10 @@ public:
 	static Mat getSubtitleImage(static Mat& sourceImage);
 	static Mat getBinaryImage(static Mat& sourceImage);
 	static Mat getBlueColorFilteredBinaryImage(static Mat& sourceImage);
-	static Mat getMorphImage(static Mat& sourceImage, MorphTypes type);
+	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
 	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
 	static Mat getCompositeBinaryImages(static Mat& subImage);
 	static Mat getCompositeBinaryImagesRed(static Mat& subImage);
@@ -30,6 +31,11 @@ public:
 	static bool isBlack(const Vec3b& ptr);
 	static bool isBlue(const Vec3b& ptr);
 	static bool isRed(const Vec3b& ptr);
+
+	// get information from image
+	static vector<int> getVerticalProjectionData(Mat binImage);
+	static vector<int> getHorizontalProjectionData(Mat binImage);
+	static int getWihtePixelCount(Mat binImage);
 
 };
 

@@ -61,7 +61,7 @@ Mat imageHandler::getBlueColorFilteredBinaryImage(Mat& sourceImage)
 /// </summary>
 /// <param name="sourceImage">이진화 된 이미지.</param>
 /// <returns></returns>
-Mat imageHandler::getMorphImage(Mat& sourceImage, MorphTypes type)
+Mat imageHandler::getMorphImage(Mat& sourceImage, cv::MorphTypes type)
 {
 	Mat element(3, 3, CV_8U, Scalar(1));
 	element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
@@ -135,6 +135,35 @@ Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
 			floodFill(binaryMat, Point(i, nRows - 1), color);
 
 	return binaryMat;
+}
+
+/// <summary>
+/// 잡영 회피 목적의 흰색 커튼이미 생성
+/// </summary>
+/// <param name="cols">The cols.</param>
+/// <param name="rows">The rows.</param>
+/// <param name="maskLength">커튼의 길이</param>
+/// <param name="targetColum">타깃 좌표.</param>
+/// <returns></returns>
+Mat imageHandler::getColumMaskImage(int cols, int rows, int maskLength, int targetColum)
+{
+	Mat maskImage = Mat::zeros(rows, cols, CV_8UC1);
+	if (maskLength / 2 > targetColum)	
+		targetColum = maskLength / 2;	
+	else if (cols - (maskLength / 2) < targetColum)	
+		targetColum = cols - (maskLength / 2);	
+	
+	for (int r = 0; r < rows; r++)
+	{
+		uchar* yPtr = maskImage.ptr<uchar>(r);
+		for (int c = targetColum - (maskLength / 2); c < targetColum + (maskLength / 2); c++)
+		{
+			yPtr[c] = 255;
+		}
+
+	}
+
+	return maskImage;
 }
 
 
@@ -506,6 +535,75 @@ bool imageHandler::isRed(const Vec3b& ptr)
 	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
 		return true;
 	return false;
+}
+
+/// <summary>
+/// 이진 이미지의 Vertical projection 데이터로 변환 
+/// </summary>
+/// <param name="binImage">변환할 이진 이미지.</param>
+/// <returns>Vertical projection 데이터</returns>
+vector<int> imageHandler::getVerticalProjectionData(Mat binImage)
+{
+	int nRows = binImage.rows;
+	int nCols = binImage.cols;
+
+	vector<int> counts;
+	for (int i = 0; i < binImage.cols; i++)	// inital
+		counts.push_back(0);
+
+	for (int j = 0; j < nRows; j++) {
+		uchar* rowPtr = binImage.ptr<uchar>(j);
+		for (int i = 0; i < nCols; i++) {
+			if (rowPtr[i] != 0)
+				//if (binImage.at<uchar>(j, i) != 0)
+				counts[i]++;
+		}
+	}
+	return counts;
+}
+
+/// <summary>
+/// 이진 이미지의 Horizontal projection 데이터로 변환 
+/// </summary>
+/// <param name="binImage">변환할 이진 이미지.</param>
+/// <returns>Horizontal projection 데이터</returns>
+vector<int> imageHandler::getHorizontalProjectionData(Mat binImage)
+{
+	int nRows = binImage.rows;
+	int nCols = binImage.cols;
+
+	vector<int> counts;
+	for (int i = 0; i < binImage.rows; i++)	// inital
+		counts.push_back(0);
+
+	for (int j = 0; j < nCols; j++) {
+		for (int i = 0; i < nRows; i++) {
+			if (binImage.at<uchar>(i, j) != 0)
+				counts[i]++;
+		}
+	}
+	return counts;
+}
+
+/// <summary>
+/// Mat의 흰색 점의 개수를 반환함
+/// </summary>
+/// <param name="binImage">The binary mat.</param>
+/// <returns>흰색 점의 개수</returns>
+int imageHandler::getWihtePixelCount(Mat binImage)
+{
+	int height = binImage.rows;
+	int width = binImage.cols;
+	int whiteCount = 0;
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = binImage.ptr<uchar>(y);
+		for (int x = 0; x < width; x++)
+			if (yPtr[x] != 0)	// 흑색이 아닌경우
+				whiteCount++;
+	}
+	printf("whiteCount:%d\r\n", whiteCount);
+	return whiteCount;
 }
 
 
