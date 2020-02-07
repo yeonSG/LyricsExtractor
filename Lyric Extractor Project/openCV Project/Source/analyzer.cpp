@@ -3,6 +3,9 @@
 
 void analyzer::initVariables()
 {
+	vecWhitePixelCounts.clear();
+	vecWhitePixelChangedCounts.clear();
+
 	m_lyric.init();
 }
 
@@ -27,15 +30,13 @@ bool analyzer::videoAnalization(string videoPath)
 	Mat subImage;
 	Mat binImage;
 	Mat beforeBinImage;	// 이전 바이너리 이미지
-	vector<int> vecWhitePixelCounts;			// 프래임 별 흰색 개수
-	vector<int> vecWhitePixelChangedCounts;		// 이전 프래임 대비 흰색 변화량
 	vector<vector<int>> verticalProjectionDatasOfDifferenceImage;	// 디프런트 이미지의 흰색 vertical Projection데이터의 모임
 
 	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
 	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
 	//verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
 
-	int curFrame = 0;
+	int curFrame = 0;	
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
 	{
@@ -97,7 +98,7 @@ bool analyzer::videoAnalization(string videoPath)
 	imwrite(fileManager::getSavePath() + "changeHistogramAverage.jpg", changeHistogramAverageMat);
 	
 	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
-	getJudgedLine(vecWhitePixelCounts, verticalHistogramAverage);
+	getJudgedLine(verticalHistogramAverage);
 
 	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
 	calibrateLines();
@@ -176,7 +177,7 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 /// </summary>
 /// <param name="vecWhitePixelCounts"> 프레임에 존재하는 흰 점의 합 </param>
 /// <param name="changeStatusAverage"> 변한 흰색의 평균 위치</param>
-void analyzer::getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage)
+void analyzer::getJudgedLine(const vector<int> verticalHistogramAverage)
 {
 	vector<int> peakValues;
 
@@ -287,33 +288,78 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 	//	
 	//}
 
-	bool zeroZone = false;
-	int notZeroStart = 0;
-	int maxValueIndex = 0;
+	//bool zeroZone = false;
+	//int notZeroStart = 0;
+	//int maxValueIndex = 0;
 
-	for (int frameNum = 0; frameNum < vecWhitePixelCounts.size(); frameNum++)
+	//for (int frameNum = 0; frameNum < vecWhitePixelCounts.size(); frameNum++)
+	//{
+	//	if (zeroZone==false )
+	//	{
+	//		if (vecWhitePixelCounts[frameNum] < 500)
+	//		{
+	//			peakValues.push_back(maxValueIndex);	// 최대값 저장
+	//			zeroZone = true;
+	//			maxValueIndex = 0;
+	//		}
+	//		if (vecWhitePixelCounts[maxValueIndex] < vecWhitePixelCounts[frameNum])
+	//		{
+	//			maxValueIndex = frameNum;
+	//		}
+	//	}
+	//	else // zeroZone
+	//	{
+	//		if (vecWhitePixelCounts[frameNum] >= 500)
+	//		{
+	//			zeroZone = false;
+	//		}
+	//	}
+	//}
+
+	// zero가 되는 순간 이전값을 peak로 함.
+
+	bool isFadeOut = false;
+	int fadeOutCount = 0;
+	int maxValueFrame = 0;
+	bool zeroZone = true;
+	for (int frameNum = 1; frameNum < vecWhitePixelCounts.size(); frameNum++)
 	{
-		if (zeroZone==false )
+		bool isZeroZone;
+		if (vecWhitePixelCounts[frameNum] < 500)
+			isZeroZone = true;
+		else
+			isZeroZone = false;
+
+		if (zeroZone == true)
 		{
-			if (vecWhitePixelCounts[frameNum] < 500)
-			{
-				peakValues.push_back(maxValueIndex);	// 최대값 저장
-				zeroZone = true;
-				maxValueIndex = 0;
-			}
-			if (vecWhitePixelCounts[maxValueIndex] < vecWhitePixelCounts[frameNum])
-			{
-				maxValueIndex = frameNum;
-			}
-		}
-		else // zeroZone
-		{
-			if (vecWhitePixelCounts[frameNum] >= 500)
+			if (isZeroZone == false)	// zero -> noneZero 
 			{
 				zeroZone = false;
+				maxValueFrame = 0;
+			}
+		}
+		else // noneZeroZone
+		{
+			if (vecWhitePixelCounts[maxValueFrame] < vecWhitePixelCounts[frameNum])
+				maxValueFrame = frameNum;
+
+			if (vecWhitePixelCounts[frameNum] < vecWhitePixelCounts[frameNum - 1])
+				fadeOutCount++;
+			else
+				fadeOutCount = 0;
+
+			if (isZeroZone == true)	// noneZero -> Zero
+			{
+				zeroZone = true;
+
+				if(fadeOutCount>3)
+					peakValues.push_back(maxValueFrame);
+				else
+					peakValues.push_back(frameNum - 1);
 			}
 		}
 	}
+
 
 	return peakValues;
 }
@@ -481,8 +527,14 @@ void analyzer::calibrateLines()
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
+		int minFrame;
+		if (i > 0)
+			minFrame = m_lyric.getLine(i - 1)->endFrame;
+		else
+			minFrame = 0;
+
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-		if (lineCalibration(line->startFrame, line->endFrame, maskImage) == false)
+		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
 		{
 			line->isValid = false;
 			printf("Caled Line%d is invaild will be removed.\r\n", i);
@@ -494,26 +546,44 @@ void analyzer::calibrateLines()
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
 
 			/* 라인 시작점으로 마스크 얻음*/
-			//Mat newMaskImage = getSharpenAndContrastImage(line->startFrame);	// 1. 라인 시작지점으로 마스크 얻음
-			//					// 1-1. get ContrastImage
-			//Mat newMaskImage_hsv, newMaskImage_gray;
-			//cvtColor(newMaskImage, newMaskImage_hsv, COLOR_BGR2HSV);
-			//cvtColor(newMaskImage, newMaskImage_gray, COLOR_BGR2GRAY);
-			//Mat newMaskImage_bin;
-			//inRange(newMaskImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), newMaskImage_bin);	// 1-2. ContrastImage->hsv filtering
-			//// 부족하면 이전or다음 프레임 동원하여 해결할것.
-			//newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);	// 튀어나온것 제거
+			Mat newMaskImage = getSharpenAndContrastImage(line->startFrame -1);	// 1. 라인 시작지점으로 마스크 얻음
+								// 1-1. get ContrastImage
+			Mat newMaskImage_hsv, newMaskImage_gray;
+			cvtColor(newMaskImage, newMaskImage_hsv, COLOR_BGR2HSV);
+			cvtColor(newMaskImage, newMaskImage_gray, COLOR_BGR2GRAY);
+			Mat newMaskImage_bin;
+			inRange(newMaskImage_hsv, Scalar(0, 0, 254), Scalar(255, 255, 255), newMaskImage_bin);	// 1-2. ContrastImage->hsv filtering
+			// 부족하면 이전or다음 프레임 동원하여 해결할것.
+			newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);	// 튀어나온것 제거
 
-			//newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
+	// 1. fullContrastImage 
+	// 2. 흰색만 분리
+	// 3. and 연산 
+			Mat sourceImg;
+			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 1 )- 1);
+			videoCapture->read(sourceImg);
+			if (sourceImg.rows != 720)
+				sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
 
-			////Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
+			sourceImg = imageHandler::getSubtitleImage(sourceImg);
+			Mat fullyContrastImage = getFullyContrastImage(sourceImg);
+			Mat fullyContrastImage_white;
+			inRange(fullyContrastImage, Scalar(250, 250, 250), Scalar(255, 255, 255), fullyContrastImage_white);
 
-			//line->maskImage = newMaskImage.clone();
-			//catpureBinaryImageForOCR(newMaskImage, i-invaildCount, fileManager::getSavePath());
+
+			bitwise_and(newMaskImage_bin, fullyContrastImage_white, newMaskImage_bin);
+
+			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
+
+			//Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
+			imageHandler::getNoiseRemovedImage(newMaskImage, true);
+			imageHandler::getFloodProcessedImage(newMaskImage, true);
+			line->maskImage = newMaskImage.clone();
+			catpureBinaryImageForOCR(line->maskImage, i-invaildCount, fileManager::getSavePath());
 
 			/* 라인 끝점으로 마스크 얻음*/
-			line->maskImage = maskImage.clone();
-			catpureBinaryImageForOCR(maskImage, i - invaildCount, fileManager::getSavePath());
+			//line->maskImage = maskImage.clone();
+			//catpureBinaryImageForOCR(maskImage, i - invaildCount, fileManager::getSavePath());
 		}
 	}
 	m_lyric.removeInvalidLines();
@@ -532,7 +602,7 @@ void analyzer::calibrateLines()
 /// </summary>
 /// <param name="startFrame">The start frame.</param>
 /// <param name="endFrame">The end frame.</param>
-bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
+bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, static int minStartFrame)
 {
 	bool isEffictiveLine = true;
 	Mat readImage;
@@ -540,10 +610,11 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 	videoCapture->read(readImage);
 	if (readImage.rows != 720)
 		readImage = imageHandler::resizeImageToAnalize(readImage);
-	maskImage = imageToSubBinImage(readImage);
+	maskImage = imageToSubBinImage(readImage);	//  첫 이미지로 하고, 다음 이미지와 dif한 부분을 뺌.
+	imageHandler::getNoiseRemovedImage(maskImage, true);
 
-	int maskImage_leftDot_x = getLeftistWhitePixel_x(maskImage);
-	int maskImage_rightDot_x = getRightistWhitePixel_x(maskImage);
+	int maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
+	int maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
 	int maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
 	int image_center_x = readImage.cols / 2;
 
@@ -564,8 +635,8 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 		}
 		maskImage = getBinImageByFloodfillAlgorism(maskImage, lyricMask);
 
-		maskImage_leftDot_x = getLeftistWhitePixel_x(maskImage);
-		maskImage_rightDot_x = getRightistWhitePixel_x(maskImage);
+		maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
+		maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
 		maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
 	}
 
@@ -587,21 +658,20 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 	int diffImage_avgPoint_PerMax = 0;	
 	int MinimumPixelCount = 500;	// 임의 초기값
 	int startframe_org = startFrame;
-
-	//bool additionalNoiseRemovedAtPer[10] = { false, };	// 진행 구간별로 노이즈 제거하기 위한 알고리즘
-	//additionalNoiseRemovedAtPer[9] = true;	// 100 이하에서 한번 진행
-	//additionalNoiseRemovedAtPer[8] = true;	// 90 이하에서 한번 진행
-	//additionalNoiseRemovedAtPer[7] = true;	// 80 이하에서 한번 진행
-	//additionalNoiseRemovedAtPer[6] = true;	// 70 이하에서 한번 진행
-	//additionalNoiseRemovedAtPer[5] = true;	// 60 이하에서 한번 진행
-
+	
 	int frameIndex = endFrame;
-	int expectedAvgPoint = maskImage_rightDot_x;
+	int expectedRightistPoint = maskImage_rightDot_x;
 	// 3. 진행도 측정 -> 라인의 시작과 끝점 파악
 	while (true)	
 	{
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex-1);	// frameIndex-1
 		videoCapture->read(readImage);
+
+		//if (frameIndex == 5132)	// for debug
+		//{
+		//	int i = 1;
+		//	i++;
+		//}
 
 		if (readImage.rows != 720)
 			readImage = imageHandler::resizeImageToAnalize(readImage);
@@ -625,20 +695,20 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 		element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
 		erode(DifferenceImage, image_dilateion, element);	// 침식연산 - 노이즈제거 
 
-		Mat avgPixelMask = imageHandler::getColumMaskImage(binImage.cols, binImage.rows, 200, expectedAvgPoint);
-		bitwise_and(image_dilateion.clone(), avgPixelMask, image_dilateion);
+		//Mat avgPixelMask = imageHandler::getColumMaskImage(binImage.cols, binImage.rows, 200, expectedAvgPoint);
+		//bitwise_and(image_dilateion.clone(), avgPixelMask, image_dilateion);
 
 		int pixelCount = imageHandler::getWihtePixelCount(binImage);
-		int diffImage_avgPoint = getWhitePixelAverage(image_dilateion);
-		int diffImage_avgPoint_Per = (int)((diffImage_avgPoint - maskImage_leftDot_x) / ( (maskImage_rightDot_x - maskImage_leftDot_x) / 100.0));
+		int diffImage_rightistPoint = imageHandler::getRightistWhitePixel_x(image_dilateion);//getWhitePixelAverage(image_dilateion);	
+		int diffImage_rightistPoint_Per = (int)((diffImage_rightistPoint - maskImage_leftDot_x) / ( (maskImage_rightDot_x - maskImage_leftDot_x) / 100.0));
 
-		printf("frame %d - diffAvgPoint: %d, diffImage_avgPoint_Per: %d \r\n", frameIndex, diffImage_avgPoint, diffImage_avgPoint_Per);
+		printf("frame %d - diffAvgPoint: %d, diffImage_avgPoint_Per: %d \r\n", frameIndex, diffImage_rightistPoint, diffImage_rightistPoint_Per);
 		printf("frame %d - pixelCount: %d \r\n", frameIndex, pixelCount);
 
-		if (diffImage_avgPoint_PerMax <= diffImage_avgPoint_Per)	// 가장 큰 Percent 변경점이 시작점, => 마스크 가장 오른쪽 점 
-		{
+		if (diffImage_avgPoint_PerMax <= diffImage_rightistPoint_Per)	// 가장 큰 Percent 변경점이 시작점, => 마스크 가장 오른쪽 점 
+		{	// 같은 퍼센테이지면 같으면 그 프레임 저장(같은 것 중 가장 처음 frame)
 			endFrame = frameIndex+1;
-			diffImage_avgPoint_PerMax = diffImage_avgPoint_Per;
+			diffImage_avgPoint_PerMax = diffImage_rightistPoint_Per;
 		}
 
 		if (MinimumPixelCount >= pixelCount)	// 가장 작은 pixel수 부분이 끝점, 
@@ -646,35 +716,15 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage)
 			MinimumPixelCount = pixelCount;
 			startFrame = frameIndex+1;
 		}
-
-		// 노이즈 제거 알고리즘
-		/*	변경방향
-		 - 라인 끝지점부터 시작지점까지 계속 진행 (100% 아래로 내려가면 그때부터 시작, difPoint가 양수이면 cutLineX업데이트)
-		 
-		 + 추가로 흰색으로 필터링 한 이미지로 floodfill 진행 ( cutLineX 우측만 검사)
-
-		 - 
-		*/
-		//if (diffImage_avgPoint_Per > 0)		
-		//{
-		//	if (additionalNoiseRemovedAtPer[diffImage_avgPoint_Per / 10] == true)
-		//	{
-		//		;	// (diffImage_avgPoint_Per / 10 -1) *10 % 에 해당하는 x 축 기준으로 왼쪽만 flood fill 진행 //
-		//		int cutLineX = (maskImage_rightDot_x - maskImage_leftDot_x) / 10 * ((diffImage_avgPoint_Per / 10) - 1) + maskImage_leftDot_x;	//  ( 오른쪽-왼쪽 / 10 * x ) + 왼쪽
-		//		Mat postMaskImage = getBinImageByFloodfillAlgorismforNoiseRemove(maskImage, binImage, cutLineX);	// x좌표 이전까지만 검사함
-
-		//		maskImage = postMaskImage;
-		//		additionalNoiseRemovedAtPer[diffImage_avgPoint_Per / 10] = false;
-		//	}
-		//}
-		
+				
 		beforeBinImage = binImage.clone();
-		if(diffImage_avgPoint!=0)
-			expectedAvgPoint = diffImage_avgPoint;
+		if(diffImage_rightistPoint !=0)
+			expectedRightistPoint = diffImage_rightistPoint;
 
 		frameIndex --;		
-		//if (frameIndex < startframe_org)
-		//	break;
+		// 끝내기 조건추가 => 이전 피크값의 이전값
+		if (minStartFrame >= frameIndex+1)
+			break;
 		if (MinimumPixelCount <= 0)
 			break;
 	}
@@ -1319,7 +1369,7 @@ Mat analyzer::getSharpenAndContrastImage(int frameNum)
 	sharpenImage1 = getSharpenImage(reTouch);
 	Mat contrastImage1;
 	contrastImage1 = getFullyContrastImage(sharpenImage1);
-
+	
 	return contrastImage1;
 }
 
@@ -1722,8 +1772,8 @@ void analyzer::wordCalibration(Line& line)
 		bitwise_and(diffBinImage, line.maskImage, diffBinImage);
 
 		if (rightistPoint == 0)// init first value
-			rightistPoint = getLeftistWhitePixel_x(maskImage);
-		rightistPoint = getRightistWhitePixel_x(diffBinImage, rightistPoint, 35, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
+			rightistPoint = imageHandler::getLeftistWhitePixel_x(maskImage);
+		rightistPoint = imageHandler::getRightistWhitePixel_x(diffBinImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
 
 		//Mat diffBinMorphImage = imageHandler::getMorphImage(diffBinImage, MORPH_ERODE);	// 느린 진행시 삭제됨..
 		//int rightistPoint = getRightistWhitePixel_x(diffBinMorphImage);	// getRightistWhitePixel_x함수 튜닝 (관심영역x축, 타겟+x축(약 15pix) )
@@ -1798,74 +1848,6 @@ void analyzer::wordCalibration(Line& line)
 	line.words = words;
 }
 
-int analyzer::getLeftistWhitePixel_x(Mat binImage)
-{
-	int leftist_x = 0;
-
-	//int height = binImage.rows;
-	//int width = binImage.cols;
-
-	for (int width = 0; width < binImage.cols; width++)
-	{
-		for (int hight = 0; hight < binImage.rows; hight++)
-		{
-			if (binImage.at<uchar>(hight, width) != 0)
-				return width;
-		}
-	}
-	return leftist_x;
-}
-
-int analyzer::getRightistWhitePixel_x(Mat binImage)
-{
-	int rightist_x = 0;
-
-	//int height = binImage.rows;
-	//int width = binImage.cols;
-
-	for (int width = binImage.cols -1; width > 0; width--)
-	{
-		for (int hight = 0; hight < binImage.rows; hight++)
-		{
-			if (binImage.at<uchar>(hight, width) != 0)
-				return width;
-		}
-	}
-	return 	rightist_x = 0;
-}
-
-/// <summary>
-/// Gets the rightist white pixel x.
-/// </summary>
-/// <param name="binImage">The bin image.</param>
-/// <param name="targetStartX">대상이 될시작지점.</param>
-/// <param name="range">대상 x 부터 +range까지 검사.</param>
-/// <param name="threshold"> 대상이 될 col의 흰점 최소 갯수.</param>
-/// <returns></returns>
-int analyzer::getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold)
-{	// ys 
-	// get Vertical Projection
-	// 대상 x 부터 x+range 까지 검사한 것 중 thresold보다 큰 값,
-	// 만약 최대 x가 결과라면 그 앞쪽까지 더 확인?
-	vector<int> vecVProjection = imageHandler::getVerticalProjectionData(binImage);
-	
-
-	// 뒤에서부터 검사
-	for (int i = targetStartX+range; i > targetStartX; i--)
-	{
-		if (vecVProjection.size() <= i)
-			break;
-
-		if (vecVProjection[i] >= threshold)
-		{
-			if (targetStartX + range == i)	//
-				i = getRightistWhitePixel_x(binImage, targetStartX+range, range, threshold);
-			return i;
-		}
-	}
-
-	return targetStartX;	// 못찾으면 값 유지 
-}
 
 int analyzer::getWhitePixelAverage(Mat binImage)
 {

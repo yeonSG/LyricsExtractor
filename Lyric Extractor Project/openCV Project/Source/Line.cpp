@@ -7,7 +7,6 @@ void Line::splitLineTextToWord()
 {
 	vector<string> tokens;
 
-	std::string delim = " ";
 	boost::split(tokens, text, boost::is_any_of(" "));
 	if (tokens.size() != words.size())
 		printf("Not same : tokens.size(), words.size() ,%d ,%d\r\n", tokens.size(), words.size());

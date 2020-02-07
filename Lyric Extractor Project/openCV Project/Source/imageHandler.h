@@ -17,6 +17,7 @@ public:
 	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
 	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
 	static Mat getCompositeBinaryImages(static Mat& subImage);
@@ -36,6 +37,10 @@ public:
 	static vector<int> getVerticalProjectionData(Mat binImage);
 	static vector<int> getHorizontalProjectionData(Mat binImage);
 	static int getWihtePixelCount(Mat binImage);
+
+	static int getLeftistWhitePixel_x(Mat binImage);
+	static int getRightistWhitePixel_x(Mat binImage);
+	static int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);
 
 };
 

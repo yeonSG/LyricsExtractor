@@ -138,7 +138,62 @@ Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
 }
 
 /// <summary>
-/// 잡영 회피 목적의 흰색 커튼이미 생성
+/// 깔끔한 MaskImage 얻기 위한 것, 
+///  - 가로로 길게 뻗어있는 Object를 삭제
+///  - 해당하는 영역 row에 최대 최소 x값을 구해 중앙기준으로 비율이 비슷하다면 노이즈 아닌걸로
+/// </summary>
+/// <param name="binaryMat">The binary mat.</param>
+/// <param name="toBlack">if set to <c>true</c> [to black].</param>
+/// <returns></returns>
+Mat imageHandler::getNoiseRemovedImage(Mat& binaryMat, bool toBlack)
+{
+	int nRows = binaryMat.rows;
+	int nCols = binaryMat.cols;
+	int rightistPoint = getRightistWhitePixel_x(binaryMat);
+	int leftistPoint = getLeftistWhitePixel_x(binaryMat);
+
+	threshold(binaryMat, binaryMat, 128, 255, THRESH_BINARY);
+
+	int color;
+	if (toBlack == true)
+		color = 0;
+	else
+		color = 255;
+		
+	for (int row = 0; row < nRows; row++) {
+		int count = 0;
+		uchar* rowPtr = binaryMat.ptr<uchar>(row);
+		for (int i = 0; i < nCols; i++) {
+			if (rowPtr[i] != color)
+				count++;
+			else
+				count = 0;
+
+			if (count > 60)	// 60pixel
+			{
+				Mat rowMat = Mat::zeros(1, nCols, CV_8U);	
+				uchar* rowMatPtr = rowMat.ptr<uchar>(0);	// copy row
+				for (int c = 0; c < nCols; c++) {
+					rowMatPtr[c] = rowPtr[c];
+				}
+				int rowRightistPoint = getRightistWhitePixel_x(rowMat);
+				int rowLeftistPoint = getLeftistWhitePixel_x(rowMat);
+
+				if( (rightistPoint+100 < rowRightistPoint || rowRightistPoint < rightistPoint-100) || 
+					(leftistPoint + 100 < rowLeftistPoint || rowLeftistPoint < leftistPoint - 100) )
+					floodFill(binaryMat, Point(i, row), color);
+
+				count = 0;
+			}
+		}
+	}
+
+
+	return binaryMat;
+}
+
+/// <summary>
+/// 잡영 회피 목적의 흰색 커튼이미지 생성
 /// </summary>
 /// <param name="cols">The cols.</param>
 /// <param name="rows">The rows.</param>
@@ -604,6 +659,74 @@ int imageHandler::getWihtePixelCount(Mat binImage)
 	}
 	printf("whiteCount:%d\r\n", whiteCount);
 	return whiteCount;
+}
+
+int imageHandler::getLeftistWhitePixel_x(Mat binImage)
+{
+	int leftist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = 0; width < binImage.cols; width++)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return leftist_x;
+}
+
+int imageHandler::getRightistWhitePixel_x(Mat binImage)
+{
+	int rightist_x = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = binImage.cols - 1; width > 0; width--)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return width;
+		}
+	}
+	return 	rightist_x = 0;
+}
+
+/// <summary>
+/// Gets the rightist white pixel x.
+/// </summary>
+/// <param name="binImage">The bin image.</param>
+/// <param name="targetStartX">대상이 될시작지점.</param>
+/// <param name="range">대상 x 부터 +range까지 검사.</param>
+/// <param name="threshold"> 대상이 될 col의 흰점 최소 갯수.</param>
+/// <returns></returns>
+int imageHandler::getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold)
+{
+	// get Vertical Projection
+	// 대상 x 부터 x+range 까지 검사한 것 중 thresold보다 큰 값,
+	// 만약 최대 x가 결과라면 그 앞쪽까지 더 확인?
+	vector<int> vecVProjection = imageHandler::getVerticalProjectionData(binImage);
+
+	// 뒤에서부터 검사
+	for (int i = targetStartX + range; i > targetStartX; i--)
+	{
+		if (vecVProjection.size() <= i)
+			break;
+
+		if (vecVProjection[i] >= threshold)
+		{
+			if (targetStartX + range == i)	//
+				i = getRightistWhitePixel_x(binImage, targetStartX + range, range, threshold);
+			return i;
+		}
+	}
+
+	return targetStartX;	// 못찾으면 값 유지 
 }
 
 

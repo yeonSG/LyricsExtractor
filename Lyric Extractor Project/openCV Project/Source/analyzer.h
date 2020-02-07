@@ -22,9 +22,6 @@ public:
 	/* 이미지 분석 함수 */
 	int getContourCount(Mat sourceImage);
 
-	int getLeftistWhitePixel_x(Mat binImage);
-	int getRightistWhitePixel_x(Mat binImage);
-	int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);
 	int getWhitePixelAverage(Mat binImage);
 
 	bool videoAnalization(string videoPath);
@@ -34,7 +31,7 @@ public:
 	vector<int> vectorToAverageVector(vector<int> vec, int effectiveRange);
 
 	/* 라인 판별 알고리즘 */
-	void getJudgedLine(vector<int> vecWhitePixelCounts, const vector<int> verticalHistogramAverage);
+	void getJudgedLine(const vector<int> verticalHistogramAverage);
 
 	vector<int> getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts);
 	void getLinesFromPeak(vector<int>peaks, vector<int> vecWhitePixelCounts);
@@ -44,7 +41,7 @@ public:
 	void lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& judgedLines,const vector<int> verticalHistogramAverage);
 
 	void calibrateLines();
-	bool lineCalibration(int& startFrame, int& endFrame, Mat& maskImage);
+	bool lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, static int minStartFrame);
 	/* 라인 판별 알고리즘 끝 */
 
 	/* 이미지 분석 함수image analization  */
@@ -97,6 +94,9 @@ public:
 	int video_Frame;
 	int video_Width;
 	int video_Height;
+
+	vector<int> vecWhitePixelCounts;			// 프래임 별 흰색 개수
+	vector<int> vecWhitePixelChangedCounts;		// 이전 프래임 대비 흰색 변화량
 
 	lyric m_lyric;
 };
