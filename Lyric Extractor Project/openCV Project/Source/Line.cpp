@@ -9,7 +9,7 @@ void Line::splitLineTextToWord()
 
 	boost::split(tokens, text, boost::is_any_of(" "));
 	if (tokens.size() != words.size())
-		printf("Not same : tokens.size(), words.size() ,%d ,%d\r\n", tokens.size(), words.size());
+		printf("Not same : OCR_tokens.size(), words.size() ,%d ,%d\r\n", tokens.size(), words.size());
 	for (int i = 0; i < words.size(); i++)
 	{
 		if (tokens.size() > i)

@@ -67,6 +67,9 @@
 
      5. 관심영역 설정하는 코드 추가
         - 동적 관심범위 ()
+        - how?
+        - whiteCount 범위 크개잡아서 peak 뽑은 후
+        - 해당 
 
 
 
@@ -80,3 +83,29 @@
          frame4 -> 색칠 완료됨
          frame4
          ==> LineX의 (start, end) => (2, 4);
+
+    * 테스트 영상 정보
+    Movie.mp4
+     - 태국어
+     - 0~27Lines
+    Movie1.mp4
+     - 태국어, 영어
+     - 0~62Lines
+    40009.mp4
+     - 태국어
+     - 0~66Lines
+    40011.mp4
+     - 태국어, 영어
+     - 0~46Lines
+
+    할것
+     - 로깅
+     - 디버깅
+     - * Word 분할
+     - Lyric Detection  : 가사 위치를 알아냄
+                        : horizontal projection 함, 
+                          1개의 구역이 나오면 해당 영역 사용 
+                          2개의 구역이 나온다면 항상 위에의 구역 사용
+                          floodfillAlgorism 뿌림(흰색만 상관없이)
+
+     - UI 

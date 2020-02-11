@@ -895,8 +895,9 @@ void testClass::test_Video4(string videoPath)
 	Mat FCImage_before;
 	Mat bin_before;
 	Mat testBinBefore;
-	Mat testmask = imread("Line26_Bin.jpg", IMREAD_GRAYSCALE);
-	bitwise_not(testmask, testmask);
+	//Mat testmask = imread("Line9_Bin.jpg", IMREAD_GRAYSCALE);
+//	Mat asd = imageHandler::getNoiseRemovedImage(testmask, false);
+	//bitwise_not(testmask, testmask);
 
 	while (vc.read(orgImage))
 	{
@@ -909,20 +910,9 @@ void testClass::test_Video4(string videoPath)
 	Mat subImage = imageHandler::getSubtitleImage(orgImage);
 	imshow("subImage", subImage);
 
-	/* test */
-	//Mat TestfullContrastimage_NotBulr = getFullContrastIMage(subImage);
-	//Mat image_binIR_RGB_R;
-	//inRange(TestfullContrastimage_NotBulr, Scalar(0, 0, 250), Scalar(0, 0, 255), image_binIR_RGB_R);	// binarize by rgb
-	//Mat image_binIR_RGB_B;
-	//inRange(TestfullContrastimage_NotBulr, Scalar(250, 0, 0), Scalar(255, 0, 0), image_binIR_RGB_B);	// binarize by rgb
-
-	////Mat image_binIR_RGB_R;
-	////inRange(subImage, Scalar(0, 0, 130), Scalar(50, 50, 255), image_binIR_RGB_R);	// binarize by rgb
-	////Mat image_binIR_RGB_B;
-	////inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);	// binarize by rgb
-
-	//Mat testBin;
-	//bitwise_or(image_binIR_RGB_B, image_binIR_RGB_R, testBin, testmask);
+	Mat testbinImage = imageHandler::getPaintedBinImage(subImage);
+	int countW = imageHandler::getWihtePixelCount(testbinImage);
+	printf("whiteC:%d \r\n", countW);
 	//if(testBinBefore.empty())
 	//	testBinBefore = testBin ;
 	//Mat TestDifferenceImage = imageHandler::getDifferenceImage(testBin, testBinBefore);

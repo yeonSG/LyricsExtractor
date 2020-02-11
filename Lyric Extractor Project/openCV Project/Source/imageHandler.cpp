@@ -25,7 +25,7 @@ Mat imageHandler::resizeImageToAnalize(Mat& sourceImage)
 /// <returns>가사 부분만 자른 이미지</returns>
 Mat imageHandler::getSubtitleImage(Mat& sourceImage)
 {
-	Rect subRect(0, SUBTITLEAREA_Y, sourceImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
+	Rect subRect(0, SUBTITLEAREA_Y, sourceImage.cols, sourceImage.rows - SUBTITLEAREA_Y);//SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
 	Mat subImage = sourceImage(subRect);
 	return subImage;
 }
@@ -135,6 +135,50 @@ Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
 			floodFill(binaryMat, Point(i, nRows - 1), color);
 
 	return binaryMat;
+}
+
+Mat imageHandler::getFloodProcessedImageWhiteToBlack(Mat& colorMat)
+{
+	int nRows = colorMat.rows;
+	int nCols = colorMat.cols;
+
+	Scalar color_white = Scalar(255, 255, 255);
+	Scalar color_black = Scalar(0, 0, 0);
+
+
+	// 상측 
+	for (int i = 0; i < nCols; i++)
+	{
+		Scalar matColor = colorMat.at<Vec3b>(2, i);
+		if (matColor == color_white)
+			floodFill(colorMat, Point(i, 2), color_black);;
+	}
+
+	// 좌측
+	for (int i = 0; i < nRows; i++)
+	{
+		Scalar matColor = colorMat.at<Vec3b>(i, 30);
+		if (matColor == color_white)
+			floodFill(colorMat, Point(30, i), color_black);
+	}
+
+	// 우측
+	for (int i = 0; i < nRows; i++)
+	{
+		Scalar matColor = colorMat.at<Vec3b>(i, nCols - 30);
+		if (matColor == color_white)
+			floodFill(colorMat, Point(nCols - 30, i), color_black);
+	}
+
+	// 아래측
+	for (int i = 0; i < nCols; i++)
+	{
+		Scalar matColor = colorMat.at<Vec3b>(nRows - 1, i);
+		if (matColor == color_white)
+			floodFill(colorMat, Point(i, nRows - 1), color_black);
+	}
+
+	return colorMat;
 }
 
 /// <summary>
@@ -561,7 +605,122 @@ Mat imageHandler::getFullyContrastImage(Mat rgbImage)
 	// RGB 합침
 	Mat mergedImage;
 	merge(bgr, 3, mergedImage);
-	return mergedImage;
+return mergedImage;
+}
+
+// BinImage의 최소, 최대값 구한 후 해당 값 +-10 Vertical까지 자름
+Mat imageHandler::cutColumByHistorgram(Mat binImage)
+{
+	vector<int> projection = getHorizontalProjectionData(binImage);
+	int highPoint = 0;
+	int lowPoint = projection.size();
+	for (int i = 0; i < projection.size(); i++)
+	{
+		if (projection[i] != 0)
+		{
+			highPoint = i;
+			break;
+		}
+	}
+	for (int i = projection.size()-1; i >= 0; i--)
+	{
+		if (projection[i] != 0)
+		{
+			lowPoint = i;
+			break;
+		}
+	}
+
+	if (highPoint == 0)
+		return binImage;
+	else
+	{
+		if (highPoint - 10 > 0)
+			highPoint = highPoint - 10;
+		else
+			highPoint = 0;
+
+		if (lowPoint + 10 < binImage.rows)
+			lowPoint = lowPoint + 10;
+		else
+			lowPoint = binImage.rows;
+
+		Rect subRect(0, highPoint, binImage.cols, lowPoint- highPoint);
+		Mat subImage = binImage(subRect);
+		return subImage;
+
+	}
+}
+
+// 이진 이미지에서 발음 부분을 지우기 위한 함수
+Mat imageHandler::removeSubLyricLine(Mat binImage)
+{
+	vector<int> projection = getHorizontalProjectionData(binImage);
+
+	vector<pair<int, int>> islands;
+	vector<int> islandsVolum;
+
+	// 섬의 갯수 구함, 
+	// 섬이 2개 이상이면서, 가장 아래섬이 흰점수 2등 이면
+	// 보조 lyric으로 판별하여 2등 제거
+	/*	or 가장 큰 volume의 Lyric만 남김 */
+	bool blackZone = false;
+	int startPoint = 0;
+	int endPoint = 0;
+	int volume = 0;
+
+	for (int i = 0; i < projection.size(); i++)
+	{
+		if (projection[i] != 0)	// Not blackZone
+		{
+			if (blackZone == true)	// blackZone -> Not BlackZone
+			{
+				startPoint = i;
+			}
+
+			volume += projection[i];
+			blackZone = false;
+		}
+		else // blackZone
+		{
+			if (blackZone == false)	// Not blackZone -> blackZone
+			{	// save island
+				islands.push_back(make_pair(startPoint, i));
+				islandsVolum.push_back(volume);
+				volume = 0;
+			}
+			//
+			blackZone = true;
+		}
+	}
+
+	Mat maskingImage = binImage.clone();
+
+	if (islands.size() >= 2)
+	{
+		vector<int> islandsVolum_sort;
+		islandsVolum_sort.assign(islandsVolum.begin(), islandsVolum.end());	// copy vector
+
+		sort(islandsVolum_sort.begin(), islandsVolum_sort.end(), greater<int>());
+
+		if (islandsVolum_sort[1] == islandsVolum[islandsVolum.size() - 1])	// 가장 아래섬이 흰점수 2등
+		{
+			int startPoint = islands[islands.size() - 1].first;
+			int finishPoint = islands[islands.size() - 1].second;
+			
+			for (int i = startPoint; i <= finishPoint; i++)
+			{
+				for (int c = 0; c < maskingImage.cols; c++)
+				{
+					if (maskingImage.at<uchar>(i, c) != 0)	// (rows, cols)
+						floodFill(maskingImage, Point(c, i), 0);	// (cols, rows)
+				}
+			}
+			return maskingImage;
+		}
+	}
+
+	return maskingImage;
 }
 
 bool imageHandler::isWhite(const Vec3b& ptr)

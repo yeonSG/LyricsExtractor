@@ -17,6 +17,7 @@ public:
 	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
 	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getFloodProcessedImageWhiteToBlack(static Mat& colorMat);
 	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
@@ -28,6 +29,10 @@ public:
 
 	static Mat getPaintedBinImage(static Mat& rgbImage);	
 	static Mat getFullyContrastImage(Mat rgbImage);
+
+	static Mat cutColumByHistorgram(Mat binImage);
+	static Mat removeSubLyricLine(Mat binImage);
+
 	static bool isWhite(const Vec3b& ptr);
 	static bool isBlack(const Vec3b& ptr);
 	static bool isBlue(const Vec3b& ptr);

@@ -20,5 +20,5 @@ public:
 
 private:
 	vector<Line> lines;
-	;
+	vector<int> vecWhiteCount;
 };

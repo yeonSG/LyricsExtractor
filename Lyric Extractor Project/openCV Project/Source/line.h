@@ -12,7 +12,13 @@ using namespace cv;
 class Line : public Word
 {
 public:
-	//int peak;
+	// int peak;
+	// int linePrintStartRow;	// 라인이 출력되는 위치 시작점
+	// int linePrintHeight;		// 라인이 출력되는 위치 시작점부터 끝까지의 길이
+	// 어떻게 측정하나?
+	// 1. 일단 큰범위로 계산,
+	// 2. horizontal 히스토그램 그려서
+
 	bool isValid; 
 
 	vector<Word> words;
