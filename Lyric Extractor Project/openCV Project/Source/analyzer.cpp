@@ -1802,20 +1802,30 @@ void analyzer::wordCalibration(Line& line)
 		if (readImage.rows != 720)
 			readImage = imageHandler::resizeImageToAnalize(readImage);
 		subImage = imageHandler::getSubtitleImage(readImage);
-
-		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
 		Mat binImage;
-		inRange(fullyContrastImage, Scalar(254, 254, 254), Scalar(255, 255, 255), binImage);
-		
-		if (beforeBinImage.empty())
-			beforeBinImage = binImage;
 
-		Mat diffBinImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
-		bitwise_and(diffBinImage, line.maskImage, diffBinImage);
+		// start
+		//Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+		//inRange(fullyContrastImage, Scalar(254, 254, 254), Scalar(255, 255, 255), binImage);
+		// end
+
+		// start
+		Mat subImage_hsv;
+		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
+		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
+		bitwise_and(subImage_hsv, maskImage, binImage);	// 마스크 얻는방식 변경
+		// end
+
+		//if (beforeBinImage.empty())
+		//	beforeBinImage = binImage;
+
+		//Mat diffBinImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
+		//bitwise_and(diffBinImage, line.maskImage, diffBinImage);
 
 		if (rightistPoint == 0)// init first value
 			rightistPoint = imageHandler::getLeftistWhitePixel_x(maskImage);
-		rightistPoint = imageHandler::getRightistWhitePixel_x(diffBinImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
+		//rightistPoint = imageHandler::getRightistWhitePixel_x(diffBinImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
+		rightistPoint = imageHandler::getRightistWhitePixel_x(binImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
 
 		//Mat diffBinMorphImage = imageHandler::getMorphImage(diffBinImage, MORPH_ERODE);	// 느린 진행시 삭제됨..
 		//int rightistPoint = getRightistWhitePixel_x(diffBinMorphImage);	// getRightistWhitePixel_x함수 튜닝 (관심영역x축, 타겟+x축(약 15pix) )
