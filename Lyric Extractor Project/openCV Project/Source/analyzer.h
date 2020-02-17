@@ -77,12 +77,6 @@ public:
 	Mat getFullyContrastImage(Mat srcImage);
 	Mat removeLint(Mat srcImage, Mat refImage);
 
-	//
-	Mat getPaintedBinImage(Mat srcImage);
-	bool isWhite(const Vec3b& ptr);
-	bool isBlack(const Vec3b& ptr);
-	bool isBlue(const Vec3b& ptr);
-	bool isRed(const Vec3b& ptr);
 
 	void wordJudge();
 	void wordCalibration(Line& line);

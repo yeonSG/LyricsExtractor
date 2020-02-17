@@ -103,7 +103,7 @@ Mat imageHandler::getCannyImageWithBinaryImage(Mat& binImage)
 /// <param name="binaryMat">이진화 이미지</param>
 /// <param name="toBlack">true면 태두리를 검정으로 함</param>
 /// <returns>테두리에 floodFill 연산의 결과 이미지</returns>
-Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
+Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 {
 	int nRows = binaryMat.rows;
 	int nCols = binaryMat.cols;
@@ -135,50 +135,6 @@ Mat imageHandler::getFloodProcessedImage(Mat& binaryMat, bool toBlack)
 			floodFill(binaryMat, Point(i, nRows - 1), color);
 
 	return binaryMat;
-}
-
-Mat imageHandler::getFloodProcessedImageWhiteToBlack(Mat& colorMat)
-{
-	int nRows = colorMat.rows;
-	int nCols = colorMat.cols;
-
-	Scalar color_white = Scalar(255, 255, 255);
-	Scalar color_black = Scalar(0, 0, 0);
-
-
-	// 상측 
-	for (int i = 0; i < nCols; i++)
-	{
-		Scalar matColor = colorMat.at<Vec3b>(2, i);
-		if (matColor == color_white)
-			floodFill(colorMat, Point(i, 2), color_black);;
-	}
-
-	// 좌측
-	for (int i = 0; i < nRows; i++)
-	{
-		Scalar matColor = colorMat.at<Vec3b>(i, 30);
-		if (matColor == color_white)
-			floodFill(colorMat, Point(30, i), color_black);
-	}
-
-	// 우측
-	for (int i = 0; i < nRows; i++)
-	{
-		Scalar matColor = colorMat.at<Vec3b>(i, nCols - 30);
-		if (matColor == color_white)
-			floodFill(colorMat, Point(nCols - 30, i), color_black);
-	}
-
-	// 아래측
-	for (int i = 0; i < nCols; i++)
-	{
-		Scalar matColor = colorMat.at<Vec3b>(nRows - 1, i);
-		if (matColor == color_white)
-			floodFill(colorMat, Point(i, nRows - 1), color_black);
-	}
-
-	return colorMat;
 }
 
 /// <summary>
@@ -302,8 +258,8 @@ Mat imageHandler::getCompositeBinaryImagesRed(Mat& subImage)
 	inRange(subImage_hsv, Scalar(160, 140, 180), Scalar(179, 255, 255), image_binIR_HSV_R_1); // binarize by hsv
 	bitwise_or(image_binIR_HSV_R_0, image_binIR_HSV_R_1, image_binIR_HSV_R);	// 총 빨강색 범위 hue = (0~1 + 160~179)
 
-	Mat image_binIR_HSV_R_Filterd = getFloodProcessedImage(image_binIR_HSV_R);
-	Mat image_binIR_RGB_R_Filterd = getFloodProcessedImage(image_binIR_RGB_R);
+	Mat image_binIR_HSV_R_Filterd = getBorderFloodFilledImage(image_binIR_HSV_R);
+	Mat image_binIR_RGB_R_Filterd = getBorderFloodFilledImage(image_binIR_RGB_R);
 
 	Mat image_binIR_Red;
 	bitwise_and(image_binIR_RGB_R_Filterd, image_binIR_HSV_R_Filterd, image_binIR_Red);
@@ -328,8 +284,8 @@ Mat imageHandler::getCompositeBinaryImagesBlue(Mat& subImage)
 	Mat image_binIR_HSV_B;
 	inRange(subImage_hsv, Scalar(118, 230, 100), Scalar(140, 255, 255), image_binIR_HSV_B);	// binarize by hsv
 
-	Mat image_binIR_HSV_B_Filterd = getFloodProcessedImage(image_binIR_HSV_B);
-	Mat image_binIR_RGB_B_Filterd = getFloodProcessedImage(image_binIR_RGB_B);
+	Mat image_binIR_HSV_B_Filterd = getBorderFloodFilledImage(image_binIR_HSV_B);
+	Mat image_binIR_RGB_B_Filterd = getBorderFloodFilledImage(image_binIR_RGB_B);
 	Mat image_binIR_Blue;
 	bitwise_and(image_binIR_RGB_B_Filterd, image_binIR_HSV_B_Filterd, image_binIR_Blue);
 
@@ -349,14 +305,10 @@ Mat imageHandler::getCompositeBinaryImagesBlue(Mat& subImage)
 /// <returns></returns>
 Mat imageHandler::getDifferenceImage(Mat& binImageA, Mat& binImageB)
 {
-	Mat changedToWhiteImage;
 	Mat xorImage;
 	bitwise_xor(binImageA, binImageB, xorImage);
-	//Mat notImage;
-	//bitwise_not(binImageB, notImage);
-	//bitwise_and(xorImage, binImageB, changedToWhiteImage);
+
 	return xorImage;
-	//return changedToWhiteImage;
 }
 
 /// <summary>

@@ -16,8 +16,7 @@ public:
 	static Mat getBlueColorFilteredBinaryImage(static Mat& sourceImage);
 	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
-	static Mat getFloodProcessedImage(static Mat& binaryMat, bool toBlack = true);
-	static Mat getFloodProcessedImageWhiteToBlack(static Mat& colorMat);
+	static Mat getBorderFloodFilledImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 

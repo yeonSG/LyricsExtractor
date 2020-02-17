@@ -32,8 +32,8 @@ bool analyzer::videoAnalization(string videoPath)
 	
 	initVariables();
 
-	//Mat readImage, maskImage;
-	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)3960 - 1);
+	//Mat readImage, maskImage;	// debug
+	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)4906 - 1);
 	//videoCapture->read(readImage);
 	//if (readImage.rows != 720)
 	//	readImage = imageHandler::resizeImageToAnalize(readImage);
@@ -161,7 +161,7 @@ bool analyzer::videoAnalization1(string videoPath)
 		subImage = imageHandler::getSubtitleImage(orgImage);
 		
 
-		paintedBinImage = getPaintedBinImage(subImage);
+		paintedBinImage = imageHandler::getPaintedBinImage(subImage);
 		vecPaintedPixelCounts.push_back(imageHandler::getWihtePixelCount(paintedBinImage));	// 픽셀 수 구함
 
 	}
@@ -238,106 +238,6 @@ void analyzer::getJudgedLine(const vector<int> verticalHistogramAverage)
 vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCounts)
 {
 	vector<int> peakValues;
-
-	// Peak 추출
-	//for (int frameNum = 0; frameNum < vecWhitePixelCounts.size(); frameNum++)
-	//{
-	//	if (vecWhitePixelCounts[frameNum] > 500)	// 노이즈 레벨
-	//	{
-	//		bool isPeak = true;
-	//		bool isHaveDrop = false;
-	//		for (int checkRange = (frameNum - DEFAULT_FPS / 2); checkRange < frameNum + DEFAULT_FPS / 2; checkRange++)	// x-12
-	//		{
-	//			if (vecWhitePixelCounts.size() <= checkRange)
-	//				break;
-
-	//			if (frameNum == checkRange)
-	//				continue;
-
-	//			if (checkRange<0 || checkRange>vecWhitePixelCounts.size())
-	//			{
-	//				isPeak = false;
-	//				break;	// 시작점, 끝점은 안봄
-	//			}
-
-	//			//  조건1. 자신 주변에 자신 이상의 값을 가진것이 없슴.
-	//			if (vecWhitePixelCounts[checkRange] > vecWhitePixelCounts[frameNum])
-	//			{
-	//				isPeak = false;
-	//				break;
-	//			}
-	//		}
-	//		for (int checkRange = frameNum; checkRange < frameNum + DEFAULT_FPS * 2; checkRange++)	// 2Sec (fade-out 까지 포함하는 초)
-	//		{
-	//			if (vecWhitePixelCounts.size() <= checkRange)
-	//				break;
-	//			// 자신보다 뒤쪽에 자신의 70% 하락한 값보다 작은 값이 있어야 함 - 이거..
-	//			if (checkRange > frameNum)
-	//			{
-	//				if (vecWhitePixelCounts[checkRange] < (vecWhitePixelCounts[frameNum] / 10) * 7)
-	//					isHaveDrop = true;
-	//			}
-	//		}
-
-	//		if (isPeak && isHaveDrop)
-	//		{
-	//			int index = 0;
-	//			while (true)
-	//			{	
-	//				if (vecWhitePixelCounts[frameNum] < vecWhitePixelCounts[frameNum + 1] + 200)	// 이전값과 별 차이 안나면 가장 나중값으로 정함
-	//					frameNum++;
-	//				else
-	//					break;
-	//			}
-
-	//			if (!peakValues.empty())
-	//			{
-	//				if (peakValues.back() == frameNum)
-	//					peakValues.back() = frameNum;	// update
-	//				else
-	//					peakValues.push_back(frameNum);
-	//			}
-	//			else
-	//				peakValues.push_back(frameNum);
-	//		}
-	//	}
-
-	//	// (x-500)<0 인 구간을 구함
-	//	// max값 index -> peak
-	//	//max_element(vecWhitePixelCounts.begin()+5, vecWhitePixelCounts.end());
-
-	//	
-	//}
-
-	//bool zeroZone = false;
-	//int notZeroStart = 0;
-	//int maxValueIndex = 0;
-
-	//for (int frameNum = 0; frameNum < vecWhitePixelCounts.size(); frameNum++)
-	//{
-	//	if (zeroZone==false )
-	//	{
-	//		if (vecWhitePixelCounts[frameNum] < 500)
-	//		{
-	//			peakValues.push_back(maxValueIndex);	// 최대값 저장
-	//			zeroZone = true;
-	//			maxValueIndex = 0;
-	//		}
-	//		if (vecWhitePixelCounts[maxValueIndex] < vecWhitePixelCounts[frameNum])
-	//		{
-	//			maxValueIndex = frameNum;
-	//		}
-	//	}
-	//	else // zeroZone
-	//	{
-	//		if (vecWhitePixelCounts[frameNum] >= 500)
-	//		{
-	//			zeroZone = false;
-	//		}
-	//	}
-	//}
-
-	// zero가 되는 순간 이전값을 peak로 함.
 
 	bool isFadeOut = false;
 	int fadeOutCount = 0;
@@ -578,7 +478,7 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-
+		
 		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
 		{
 			line->isValid = false;
@@ -629,7 +529,7 @@ void analyzer::calibrateLines()
 
 			//Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
 			imageHandler::getNoiseRemovedImage(newMaskImage, true);
-			imageHandler::getFloodProcessedImage(newMaskImage, true);
+			imageHandler::getBorderFloodFilledImage(newMaskImage, true);
 			line->maskImage = newMaskImage.clone();
 			catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
 
@@ -728,36 +628,14 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 
 		if (readImage.rows != 720)
 			readImage = imageHandler::resizeImageToAnalize(readImage);
-
-		//subImage = imageHandler::getSubtitleImage(readImage);
-
-		//Mat image_binIR_RGB_R;
-		//inRange(subImage, Scalar(0, 0, 130), Scalar(50, 50, 255), image_binIR_RGB_R);	// binarize by rgb
-		//Mat image_binIR_RGB_B;
-		//inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);	// binarize by rgb
-
-		//bitwise_or(image_binIR_RGB_B, image_binIR_RGB_R, binImage, maskImage);
-	
+			
 		Mat subImage = imageHandler::getSubtitleImage(readImage);
 		Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
 		Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
 		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
-		//imshow("image_HSV_S", image_HSV_S);
 
-		//Mat image_out;
-		////image_out = getBinImageByFloodfillAlgorism(image_floodFilled_AT2_Not, binCompositeImage);
-		//image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
-
-		//image_out = imageHandler::getFloodProcessedImage(image_out, true);
-		//binImage = image_out;
-		
-		/*start*/
-		//subImage = imageHandler::getSubtitleImage(readImage);
-		//binImage = imageToSubBinImage(readImage);
-		/*end*/
 		bitwise_and(subImage_hsv, maskImage, binImage);
-
 
 		if (beforeBinImage.empty())
 			beforeBinImage = binImage.clone();
@@ -787,12 +665,6 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		if (MinimumPixelCount < 100 && pixelCount>1000)	// 최소 픽셀카운트가 100이다가 갑자기 증가할때
 			break;
 
-		//if (diffImage_avgPoint_PerMin >= diffImage_rightistPoint_Per && diffImage_rightistPoint_Per>=0)	//else if (MinimumPixelCount >= pixelCount)	// 가장 작은 pixel수 부분이 끝점, 
-		//{
-		//	diffImage_avgPoint_PerMin = diffImage_rightistPoint_Per;
-		//	startFrame = frameIndex+1;
-		//}
-
 		if (diffImage_avgPoint_PerMax <= diffImage_rightistPoint_Per)	// 가장 큰 Percent 변경점이 시작점, => 마스크 가장 오른쪽 점 
 		{					
 			endFrame = frameIndex + 1;
@@ -804,12 +676,9 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		frameIndex --;		
 		if (pixelCount == 0 || diffImage_rightistPoint_Per==0)
 			break;
-		
-		
 	}
 	
-
-	if (isEffictiveLine)		// 
+	if (isEffictiveLine)		
 	{
 		printf("StartFrame : %d \r\n", startFrame -1);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)startFrame - 2);	// frameIndex-1
@@ -1125,7 +994,7 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 	Mat subImage = imageHandler::getSubtitleImage(targetImage);
 	//Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
 	Mat justFullContrastImage = imageHandler::getFullyContrastImage(subImage);
-	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);
+	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);	// YSYS
 	// justFullContrastImage에 sharpenContrastImage에 흰색인 곳의 좌표에 흰색처리함
 	Mat mixedImage = justFullContrastImage.clone();
 	Vec3b whiteColor;
@@ -1146,35 +1015,18 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 	}
 
 	Mat printImage = imageHandler::getPaintedBinImage_inner(mixedImage);
-
-	//Mat image_gray;
-	//cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
-	//Mat binATImage;
-	//adaptiveThreshold(image_gray, binATImage, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);	// 11 -> 9
-	//
-	//Mat image_floodFilled_AT = imageHandler::getFloodProcessedImage(binATImage, true);				// 
-	//Mat image_floodFilled_AT2 = imageHandler::getFloodProcessedImage(image_floodFilled_AT, false);	//
-	//Mat image_floodFilled_AT2_Not;
-	//bitwise_not(image_floodFilled_AT2, image_floodFilled_AT2_Not);
+	printImage = imageHandler::getMorphImage(printImage, MORPH_ERODE);
 
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
 	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
-	//imshow("image_HSV_S", image_HSV_S);
 
 	Mat image_out;
-	//image_out = getBinImageByFloodfillAlgorism(image_floodFilled_AT2_Not, binCompositeImage);
-	//image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
 	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, printImage);
 
-	image_out = imageHandler::getFloodProcessedImage(image_out, true);
+	image_out = imageHandler::getBorderFloodFilledImage(image_out, true);
 
-	Mat element(5, 5, CV_8U, Scalar(1));
-	element = getStructuringElement(MORPH_ELLIPSE, Point(3, 3));
-	//Mat image_close;
-	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);	// Close 연산 (침식->팽창)
-	morphologyEx(image_out, image_out, MORPH_CLOSE, element);	// Open 연산  (팽창->침식)
-	//image_out = imageHandler::getMorphImage(image_out, MORPH_CLOSE);
+	image_out = imageHandler::getMorphImage(image_out, MORPH_CLOSE);
 
 	return image_out;
 }
@@ -1518,269 +1370,6 @@ Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 }
 
 /// <summary>
-/// 색칠된 부분찾아 흑백으로 표시한 이미지
-/// 흰점 : 단순화된 이미지(FullyContrast)에서 흰점 기준 좌우상하 검사함
-/// 조건 : 흰점기준으로 한쪽은 빨강or파랑이 2점 이상 연속되고, 반대쪽은 검정이 2점 이상 연속됨 
-/// </summary>
-/// <param name="srcImage">The source image.</param>
-/// <returns></returns>
-Mat analyzer::getPaintedBinImage(Mat srcImage)
-{
-	Mat fullyContrastImage = getFullyContrastImage(srcImage);
-
-	int height = fullyContrastImage.rows;
-	int width = fullyContrastImage.cols;
-	Mat outImage;
-	cvtColor(fullyContrastImage, outImage, COLOR_BGR2GRAY);
-
-	// 행연산
-	for (int y = 0; y < height; y++)
-	{
-		uchar* yPtr = outImage.ptr<uchar>(y);	//in
-		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
-		for (int x = 0; x < width; x++)
-		{
-			bool isRight = false;	// 조건만족?
-			if (isWhite(yPtr_FCImage[x]))////if (isWhite(FCImage.at<cv::Vec3b>(y, x)))	
-			{
-				int count = 1;
-				int color_m = -1; // black==2, Blue,Red==1, other==-1
-				int color_p = -1;
-				while (x - count > 0)	// 아래쪽 색 확인
-				{
-					Vec3b v3p = yPtr_FCImage[x - count];
-					if (isWhite(v3p))
-					{
-						count++;//x_m--;
-						if (count > 4)
-							break;
-					}
-					else if (isBlue(v3p) || isRed(v3p))
-					{
-						if (x - (count + 1) > 0)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
-							if (isBlue(v3p_) || isRed(v3p_))
-							{
-								color_m = 1;	// B or R
-							}
-						}
-						break;
-					}
-					else if (isBlack(v3p))
-					{
-						if (x - (count + 1) > 0)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
-							if (isBlack(v3p_))
-							{
-								color_m = 2;	// Black
-							}
-						}
-						break;
-					}
-					else
-					{
-						color_m = -1;	// Other Color
-						break;
-					}
-				}
-
-				count = 1;
-				while (x + count < width)	// 위쪽 색 확인
-				{
-					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
-					if (isWhite(v3p))
-					{
-						count++;//x_p++;
-						if (count > 4)
-							break;
-					}
-					else if (isBlue(v3p) || isRed(v3p))
-					{
-						if (x + (count + 1) < width)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
-							if (isBlue(v3p_) || isRed(v3p_))
-							{
-								color_p = 1;	// B or R
-							}
-						}
-						break;
-					}
-					else if (isBlack(v3p))
-					{
-						if (x + (count + 1) < width)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
-							if (isBlack(v3p_))
-							{
-								color_p = 2;	// Black
-							}
-						}
-						break;
-					}
-					else
-					{
-						color_p = -1;	// Other Color
-						break;
-					}
-				}
-
-				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
-					isRight = true;	// 조건만족
-			}
-
-			if (isRight)	// 조건에 만족함
-				yPtr[x] = 255;
-			else
-				yPtr[x] = 0;
-		}
-	}
-
-	// 열연산
-	for (int y = 0; y < height; y++)
-	{
-		uchar* yPtr = outImage.ptr<uchar>(y);	//in
-		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
-
-		for (int x = 0; x < width; x++)
-		{
-			if (isWhite(yPtr[x]))	// 이미 흰색인곳
-				continue;
-
-			bool isRight = false;	// 조건만족?
-			if (isWhite(yPtr_FCImage[x]))
-			{
-				int count = 1;
-				int color_m = -1; // black==2, Blue,Red==1, other==-1
-				int color_p = -1;
-
-				while (y - count > 0)	// 아래쪽 색 확인
-				{
-					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y - count)[x];
-					if (isWhite(v3p))
-					{
-						count++;//x_m--;
-						if (count > 4)
-							break;
-					}
-					else if (isBlue(v3p) || isRed(v3p))
-					{
-						if (y - (count + 1) > 0)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x];//yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
-							if (isBlue(v3p_) || isRed(v3p_))
-							{
-								color_m = 1;	// B or R
-							}
-						}
-						break;
-					}
-					else if (isBlack(v3p))
-					{
-						if (y - (count + 1) > 0)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x]; //yPtr_FCImage[x - (count + 1)]; //FCImage.at<cv::Vec3b>(y, x - (count + 1));
-							if (isBlack(v3p_))
-							{
-								color_m = 2;	// Black
-							}
-						}
-						break;
-					}
-					else
-					{
-						color_m = -1;	// Other Color
-						break;
-					}
-				}
-
-				count = 1;
-				while (y + count < height)	// 위쪽 색 확인
-				{
-					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
-					if (isWhite(v3p))
-					{
-						count++;//x_p++;
-						if (count > 4)
-							break;
-					}
-					else if (isBlue(v3p) || isRed(v3p))
-					{
-						if (y + (count + 1) < height)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
-							if (isBlue(v3p_) || isRed(v3p_))
-							{
-								color_p = 1;	// B or R
-							}
-						}
-						break;
-					}
-					else if (isBlack(v3p))
-					{
-						if (y + (count + 1) < height)	// 연속되는지 확인
-						{
-							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
-							if (isBlack(v3p_))
-							{
-								color_p = 2;	// Black
-							}
-						}
-						break;
-					}
-					else
-					{
-						color_p = -1;	// Other Color
-						break;
-					}
-				}
-
-				if ((color_p == 2 && color_m == 1) || (color_p == 1 && color_m == 2))
-					isRight = true;	// 조건만족
-			}
-
-			if (isRight)	// 조건에 만족함
-				yPtr[x] = 255;
-			//else
-			//	yPtr[x] = 0;
-		}
-	}
-
-	return outImage;
-}
-
-bool analyzer::isWhite(const Vec3b& ptr)
-{	// BGR 
-	if (ptr[0] == 255 && ptr[1] == 255 && ptr[2] == 255)
-		return true;
-	return false;
-}
-
-bool analyzer::isBlack(const Vec3b& ptr)
-{	// BGR 
-	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 0)
-		return true;
-	return false;
-}
-
-bool analyzer::isBlue(const Vec3b& ptr)
-{	// BGR 
-	if (ptr[0] == 255 && ptr[1] == 0 && ptr[2] == 0)
-		return true;
-	return false;
-}
-
-bool analyzer::isRed(const Vec3b& ptr)
-{	// BGR 
-	if (ptr[0] == 0 && ptr[1] == 0 && ptr[2] == 255)
-		return true;
-	return false;
-}
-
-
-/// <summary>
 /// 성공적으로 Calibration 된 라인에서 word를 나눕니다.
 /// 1. Line측정에 사용된 mask이미지로 x축 프로잭션 진행
 /// 2. 시작x~끝x 사이에 빈 픽샐이 약 10개정도 있는 부분을 Separation으로 함
@@ -1798,16 +1387,6 @@ void analyzer::wordJudge()
 
 		wordCalibration(*line);
 
-		//if (line->spacingWords.empty() == true)	// 스페이스바가 없는 라인
-		//	;
-		//else	// Word separting 해야함
-		//{
-		//	// diff이미지로 분석, diff되는 부분 중 가장 오른쪽 점을 좌표기준으로 함
-		//	// diff image = fullContrastimage_NotBlur=>binImage - beforeimage (and use mask)
-		//	// 좌표기준이 sep좌표를 넘지 않고 증가가 없어지는 시기 = word-end,
-		//	// 좌표기준이 sep좌표를 넘어 증가가 시작되는 시기 = word-start,
-
-		//}
 
 	
 
