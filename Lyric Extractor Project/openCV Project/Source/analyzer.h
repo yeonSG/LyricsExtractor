@@ -74,8 +74,6 @@ public:
 
 	Mat getLyricMask(Mat imageToCopy, int startX, int endX);
 
-	Mat getSharpenAndContrastImage(int frameNum);
-	Mat getSharpenImage(Mat srcImage);
 	Mat getFullyContrastImage(Mat srcImage);
 	Mat removeLint(Mat srcImage, Mat refImage);
 
@@ -88,6 +86,9 @@ public:
 
 	void wordJudge();
 	void wordCalibration(Line& line);
+	void wordCalibrationByOCRText(Line& line);
+
+	vector<pair<int, int>> getPaintedPoint(Line line);
 
 public:
 	VideoCapture *videoCapture;

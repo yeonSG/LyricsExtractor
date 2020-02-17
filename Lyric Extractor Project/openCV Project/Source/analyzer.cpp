@@ -1,6 +1,12 @@
 ﻿#include "analyzer.h"
 #include "testClass.h"
 
+bool desc(pair<int,int> a, pair<int, int> b)
+{
+	return a.first > b.first;
+}
+
+
 void analyzer::initVariables()
 {
 	vecWhitePixelCounts.clear();
@@ -25,6 +31,15 @@ bool analyzer::videoAnalization(string videoPath)
 	}
 	
 	initVariables();
+
+	//Mat readImage, maskImage;
+	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)3960 - 1);
+	//videoCapture->read(readImage);
+	//if (readImage.rows != 720)
+	//	readImage = imageHandler::resizeImageToAnalize(readImage);
+	//maskImage = imageToSubBinImage(readImage);
+	//imageHandler::getNoiseRemovedImage(maskImage, true);
+	//maskImage = imageHandler::removeSubLyricLine(maskImage);
 
 	Mat orgImage;
 	Mat subImage;
@@ -102,13 +117,20 @@ bool analyzer::videoAnalization(string videoPath)
 	calibrateLines();
 
 	// 단어 나누기 wordJudge();
-	wordJudge();
-	
+	// wordJudge();
+
 	/* Save pictures */
 	captureLines(fileManager::getSavePath());
 	capturedLinesToText(fileManager::getSavePath());
 
 	makeLyrics(fileManager::getSavePath());
+
+	// new wordCalibration..
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
+	{
+		wordCalibrationByOCRText(*m_lyric.getLine(i));
+	}
+
 	makeLyrics_withWord();
 
 	closeVideo();
@@ -556,6 +578,7 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+
 		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
 		{
 			line->isValid = false;
@@ -568,7 +591,15 @@ void analyzer::calibrateLines()
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
 
 			/* 라인 시작점으로 마스크 얻음*/
-			Mat newMaskImage = getSharpenAndContrastImage(line->startFrame -1);	// 1. 라인 시작지점으로 마스크 얻음
+			Mat sourceImg;
+			videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->startFrame - 2);
+			videoCapture->read(sourceImg);
+			if (sourceImg.rows != 720)
+				sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
+
+			sourceImg = imageHandler::getSubtitleImage(sourceImg);
+
+			Mat newMaskImage = imageHandler::getSharpenAndContrastImage(sourceImg); // 1. 라인 시작지점으로 마스크 얻음
 								// 1-1. get ContrastImage
 			Mat newMaskImage_hsv, newMaskImage_gray;
 			cvtColor(newMaskImage, newMaskImage_hsv, COLOR_BGR2HSV);
@@ -581,7 +612,6 @@ void analyzer::calibrateLines()
 	// 1. fullContrastImage 
 	// 2. 흰색만 분리
 	// 3. and 연산 
-			Mat sourceImg;
 			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 1 )- 1);
 			videoCapture->read(sourceImg);
 			if (sourceImg.rows != 720)
@@ -633,8 +663,10 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	if (readImage.rows != 720)
 		readImage = imageHandler::resizeImageToAnalize(readImage);
 	maskImage = imageToSubBinImage(readImage);	
-	imageHandler::getNoiseRemovedImage(maskImage, true);
-	maskImage = imageHandler::removeSubLyricLine(maskImage);
+	maskImage = imageHandler::getNoiseRemovedImage(maskImage, true);
+	Mat maskImage_back = maskImage.clone();
+	maskImage_back = imageHandler::removeSubLyricLine(maskImage);
+	maskImage = imageHandler::removeNotPrimeryLyricLine(maskImage);	// maskImage 
 
 	int maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
 	int maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
@@ -724,7 +756,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		//subImage = imageHandler::getSubtitleImage(readImage);
 		//binImage = imageToSubBinImage(readImage);
 		/*end*/
-		bitwise_and(subImage_hsv, maskImage, binImage);	// 마스크 얻는방식 변경
+		bitwise_and(subImage_hsv, maskImage, binImage);
 
 
 		if (beforeBinImage.empty())
@@ -770,7 +802,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		beforeBinImage = binImage.clone();
 
 		frameIndex --;		
-		if (pixelCount == 0 )
+		if (pixelCount == 0 || diffImage_rightistPoint_Per==0)
 			break;
 		
 		
@@ -791,7 +823,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		// 2. floodfill (maskImage, 1번한것)
 	// inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), image_bin_inRange);	
 		inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), binImage);
-		maskImage = getBinImageByFloodfillAlgorism(maskImage, binImage);
+		maskImage = getBinImageByFloodfillAlgorism(maskImage_back, binImage);
 	}	// 
 
 
@@ -1073,9 +1105,9 @@ void analyzer::catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoP
 
 	//resize(binImage, binImage, cv::Size(binImage.cols * 0.6, binImage.rows * 0.6), 0, 0, cv::INTER_CUBIC);
 
-	//resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
+	resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
 
-	//threshold(binImage, binImage, 128, 255, THRESH_BINARY);
+	threshold(binImage, binImage, 128, 255, THRESH_BINARY);
 
 	imwrite(videoPath + "/Captures/Line" + to_string(lineNum) + "_Bin.jpg", binImage);
 }
@@ -1091,7 +1123,29 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 		targetImage = imageHandler::resizeImageToAnalize(targetImage);
 
 	Mat subImage = imageHandler::getSubtitleImage(targetImage);
-	Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);	
+	//Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
+	Mat justFullContrastImage = imageHandler::getFullyContrastImage(subImage);
+	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);
+	// justFullContrastImage에 sharpenContrastImage에 흰색인 곳의 좌표에 흰색처리함
+	Mat mixedImage = justFullContrastImage.clone();
+	Vec3b whiteColor;
+	whiteColor[0] = 255;
+	whiteColor[1] = 255;
+	whiteColor[2] = 255;
+
+	for (int row = 0; row < justFullContrastImage.rows; row++)
+	{
+		Vec3b* yPtr_target = sharpenContrastImage.ptr<Vec3b>(row); //
+		Vec3b* yPtr_destination = mixedImage.ptr<Vec3b>(row); //
+		for (int col = 0; col < justFullContrastImage.cols; col++)
+		{
+			Vec3b v3b = yPtr_target[col];
+			if (imageHandler::isWhite(v3b) == true)
+				yPtr_destination[col] = whiteColor;
+		}
+	}
+
+	Mat printImage = imageHandler::getPaintedBinImage_inner(mixedImage);
 
 	//Mat image_gray;
 	//cvtColor(subImage, image_gray, COLOR_BGR2GRAY);
@@ -1110,7 +1164,8 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 
 	Mat image_out;
 	//image_out = getBinImageByFloodfillAlgorism(image_floodFilled_AT2_Not, binCompositeImage);
-	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
+	//image_out = getBinImageByFloodfillAlgorism(subImage_hsv, binCompositeImage);
+	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, printImage);
 
 	image_out = imageHandler::getFloodProcessedImage(image_out, true);
 
@@ -1119,6 +1174,7 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 	//Mat image_close;
 	//morphologyEx(image_getBlue, image_close, MORPH_CLOSE, element5);	// Close 연산 (침식->팽창)
 	morphologyEx(image_out, image_out, MORPH_CLOSE, element);	// Open 연산  (팽창->침식)
+	//image_out = imageHandler::getMorphImage(image_out, MORPH_CLOSE);
 
 	return image_out;
 }
@@ -1296,6 +1352,7 @@ wstring analyzer::stringToWstring(const std::string& s)
 void analyzer::makeLyrics(string videoPath)
 {
 	vector<string> vecLyricLine;
+	vector<string> vecLyricLine_debug;
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		string lineFileName = videoPath + "/Lines/Line" + to_string(i) + ".txt";
@@ -1309,7 +1366,8 @@ void analyzer::makeLyrics(string videoPath)
 		Line* line = m_lyric.getLine(i);
 
 		line->text = ocredText;
-		line->splitLineTextToWord();
+		//line->splitLineTextToWord();
+		//wordCalibrationByOCRText(*line);
 
 		String startTime = videoHandler::frameToTime(line->startFrame, *videoCapture);
 		String endTime = videoHandler::frameToTime(line->endFrame, *videoCapture);
@@ -1320,30 +1378,44 @@ void analyzer::makeLyrics(string videoPath)
 		printf("Line%d: %s\r\n", i, lyricLine.c_str());
 
 		vecLyricLine.push_back(lyricLine);
+
+		startTime = to_string(line->startFrame);  
+		endTime = to_string(line->endFrame); 
+		lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
+		vecLyricLine_debug.push_back(lyricLine);
 	}
 
 	string filename = "Lyrics.txt";
 	fileManager::writeVector(filename, vecLyricLine);
+
+	filename = "Lyrics_debug.txt";
+	fileManager::writeVector(filename, vecLyricLine_debug);
 }
 
 void analyzer::makeLyrics_withWord()
 {
 	vector<string> vecLyricLine;
+	vector<string> vecLyricLine_debug;
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
 		for (int j = 0; j < line->words.size(); j++)
 		{
-			//String startTime = videoHandler::frameToTime(line->words[j].startFrame, *videoCapture);
-			//String endTime = videoHandler::frameToTime(line->words[j].endFrame, *videoCapture);
 			String startTime = to_string(line->words[j].startFrame);
 			String endTime = to_string(line->words[j].endFrame);
-
 			string stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
+			vecLyricLine_debug.push_back(stringLine);
+
+			startTime = videoHandler::frameToTime(line->words[j].startFrame, *videoCapture);
+			endTime = videoHandler::frameToTime(line->words[j].endFrame, *videoCapture);
+			stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
 			vecLyricLine.push_back(stringLine);
 		}
 	}
-	string filename = "Lyrics_withWord.txt";
+	string filename = "Lyrics_withWord_debug.txt";
+	fileManager::writeVector(filename, vecLyricLine_debug);
+
+	filename = "Lyrics_withWord.txt";
 	fileManager::writeVector(filename, vecLyricLine);
 }
 
@@ -1388,44 +1460,6 @@ Mat analyzer::getLyricMask(Mat imageToCopy, int startX, int endX)
 		}
 	}
 	return imageToCopy;
-}
-
-Mat analyzer::getSharpenAndContrastImage(int frameNum)
-{			// 빵구매꾸기 위해 두번 함
-	Mat sourceImg;
-	videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameNum - 1);
-	videoCapture->read(sourceImg);
-	if (sourceImg.rows != 720)
-		sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
-
-	sourceImg = imageHandler::getSubtitleImage(sourceImg);
-
-	Mat sharpenImage;
-	sharpenImage = getSharpenImage(sourceImg);
-	Mat contrastImage;
-	contrastImage = getFullyContrastImage(sharpenImage);
-
-	Mat reTouch;
-	GaussianBlur(contrastImage, reTouch, Size(3, 3), 2);
-	Mat sharpenImage1;
-	sharpenImage1 = getSharpenImage(reTouch);
-	Mat contrastImage1;
-	contrastImage1 = getFullyContrastImage(sharpenImage1);
-	
-	return contrastImage1;
-}
-
-Mat analyzer::getSharpenImage(Mat srcImage)
-{
-	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
-	// sharpen image using "unsharp mask" algorithm
-	Mat blurred;
-	GaussianBlur(srcImage, blurred, Size(), sigma, sigma);
-	Mat lowContrastMask = abs(srcImage - blurred) < threshold;
-	Mat sharpened = srcImage * (1 + amount) + blurred * (-amount);
-	//srcImage.copyTo(sharpened, lowContrastMask);
-
-	return sharpened;
 }
 
 Mat analyzer::getFullyContrastImage(Mat srcImage)
@@ -1758,11 +1792,12 @@ void analyzer::wordJudge()
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
-		line->getSpacingWordsFromMaskImage();	
+		//line->getSpacingWordsFromMaskImage();	
 
 		printf("Line%d : spacingWords : %d \r\n", i, line->spacingWords.size());
 
 		wordCalibration(*line);
+
 		//if (line->spacingWords.empty() == true)	// 스페이스바가 없는 라인
 		//	;
 		//else	// Word separting 해야함
@@ -1793,7 +1828,12 @@ void analyzer::wordCalibration(Line& line)
 	Mat subImage;
 	Mat beforeBinImage;
 	int rightistPoint = 0;
-	vector<pair<int, int>> paintedPoint;	// <frameNum, 진행도(x좌표)>
+	vector<pair<int, int>> paintedPoint;	// <frameNum, 진행도(x좌표)>	// out
+
+	paintedPoint = getPaintedPoint(line);	//
+
+	// getPaintedPoint
+	/*
 	int frameIndex = line.startFrame;
 	while (true)	// startFrame -> endFrame	// 한 라인의 진행도
 	{
@@ -1859,6 +1899,7 @@ void analyzer::wordCalibration(Line& line)
 		if (frameIndex > line.endFrame)
 			break;
 	}
+	*/
 	
 
 	// Line.spacingWord[x]보다 높은 값이 나오는 첫frame -> start
@@ -1901,6 +1942,170 @@ void analyzer::wordCalibration(Line& line)
 	line.words = words;
 }
 
+void analyzer::wordCalibrationByOCRText(Line& line)
+{
+	// Line space 구함
+	// 결과물 길이로 소팅
+	// line에 ' '의 개수만큼 space기준으로 word화 
+
+	vector<pair<int, int>> spaces;			// <start, end>
+	vector<pair<int, int>> spacesLength;	// <length, spaces_index>
+	vector<int> projection = imageHandler::getVerticalProjectionData(line.maskImage);	// [x]가 0이면 space
+	bool spaceZone = false;
+	int startPoint = 0;
+	int endPoint = 0;
+
+	for (int i = 0; i < projection.size(); i++)
+	{
+		if (projection[i] != 0)	// Not blackZone
+		{
+			if (spaceZone == true)	// blackZone -> Not BlackZone
+			{// save island
+				if (startPoint != 0)
+				{
+					spaces.push_back(make_pair(startPoint, i));
+					spacesLength.push_back(make_pair(i - startPoint, spaces.size() - 1));
+				}
+			}
+
+			spaceZone = false;
+		}
+		else // blackZone
+		{
+			if (spaceZone == false)	// Not blackZone -> blackZone
+			{	
+				startPoint = i;
+			}
+			//
+			spaceZone = true;
+		}
+	}
+
+	sort(spacesLength.begin(), spacesLength.end(), desc);	// 확인 요(Length로 sorting 되어야 함) YS
+
+	vector<string> tokens;
+	boost::split(tokens, line.text, boost::is_any_of(" ")); 
+	vector<Word> words;
+	for (int i = 0; i < tokens.size(); i++)
+	{
+		Word word;
+		if (tokens[i].find_first_not_of(' ') != std::string::npos)
+		{
+			// There's a non-space.
+			word.text = tokens[i];
+			words.push_back(word);
+		}
+	}	// 가사 먼저 넣음.
+
+	//vector<pair<int, int>> spacesLength_cut;	// <index, length>
+	//spacesLength_cut.assign(spacesLength.begin(), spacesLength.begin() + words.size());
+
+	for (int i = 0; i < words.size()-1; i++)	// token만큼의 스페이스바
+	{
+		int startFrame = spaces[spacesLength[i].second].first;  // [index].first
+		int endFrame = spaces[spacesLength[i].second].second;
+
+		line.spacingWords.push_back((endFrame-startFrame)/2 + startFrame);
+	}
+	sort(line.spacingWords.begin(), line.spacingWords.end());
+
+	vector<pair<int, int>> paintedPoint;
+	paintedPoint = getPaintedPoint(line);
+
+	// init
+	//for (int i = 0; i < line.spacingWords.size(); i++)
+	//{	// init
+	//	if (i == 0)	// 첫 워드
+	//		words[i].startFrame = line.startFrame;
+	//	else if (i == line.spacingWords.size()-1)	// 마지막 워드 
+	//		words[i].endFrame = line.endFrame;
+	//}
+	words[0].startFrame = line.startFrame;
+	words[words.size()-1].endFrame = line.endFrame;
+	//words.begin()->startFrame = line.startFrame;
+	//words.end()->startFrame = line.endFrame;
+
+	for (int i = 0; i < line.spacingWords.size(); i++)	// words[i], words[i+1]
+	{
+		int spacingWordX = line.spacingWords[i];		// spacingWords[0]의 끝프래임은 spacing[0]보다 작은 값 중 가장 큰 값.
+		printf("SpaceWord[%d] : %d\r\n", i, spacingWordX);
+		for (int j = 0; j < paintedPoint.size(); j++)
+		{
+			if (spacingWordX < paintedPoint[j].second)	// 띄어쓰기보다 커지는순간
+			{
+				if(words.size()>i)
+					words[i + 1].startFrame = paintedPoint[j].first;	// 다음 워드의 시작점
+				int offset = 1;
+				words[i].endFrame = paintedPoint[j - (offset)].first;	// 현재 워드의 끝점 ()
+				break;
+			}
+		}
+	}
+	line.words = words;
+	
+}
+
+vector<pair<int, int>> analyzer::getPaintedPoint(Line line)
+{
+	vector<pair<int, int>> paintedPoint;
+
+	Mat maskImage = line.maskImage;
+	Mat readImage;
+	Mat subImage;
+	int frameIndex = line.startFrame;
+	int rightistPoint = 0;
+	while (true)	// startFrame -> endFrame	// 한 라인의 진행도
+	{
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex - 1);
+		videoCapture->read(readImage);
+		if (readImage.rows != 720)
+			readImage = imageHandler::resizeImageToAnalize(readImage);
+		subImage = imageHandler::getSubtitleImage(readImage);
+		Mat binImage;
+
+		// start
+		Mat subImage_hsv;
+		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
+		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
+		bitwise_and(subImage_hsv, maskImage, binImage);	// 마스크 얻는방식 변경
+		// end
+
+
+		if (rightistPoint == 0)// init first value
+			rightistPoint = imageHandler::getLeftistWhitePixel_x(maskImage);
+		else
+			rightistPoint = imageHandler::getRightistWhitePixel_x(binImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
+
+		if (paintedPoint.empty())
+		{
+			paintedPoint.push_back(make_pair(frameIndex, rightistPoint));
+		}
+		else
+		{
+			if (paintedPoint.back().second >= rightistPoint)
+			{
+				;// paintedPoint.push_back(make_pair(frameIndex, paintedPoint.back().second));
+			}
+			else
+			{
+				paintedPoint.push_back(make_pair(frameIndex, rightistPoint));
+			}
+		}
+		printf("%d %d \r\n", paintedPoint.back().first, paintedPoint.back().second);
+
+		// diff 의 흰점으로 분석
+		// 의미있는 흰점중 가장 오른쪽점을 진행도로 함
+		// vector<pair<int, int>> paintedPoint; 에 정보를 모음	 ( pair<frame, xPoint> )
+		// (후처리 필요시 진행)
+
+		frameIndex++;
+		if (frameIndex > line.endFrame)
+			break;
+	}
+
+
+	return paintedPoint;
+}
 
 int analyzer::getWhitePixelAverage(Mat binImage)
 {

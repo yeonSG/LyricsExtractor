@@ -28,10 +28,15 @@ public:
 	static Mat getDifferenceImage(static Mat& binImageA, static Mat& binImageB);
 
 	static Mat getPaintedBinImage(static Mat& rgbImage);	
+	static Mat getPaintedBinImage_inner(static Mat& rgbImage);
 	static Mat getFullyContrastImage(Mat rgbImage);
+	static Mat getSharpenAndContrastImage(Mat rgbImage);
+	static Mat getSharpenImage(Mat srcImage);
+
 
 	static Mat cutColumByHistorgram(Mat binImage);
 	static Mat removeSubLyricLine(Mat binImage);
+	static Mat removeNotPrimeryLyricLine(Mat binImage);
 
 	static bool isWhite(const Vec3b& ptr);
 	static bool isBlack(const Vec3b& ptr);

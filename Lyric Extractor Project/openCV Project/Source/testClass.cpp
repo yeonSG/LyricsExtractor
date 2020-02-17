@@ -129,9 +129,9 @@ void testClass::test_Image3()
 
 }
 
-void testClass::test_Video()
+void testClass::test_Video(string videoPath)
 {
-	VideoCapture vc("movie.mp4");
+	VideoCapture vc(videoPath);
 	if (!vc.isOpened())
 	{
 		cout << "fail to open the video" << endl;
@@ -153,13 +153,25 @@ void testClass::test_Video()
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 -1);
+			curFrame -= 1;
 		else if (key == 'd')	// next frame
-			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
+			curFrame += 1;
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame+50-1);
+			curFrame += 50;
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame-50-1);
+			curFrame -= 50;
+		else if (key == 'r')	// +10th frame
+			curFrame += 10;
+		else if (key == 'f')	// -10th frame
+			curFrame -= 10;
+		else if (key == 'e')	// +500th frame
+			curFrame += 500;
+		else if (key == 'q')	// -500th frame
+			curFrame -= 500;
+		else if (key == '?')
+			videoHandler::printVideoSpec(vc);
+
+		vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
 	}
 	
 	vc.release();
@@ -978,6 +990,9 @@ void testClass::test_Video4(string videoPath)
 
 	Mat algorismMk1 = AlgolismMk1(fullContrastimage_NotBulr);
 	imshow("AlgolismMk1", algorismMk1);
+
+	Mat algorismMk2 = imageHandler::getPaintedBinImage_inner(fullContrastimage_NotBulr);
+	imshow("algorismMk2", algorismMk2);
 
 	Mat algoANDDiff;
 	bitwise_and(algorismMk1, DifferenceImage, algoANDDiff);

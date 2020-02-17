@@ -326,7 +326,7 @@ Mat imageHandler::getCompositeBinaryImagesBlue(Mat& subImage)
 	inRange(subImage, Scalar(140, 0, 0), Scalar(255, 40, 50), image_binIR_RGB_B);	// binarize by rgb
 
 	Mat image_binIR_HSV_B;
-	inRange(subImage_hsv, Scalar(118, 240, 100), Scalar(140, 255, 255), image_binIR_HSV_B);	// binarize by hsv
+	inRange(subImage_hsv, Scalar(118, 230, 100), Scalar(140, 255, 255), image_binIR_HSV_B);	// binarize by hsv
 
 	Mat image_binIR_HSV_B_Filterd = getFloodProcessedImage(image_binIR_HSV_B);
 	Mat image_binIR_RGB_B_Filterd = getFloodProcessedImage(image_binIR_RGB_B);
@@ -593,6 +593,209 @@ Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
 	return outImage;
 }
 
+/*
+	흰 파(빨) 흰 조합인 곳을 찾아냄
+*/
+Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
+{
+	Mat fullyContrastImage = getFullyContrastImage(rgbImage);
+
+	int height = fullyContrastImage.rows;
+	int width = fullyContrastImage.cols;
+	Mat outImage_row;
+	Mat outImage_col;
+	cvtColor(fullyContrastImage, outImage_row, COLOR_BGR2GRAY);
+	cvtColor(fullyContrastImage, outImage_col, COLOR_BGR2GRAY);
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage_col.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			bool isRight = false;	// 조건만족?
+
+			if(isBlue(yPtr_FCImage[x]) || isRed(yPtr_FCImage[x]))
+			//if (isWhite(yPtr_FCImage[x]))
+			{
+				bool targetColorisBlue;
+				if (isBlue(yPtr_FCImage[x]))
+					targetColorisBlue = true;
+				else
+					targetColorisBlue = false;
+
+				int count = 1;
+				int color_m = -1; // white=1, blue=2, red=3, other= -1    /// black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+				while (x - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x - count];
+
+					if( (isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue) )
+					{
+						count++;//x_m--;
+						if (count > 100)	// 파(빨)을 몇개까지 허용하는가
+							break;
+					}
+					else if (isWhite(v3p))
+					{
+						if (x - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x - (count + 1)]; 
+							if (isWhite(v3p_))
+							{
+								color_m = 1;	// white
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (x + count < width)	// 위쪽 색 확인
+				{
+					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+
+					if ((isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue))
+					{
+						count++;//x_m--;
+						if (count > 100)	// 파(빨)을 몇개까지 허용하는가
+							break;
+					}
+					else if (isWhite(v3p))
+					{
+						if (x + (count + 1) < width)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isWhite(v3p_))
+							{
+								color_p = 1;	
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+				
+				if((color_p == 1 && color_m == 1) || (color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
+					isRight = true;
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			else
+				yPtr[x] = 0;
+		}
+	}
+
+	// 열연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = outImage_row.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
+
+		for (int x = 0; x < width; x++)
+		{
+			if (isWhite(yPtr[x]))	// 이미 흰색인곳
+				continue;
+
+			bool isRight = false;	// 조건만족?
+			if (isBlue(yPtr_FCImage[x]) || isRed(yPtr_FCImage[x]))
+			{
+				bool targetColorisBlue;
+				if (isBlue(yPtr_FCImage[x]))
+					targetColorisBlue = true;
+				else
+					targetColorisBlue = false;
+
+				int count = 1;
+				int color_m = -1; // black==2, Blue,Red==1, other==-1
+				int color_p = -1;
+				while (y - count > 0)	// 아래쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y - count)[x];
+
+					if ( (isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue) )
+					{
+						count++;//x_m--;
+						if (count > 100)
+							break;
+					}
+					else if (isWhite(v3p))
+					{
+						if (y - (count + 1) > 0)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y - (count + 1))[x];//yPtr_FCImage[x - (count + 1)]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+							if (isWhite(v3p_))
+							{
+								color_m = 1;		// white
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_m = -1;	// Other Color
+						break;
+					}
+				}
+
+				count = 1;
+				while (y + count < height)	// 위쪽 색 확인
+				{
+					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
+					if ((isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue))
+					{
+						count++;//x_p++;
+						if (count > 100)
+							break;
+					}
+					else if (isWhite(v3p))
+					{
+						if (y + (count + 1) < height)	// 연속되는지 확인
+						{
+							Vec3b v3p_ = fullyContrastImage.ptr<Vec3b>(y + (count + 1))[x];//yPtr_FCImage[x + count + 1]; //FCImage.at<cv::Vec3b>(y, x + (count + 1));
+							if (isWhite(v3p_))
+							{
+								color_p = 1;	
+							}
+						}
+						break;
+					}
+					else
+					{
+						color_p = -1;	// Other Color
+						break;
+					}
+				}
+
+				if ((color_p == 1 && color_m == 1) || (color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
+					isRight = true;
+			}
+
+			if (isRight)	// 조건에 만족함
+				yPtr[x] = 255;
+			//else
+			//	yPtr[x] = 0;
+		}
+	}
+	Mat outimage;
+	bitwise_and(outImage_row, outImage_col, outimage);
+	threshold(outimage, outimage, 200, 255, THRESH_BINARY);
+
+	return outimage;
+}
+
 Mat imageHandler::getFullyContrastImage(Mat rgbImage)
 {
 	// RGB 분리
@@ -606,6 +809,36 @@ Mat imageHandler::getFullyContrastImage(Mat rgbImage)
 	Mat mergedImage;
 	merge(bgr, 3, mergedImage);
 return mergedImage;
+}
+
+Mat imageHandler::getSharpenAndContrastImage(Mat rgbImage)
+{			// 빵구매꾸기 위해 두번 함
+	Mat sharpenImage;
+	sharpenImage = getSharpenImage(rgbImage);
+	Mat contrastImage;
+	contrastImage = getFullyContrastImage(sharpenImage);
+
+	Mat reTouch;
+	GaussianBlur(contrastImage, reTouch, Size(3, 3), 2);
+	Mat sharpenImage1;
+	sharpenImage1 = getSharpenImage(reTouch);
+	Mat contrastImage1;
+	contrastImage1 = getFullyContrastImage(sharpenImage1);
+
+	return contrastImage1;
+}
+
+Mat imageHandler::getSharpenImage(Mat srcImage)
+{
+	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
+	// sharpen image using "unsharp mask" algorithm
+	Mat blurred;
+	GaussianBlur(srcImage, blurred, Size(), sigma, sigma);
+	Mat lowContrastMask = abs(srcImage - blurred) < threshold;
+	Mat sharpened = srcImage * (1 + amount) + blurred * (-amount);
+	//srcImage.copyTo(sharpened, lowContrastMask);
+
+	return sharpened;
 }
 
 // BinImage의 최소, 최대값 구한 후 해당 값 +-10 Vertical까지 자름
@@ -717,6 +950,81 @@ Mat imageHandler::removeSubLyricLine(Mat binImage)
 				}
 			}
 			return maskingImage;
+		}
+	}
+
+	return maskingImage;
+}
+
+Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
+{
+	vector<int> projection = getHorizontalProjectionData(binImage);
+
+	vector<pair<int, int>> islands;
+	vector<int> islandsVolum;
+
+	// 섬의 갯수 구함, 
+	// 섬이 2개 이상이면서, 가장 아래섬이 흰점수 2등 이면
+	// 보조 lyric으로 판별하여 2등 제거
+	/*	or 가장 큰 volume의 Lyric만 남김 */
+	bool blackZone = false;
+	int startPoint = 0;
+	int endPoint = 0;
+	int volume = 0;
+
+	for (int i = 0; i < projection.size(); i++)
+	{
+		if (projection[i] != 0)	// Not blackZone
+		{
+			if (blackZone == true)	// blackZone -> Not BlackZone
+			{
+				startPoint = i;
+			}
+
+			volume += projection[i];
+			blackZone = false;
+		}
+		else // blackZone
+		{
+			if (blackZone == false)	// Not blackZone -> blackZone
+			{	// save island
+				islands.push_back(make_pair(startPoint, i));
+				islandsVolum.push_back(volume);
+				volume = 0;
+			}
+			//
+			blackZone = true;
+		}
+	}
+
+	Mat maskingImage = binImage.clone();
+
+	if (islands.size() > 1)
+	{
+		int biggistIsland = 0;
+		int biggistIslandVolume = 0;
+		for (int i = 0; i < islandsVolum.size(); i++)
+		{
+			if (biggistIslandVolume < islandsVolum[i])
+			{
+				biggistIsland = i;
+				biggistIslandVolume = islandsVolum[i];
+			}
+		}
+
+		int primaryLyricStartPoint = islands[biggistIsland].first;
+		int primaryLyricEndPoint = islands[biggistIsland].second;
+
+		for (int i = 0; i < projection.size(); i++)
+		{
+			if (i<primaryLyricStartPoint || i> primaryLyricEndPoint)
+			{
+				for (int c = 0; c < maskingImage.cols; c++)
+				{
+					if (maskingImage.at<uchar>(i, c) != 0)	// (rows, cols)
+						floodFill(maskingImage, Point(c, i), 0);	// (cols, rows)
+				}
+			}
 		}
 	}
 
