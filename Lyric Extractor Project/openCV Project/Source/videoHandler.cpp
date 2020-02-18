@@ -133,9 +133,10 @@ bool videoHandler::setVideo(string videoPath)
 void videoHandler::closeVideo()
 {
 	if (videoCapture == nullptr)
-		;
+		return;
 	else if (videoCapture->isOpened())
 		videoCapture->release();
 
 	delete videoCapture;
+	videoCapture = nullptr;
 }

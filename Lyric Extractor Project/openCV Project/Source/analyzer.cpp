@@ -1214,6 +1214,7 @@ bool analyzer::setVideo(string videoPath)
 void analyzer::closeVideo()
 {
 	videoHandler::closeVideo();
+	videoCapture = nullptr;
 }
 
 Mat analyzer::getLyricMask(Mat imageToCopy, int startX, int endX)
