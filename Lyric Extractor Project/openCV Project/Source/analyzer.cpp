@@ -568,7 +568,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	int maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
 	int maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
 	int maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
-	int image_center_x = readImage.cols / 2;
+	int image_center_x = maskImage.cols / 2;
 
 	// 1. 마스크 노이즈 제거 
 	if ( (maskImage_middleDot_x > (image_center_x)+10) || (maskImage_middleDot_x < (image_center_x)-10) )
@@ -1010,7 +1010,7 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
-	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
+	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨 (단색)
 
 	Mat image_out;
 	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, printImage);
