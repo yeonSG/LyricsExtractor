@@ -13,6 +13,7 @@ void analyzer::initVariables()
 	vecWhitePixelChangedCounts.clear();
 
 	m_lyric.init();
+	videoHandler::closeVideo();
 
 }
 
@@ -26,18 +27,22 @@ int analyzer::getContourCount(Mat cannyImage)
 
 bool analyzer::videoAnalization(string videoPath)
 {
+	initVariables();
+
 	if (!setVideo(videoPath))
 	{
 		return false;
+	}	
+	videoCapture = videoHandler::getVideoCapture();
+	if (videoCapture == nullptr)
+	{
+		return false;
 	}
-	
-	initVariables();
 
 	//Mat readImage, maskImage;	// Debug
 	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)4906 - 1);
 	//videoCapture->read(readImage);
-	//if (readImage.rows != 720)
-	//	readImage = imageHandler::resizeImageToAnalize(readImage);
+	//	readImage = imageHandler::getResizeAndSubtitleImage(readImage);
 	//maskImage = imageToSubBinImage(readImage);
 	//imageHandler::getNoiseRemovedImage(maskImage, true);
 	//maskImage = imageHandler::removeSubLyricLine(maskImage);
@@ -59,11 +64,8 @@ bool analyzer::videoAnalization(string videoPath)
 		videoHandler::printCurrentFrameSpec(*videoCapture);
 		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
-
-		if (orgImage.rows != 720)
-			orgImage = imageHandler::resizeImageToAnalize(orgImage);
-
-		subImage = imageHandler::getSubtitleImage(orgImage);
+		
+		subImage = imageHandler::getResizeAndSubtitleImage(orgImage); 
 
 		//binImage = imageHandler::getCompositeBinaryImages(subImage);	// 파빨간색으로 
 
@@ -156,12 +158,8 @@ bool analyzer::videoAnalization1(string videoPath)
 	while (videoCapture->read(orgImage))
 	{
 		videoHandler::printCurrentFrameSpec(*videoCapture);
-
-		if (orgImage.rows != 720)
-			orgImage = imageHandler::resizeImageToAnalize(orgImage);
-
-		subImage = imageHandler::getSubtitleImage(orgImage);
 		
+		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
 		paintedBinImage = imageHandler::getPaintedBinImage(subImage);
 		vecPaintedPixelCounts.push_back(imageHandler::getWihtePixelCount(paintedBinImage));	// 픽셀 수 구함
@@ -498,10 +496,8 @@ void analyzer::calibrateLines()
 			Mat sourceImg;
 			videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->startFrame - 2);
 			videoCapture->read(sourceImg);
-			if (sourceImg.rows != 720)
-				sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
 
-			sourceImg = imageHandler::getSubtitleImage(sourceImg);
+			sourceImg = imageHandler::getResizeAndSubtitleImage(sourceImg);
 
 			Mat newMaskImage = imageHandler::getSharpenAndContrastImage(sourceImg); // 1. 라인 시작지점으로 마스크 얻음
 								// 1-1. get ContrastImage
@@ -518,10 +514,8 @@ void analyzer::calibrateLines()
 	// 3. and 연산 
 			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 1 )- 1);
 			videoCapture->read(sourceImg);
-			if (sourceImg.rows != 720)
-				sourceImg = imageHandler::resizeImageToAnalize(sourceImg);
 
-			sourceImg = imageHandler::getSubtitleImage(sourceImg);
+			sourceImg = imageHandler::getResizeAndSubtitleImage(sourceImg);
 			Mat fullyContrastImage = getFullyContrastImage(sourceImg);
 			Mat fullyContrastImage_white;
 			inRange(fullyContrastImage, Scalar(250, 250, 250), Scalar(255, 255, 255), fullyContrastImage_white);
@@ -564,8 +558,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	Mat readImage;
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)endFrame-1);
 	videoCapture->read(readImage);
-	if (readImage.rows != 720)
-		readImage = imageHandler::resizeImageToAnalize(readImage);
+
 	maskImage = imageToSubBinImage(readImage);	
 	maskImage = imageHandler::getNoiseRemovedImage(maskImage, true);
 	Mat maskImage_back = maskImage.clone();
@@ -630,10 +623,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex-1);	// frameIndex-1
 		videoCapture->read(readImage);
 
-		if (readImage.rows != 720)
-			readImage = imageHandler::resizeImageToAnalize(readImage);
-			
-		Mat subImage = imageHandler::getSubtitleImage(readImage);
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(readImage); 
 		Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
 		Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
@@ -688,10 +678,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)startFrame - 2);	// frameIndex-1
 		videoCapture->read(readImage);
 
-		if (readImage.rows != 720)
-			readImage = imageHandler::resizeImageToAnalize(readImage);
-
-		subImage = imageHandler::getSubtitleImage(readImage);
+		subImage = imageHandler::getResizeAndSubtitleImage(readImage);
 		// 1. 흰색의 이진화한 이미지 구함
 		// 2. floodfill (maskImage, 1번한것)
 	// inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), image_bin_inRange);	
@@ -992,10 +979,7 @@ void analyzer::catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoP
 /// <returns></returns>
 Mat analyzer::imageToSubBinImage(Mat targetImage)
 {
-	if (targetImage.rows != 720)
-		targetImage = imageHandler::resizeImageToAnalize(targetImage);
-
-	Mat subImage = imageHandler::getSubtitleImage(targetImage);
+	Mat subImage = imageHandler::getResizeAndSubtitleImage(targetImage);
 	//Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
 	Mat justFullContrastImage = imageHandler::getFullyContrastImage(subImage);
 	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);	// YSYS
@@ -1224,28 +1208,12 @@ wstring analyzer::stringToWstring(const std::string& s)
 
 bool analyzer::setVideo(string videoPath)
 {
-	videoCapture = new VideoCapture(videoPath);
-	if (!videoCapture->isOpened())
-	{
-		cout << "fail to open the video" << endl;
-		return false;
-	}
-	boost::filesystem::path p(videoPath);
-	fileManager::videoName = p.filename().string();
-
-	video_Frame = (int)videoCapture->get(CAP_PROP_FRAME_COUNT);
-	video_Width = (int)videoCapture->get(CAP_PROP_FRAME_WIDTH);
-	video_Height = (int)videoCapture->get(CAP_PROP_FRAME_HEIGHT);
-
-	return true;
+	return videoHandler::setVideo(videoPath);
 }
 
 void analyzer::closeVideo()
 {
-	if(videoCapture->isOpened())
-		videoCapture->release();
-
-	delete videoCapture;
+	videoHandler::closeVideo();
 }
 
 Mat analyzer::getLyricMask(Mat imageToCopy, int startX, int endX)
@@ -1512,9 +1480,7 @@ vector<pair<int, int>> analyzer::getPaintedPoint(Line line)
 	{
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex - 1);
 		videoCapture->read(readImage);
-		if (readImage.rows != 720)
-			readImage = imageHandler::resizeImageToAnalize(readImage);
-		subImage = imageHandler::getSubtitleImage(readImage);
+		subImage = imageHandler::getResizeAndSubtitleImage(readImage);
 		Mat binImage;
 
 		// start

@@ -85,9 +85,6 @@ public:
 
 public:
 	VideoCapture *videoCapture;		// move to class videoHandler
-	int video_Frame;
-	int video_Width;
-	int video_Height;
 
 	vector<int> vecWhitePixelCounts;			// 프래임 별 흰색 개수
 	vector<int> vecWhitePixelChangedCounts;		// 이전 프래임 대비 흰색 변화량

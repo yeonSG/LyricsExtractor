@@ -19,10 +19,7 @@ public:
 
 
 public:
-	VideoCapture *videoCapture;	// videoHandler.class 로 옮겨
-	int video_Frame;
-	int video_Width;
-	int video_Height;
+	VideoCapture *videoCapture;
 	
 	vector<int> vecPaintedPixelCounts;		// 라인 판단용 변수
 };

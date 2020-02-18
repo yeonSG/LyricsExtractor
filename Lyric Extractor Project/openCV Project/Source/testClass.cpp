@@ -131,23 +131,21 @@ void testClass::test_Image3()
 
 void testClass::test_Video(string videoPath)
 {
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if(!videoHandler::setVideo(videoPath))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
 
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 
 		imshow("Video", orgImage);
 
-		videoHandler::printCurrentFrameSpec(vc);
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 		int key = waitKey(0);
 		if (key == KEY_ESC)
@@ -169,12 +167,12 @@ void testClass::test_Video(string videoPath)
 		else if (key == 'q')	// -500th frame
 			curFrame -= 500;
 		else if (key == '?')
-			videoHandler::printVideoSpec(vc);
+			videoHandler::printVideoSpec();
 
-		vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
 	}
 	
-	vc.release();
+	vc->release();
 
 }
 
@@ -187,16 +185,14 @@ void testClass::test_Video_CountContours()
 	// 5. contouring
 	// 6. pirnt contour Count
 	// 7. Contours 겟수 분석하여 가사가 시작되는 시간 - 가사가 끝나는 시간 배열에 저장 (시간 또는 프레임번호)
-	VideoCapture vc("movie.mp4");
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("movie.mp4"))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		// 2. 가사부분만 자름 (임시 고정값 사용)
 		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
@@ -248,24 +244,24 @@ void testClass::test_Video_CountContours()
 
 			   
 		imshow("Video", image_canny);
-		videoHandler::printCurrentFrameSpec(vc);
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 		//int key = waitKey(1);
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 	}
 
-	vc.release();
+	vc->release();
 
 }
 
@@ -278,17 +274,16 @@ void testClass::test_Video_CountContours2()
 	// 5. contouring
 	// 6. pirnt contour Count
 	// 7. Contours 겟수 분석하여 가사가 시작되는 시간 - 가사가 끝나는 시간 배열에 저장 (시간 또는 프레임번호)
-	VideoCapture vc("movie.mp4");
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("vie.mp4"))
 		return;
-	}
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 	
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
 
 	Mat orgImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		// 2. 가사부분만 자름 (임시 고정값 사용)
 		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
@@ -327,20 +322,20 @@ void testClass::test_Video_CountContours2()
 		graph = getVerticalProjection(image_gray_bin);
 		imshow("graph", graph);
 
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
-		videoHandler::printCurrentFrameSpec(vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
 
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 	}
 }
 
@@ -354,16 +349,14 @@ void testClass::test_Video_CountContours3()
 	// 5. contouring (태두리 검출, 의미있는 태두리만 남김[일정 크기, x,y축이 벗어나지 않는 것 등등] )
 	// 6. pirnt contour Count : 
 	// 7. 
-	VideoCapture vc("movie1.mp4");
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("movie1.mp4"))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		// 2. 가사부분만 자름 (임시 고정값 사용)
 		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
@@ -432,24 +425,24 @@ void testClass::test_Video_CountContours3()
 
 		imshow("image_canny", image_canny);
 		imshow("image_contours", image_contours);
-		videoHandler::printCurrentFrameSpec(vc);
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 		//int key = waitKey(1);
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 	}
 
-	vc.release();
+	vc->release();
 
 }
 
@@ -458,16 +451,14 @@ void testClass::test_Video_CountContours3()
 */
 void testClass::test_Video_GetContourMask()
 {
-	VideoCapture vc("movie1.mp4");
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("movie1.mp4"))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
 		Mat subImage = orgImage(subRect);
@@ -580,42 +571,40 @@ void testClass::test_Video_GetContourMask()
 
 		imshow("image_canny", image_canny);
 		imshow("image_contours", image_contours);
-		videoHandler::printCurrentFrameSpec(vc);
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 		//int key = waitKey(1);
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 		else if (key == 'r')	// +10th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 10 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 10 - 1);
 		else if (key == 'f')	// -10th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 10 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 10 - 1);
 	}
 
-	vc.release();
+	vc->release();
 }
 
 void testClass::test_Video_GetContourMask2(string videoPath)
 {
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo(videoPath))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		orgImage = imageHandler::resizeImageToAnalize(orgImage);
 		Rect subRect(0, SUBTITLEAREA_Y, orgImage.cols, SUBTITLEAREA_LENGTH);	// sub_start_y, sub_length
@@ -777,50 +766,47 @@ void testClass::test_Video_GetContourMask2(string videoPath)
 		imshow("image_sontursFilterAlgorism2_floodfile", image_sontursFilterAlgorism2_floodfile);
 
 
-		videoHandler::printCurrentFrameSpec(vc);
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 		//int key = waitKey(1);
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 		else if (key == 'r')	// +10th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 10 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 10 - 1);
 		else if (key == 'f')	// -10th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 10 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 10 - 1);
 		else if (key == 'e')	// +500th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 500 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 500 - 1);
 		else if (key == 'q')	// -500th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 500 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 500 - 1);
 		else if (key == '?')
-			videoHandler::printVideoSpec(vc);
+			videoHandler::printVideoSpec();
 	}
 
-	vc.release();
+	vc->release();
 }
 
 void testClass::test_Video3()
 {
-	VideoCapture vc("movie1.mp4");
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("movie1.mp4"))
 		return;
-	}
-
-	videoHandler::printVideoSpec(vc);
-
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
+	
 	Mat orgImage;
 	Mat beforeBinImage;
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
 		// 2. 가사부분만 자름 (임시 고정값 사용)
 		Rect subRect(0, 475, orgImage.cols, SUBTITLEAREA_LENGTH);
@@ -872,20 +858,20 @@ void testClass::test_Video3()
 			imshow("graph_rows", graph_Rows);
 		}
 
-		int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
-		videoHandler::printCurrentFrameSpec(vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+		videoHandler::printCurrentFrameSpec(*vc);
 
 		int key = waitKey(0);
 		if (key == KEY_ESC)
 			break;
 		else if (key == 'a')	// before frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1 - 1);
 		else if (key == 'd')	// next frame
 			; // vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 1);
 		else if (key == 'w')	// +50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame + 50 - 1);
 		else if (key == 's')	// -50th frame
-			vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
+			vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 50 - 1);
 
 		beforeBinImage = adopt.clone();
 	}
@@ -894,13 +880,11 @@ void testClass::test_Video3()
 void testClass::test_Video4(string videoPath)
 {
 	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
-	VideoCapture vc(videoPath);
-	if (!vc.isOpened())
-	{
-		cout << "fail to open the video" << endl;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo("movie.mp4"))
 		return;
-	}
-	videoHandler::printVideoSpec(vc);
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
 	Mat stackBinImage;
@@ -911,15 +895,15 @@ void testClass::test_Video4(string videoPath)
 //	Mat asd = imageHandler::getNoiseRemovedImage(testmask, false);
 	//bitwise_not(testmask, testmask);
 
-	while (vc.read(orgImage))
+	while (vc->read(orgImage))
 	{
-	videoHandler::printCurrentFrameSpec(vc);
-	int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
+	videoHandler::printCurrentFrameSpec(*vc);
+	int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
 
 	if (orgImage.rows != 720)
 		orgImage = imageHandler::resizeImageToAnalize(orgImage);
 	
-	Mat subImage = imageHandler::getSubtitleImage(orgImage);
+	Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 	imshow("subImage", subImage);
 
 	Mat testbinImage = imageHandler::getPaintedBinImage(subImage);
@@ -1047,7 +1031,7 @@ void testClass::test_Video4(string videoPath)
 	else if (key == 'q')	// -500th frame
 		curFrame -= 500;
 	else if (key == '?')
-		videoHandler::printVideoSpec(vc);
+		videoHandler::printVideoSpec();
 	else if (key == '7')
 		sigma+=1;
 	else if (key == '4')
@@ -1063,14 +1047,14 @@ void testClass::test_Video4(string videoPath)
 	else if( key== '0')
 		sigma = 5, threshold = 0, amount = 5;
 
-	vc.set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+	vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
 	printf("sigma=%f, threshold=%f, amount=%f\r\n", sigma, threshold, amount);
 
 	FCImage_before = fullContrastimage_NotBulr.clone();
 	bin_before = fullContrastimage_NotBulr_bin.clone();
 	}
 
-vc.release();
+vc->release();
 }
 
 Mat testClass::getFullContrastIMage(Mat srcImage)
@@ -1460,30 +1444,6 @@ Mat testClass::AlgolismMk1(Mat FCImage)
 	return outImage;
 }
 
-void testClass::print_videoSpec(VideoCapture vc)
-{
-	double fps = vc.get(CAP_PROP_FPS);
-	int frameCount = vc.get(CAP_PROP_FRAME_COUNT);
-	int frameWidth = vc.get(CAP_PROP_FRAME_WIDTH);
-	int frameHeight = vc.get(CAP_PROP_FRAME_HEIGHT);
-
-	printf("Video fps			: %f \r\n", fps);
-	printf("Video frameCount	: %d \r\n", frameCount);
-	printf("Video frameWidth	: %d \r\n", frameWidth);
-	printf("Video frameHeight	: %d \r\n", frameHeight);
-	printf("Video expected length : %d \r\n", frameCount);
-}
-
-void testClass::print_currentFrameSpec(VideoCapture vc)
-{
-	double curMsec = vc.get(CAP_PROP_POS_MSEC);
-	int curSec = curMsec / 1000;
-	int curMin = curSec % 60;
-	int curFrame = (int)vc.get(CAP_PROP_POS_FRAMES);
-
-	printf("current time(msec)	: %02d:%02d.%03d(%.0f) \r\n", curMin, curSec, ((int)curMsec)%1000 , curMsec);
-	printf("current frame	: %.0d \r\n", curFrame);
-}
 
 void testClass::saveImage(Mat image)
 {

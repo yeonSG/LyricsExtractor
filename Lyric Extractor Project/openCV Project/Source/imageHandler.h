@@ -12,6 +12,7 @@ public:
 	// imageHander & ImageProcesser 
 	static Mat resizeImageToAnalize(static Mat& sourceImage);
 	static Mat getSubtitleImage(static Mat& sourceImage);
+	static Mat getResizeAndSubtitleImage(static Mat& sourceImage);
 	static Mat getBinaryImage(static Mat& sourceImage);
 	static Mat getBlueColorFilteredBinaryImage(static Mat& sourceImage);
 	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);

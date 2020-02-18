@@ -69,8 +69,6 @@ public:
 		
 
 
-	void print_videoSpec(VideoCapture vc);
-	void print_currentFrameSpec(VideoCapture vc);
 	void saveImage(Mat image);
 
 	Mat makeGrayscaleWithOneColor(Mat sourceImage, Color color);

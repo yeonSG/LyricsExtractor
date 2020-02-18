@@ -1,22 +1,57 @@
 #include "videoHandler.h"
 
-void videoHandler::printVideoSpec(VideoCapture vc)
-{
-	if (!vc.isOpened())
-	{
-		printf("video is not opened\r\n");
-		return;
-	}
-	double fps = vc.get(CAP_PROP_FPS);
-	int frameCount = vc.get(CAP_PROP_FRAME_COUNT);
-	int frameWidth = vc.get(CAP_PROP_FRAME_WIDTH);
-	int frameHeight = vc.get(CAP_PROP_FRAME_HEIGHT);
+VideoCapture* videoHandler::videoCapture = nullptr;
 
-	printf("Video fps			: %f \r\n", fps);
-	printf("Video frameCount	: %d \r\n", frameCount);
-	printf("Video frameWidth	: %d \r\n", frameWidth);
-	printf("Video frameHeight	: %d \r\n", frameHeight);
-	printf("Video expected length : %d \r\n", frameCount);
+double videoHandler::getVideoFPS()
+{
+	if (videoCapture->isOpened())
+	{
+		double fps = videoCapture->get(CAP_PROP_FPS);
+		return fps;
+	}
+	else
+		return 0;
+}
+
+int videoHandler::getVideoFrameCount()
+{
+	if (videoCapture->isOpened())
+	{
+		double fps = videoCapture->get(CAP_PROP_FRAME_COUNT);
+		return fps;
+	}
+	else
+		return 0;
+}
+
+int videoHandler::getVideoWidth()
+{
+	if (videoCapture->isOpened())
+	{
+		double fps = videoCapture->get(CAP_PROP_FRAME_WIDTH);
+		return fps;
+	}
+	else
+		return 0;
+}
+
+int videoHandler::getVideoHeight()
+{
+	if (videoCapture->isOpened())
+	{
+		double fps = videoCapture->get(CAP_PROP_FRAME_HEIGHT);
+		return fps;
+	}
+	else
+		return 0;
+}
+
+void videoHandler::printVideoSpec()
+{
+	printf("Video fps			: %f \r\n", getVideoFPS());
+	printf("Video frameCount	: %d \r\n", getVideoFrameCount());
+	printf("Video frameWidth	: %d \r\n", getVideoWidth());
+	printf("Video frameHeight	: %d \r\n", getVideoHeight());
 }
 
 void videoHandler::printCurrentFrameSpec(VideoCapture vc)
@@ -61,4 +96,46 @@ String videoHandler::frameToTime(int frame, VideoCapture& vc)
 	String buffAsString = buff;
 
 	return buffAsString;
+}
+
+VideoCapture* videoHandler::getVideoCapture()
+{
+	if (videoCapture == nullptr)
+	{
+		printf("videoCapture is Null\r\n");
+		return nullptr;
+	}
+	else if(!videoCapture->isOpened())
+	{
+		printf("videoCapture is notOpened\r\n");
+		return nullptr;
+	}
+	else if (videoCapture->isOpened())
+		return videoCapture;
+}
+
+bool videoHandler::setVideo(string videoPath)
+{
+	videoCapture = new VideoCapture(videoPath);
+	if (!videoCapture->isOpened())
+	{
+		cout << "fail to open the video" << endl;
+		return false;
+	}
+	boost::filesystem::path p(videoPath);
+	fileManager::videoName = p.filename().string();
+
+	printVideoSpec();
+
+	return true;
+}
+
+void videoHandler::closeVideo()
+{
+	if (videoCapture == nullptr)
+		;
+	else if (videoCapture->isOpened())
+		videoCapture->release();
+
+	delete videoCapture;
 }

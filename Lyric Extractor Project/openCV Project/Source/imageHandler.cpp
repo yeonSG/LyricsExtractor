@@ -30,6 +30,13 @@ Mat imageHandler::getSubtitleImage(Mat& sourceImage)
 	return subImage;
 }
 
+Mat imageHandler::getResizeAndSubtitleImage(Mat& sourceImage)
+{
+	Mat resizedMat = resizeImageToAnalize(sourceImage);
+	Mat subImage = getSubtitleImage(resizedMat);
+	return subImage;
+}
+
 /// <summary>
 /// thresold 함수로 이진화 한 이미지 반환.
 /// </summary>
