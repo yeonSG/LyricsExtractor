@@ -42,3 +42,60 @@ void lyric::removeInvalidLines()
 		lineCount++;
 	}
 }
+
+void lyric::writeLyricFile(VideoCapture* videoCapture)
+{
+	vector<string> vecLyricLine;
+	vector<string> vecLyricLine_debug;
+	for (int i = 0; i < getLinesSize(); i++)
+	{
+		Line* line = getLine(i);
+
+		String startTime = videoHandler::frameToTime(line->startFrame, *videoCapture);
+		String endTime = videoHandler::frameToTime(line->endFrame, *videoCapture);
+
+		string lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
+
+		vecLyricLine.push_back(lyricLine);
+
+		startTime = to_string(line->startFrame);
+		endTime = to_string(line->endFrame);
+		lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
+		vecLyricLine_debug.push_back(lyricLine);
+	}
+
+	string filename = "Lyrics.txt";
+	fileManager::writeVector(filename, vecLyricLine);
+
+	filename = "Lyrics_debug.txt";
+	fileManager::writeVector(filename, vecLyricLine_debug);
+}
+
+void lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
+{
+	printf("save _withWord file (%dLines)\r\n", getLinesSize());
+
+	vector<string> vecLyricLine;
+	vector<string> vecLyricLine_debug;
+	for (int i = 0; i < getLinesSize(); i++)
+	{
+		Line* line = getLine(i);
+		for (int j = 0; j < line->words.size(); j++)
+		{
+			String startTime = to_string(line->words[j].startFrame);
+			String endTime = to_string(line->words[j].endFrame);
+			string stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
+			vecLyricLine_debug.push_back(stringLine);
+
+			startTime = videoHandler::frameToTime(line->words[j].startFrame, *videoCapture);
+			endTime = videoHandler::frameToTime(line->words[j].endFrame, *videoCapture);
+			stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
+			vecLyricLine.push_back(stringLine);
+		}
+	}
+	string filename = "Lyrics_withWord_debug.txt";
+	fileManager::writeVector(filename, vecLyricLine_debug);
+
+	filename = "Lyrics_withWord.txt";
+	fileManager::writeVector(filename, vecLyricLine);
+}

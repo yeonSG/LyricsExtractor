@@ -13,6 +13,7 @@ void analyzer::initVariables()
 	vecWhitePixelChangedCounts.clear();
 
 	m_lyric.init();
+
 }
 
 int analyzer::getContourCount(Mat cannyImage)
@@ -32,7 +33,7 @@ bool analyzer::videoAnalization(string videoPath)
 	
 	initVariables();
 
-	//Mat readImage, maskImage;	// debug
+	//Mat readImage, maskImage;	// Debug
 	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)4906 - 1);
 	//videoCapture->read(readImage);
 	//if (readImage.rows != 720)
@@ -123,7 +124,8 @@ bool analyzer::videoAnalization(string videoPath)
 	captureLines(fileManager::getSavePath());
 	capturedLinesToText(fileManager::getSavePath());
 
-	makeLyrics(fileManager::getSavePath());
+	readLyricsFromFile(fileManager::getSavePath());
+	m_lyric.writeLyricFile(videoCapture);
 
 	// new wordCalibration..
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
@@ -131,7 +133,7 @@ bool analyzer::videoAnalization(string videoPath)
 		wordCalibrationByOCRText(*m_lyric.getLine(i));
 	}
 
-	makeLyrics_withWord();
+	m_lyric.writeLyric_withWordFile(videoCapture);
 
 	closeVideo();
 	return true;
@@ -478,6 +480,8 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+		if (i == 9)
+			i = 9;
 		
 		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
 		{
@@ -1015,7 +1019,10 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 	}
 
 	Mat printImage = imageHandler::getPaintedBinImage_inner(mixedImage);
-	printImage = imageHandler::getMorphImage(printImage, MORPH_ERODE);
+	//printImage = imageHandler::getMorphImage(printImage, MORPH_ERODE);
+	/*
+		
+	*/
 
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
@@ -1180,6 +1187,24 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	//ExitProcess(0);
 }
 
+void analyzer::readLyricsFromFile(string videoPath)
+{
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
+	{
+		string lineFileName = videoPath + "/Lines/Line" + to_string(i) + ".txt";
+		if (fileManager::isExist(lineFileName) != true)
+		{
+			printf("%s is not exist. \r\n", lineFileName.c_str());
+			continue;
+		}
+		string ocredText;
+		fileManager::readLine(lineFileName, ocredText);
+		Line* line = m_lyric.getLine(i);
+
+		line->text = ocredText;
+	}
+}
+
 /// <summary>
 /// std::string to std::wstring 
 /// </summary>
@@ -1195,80 +1220,6 @@ wstring analyzer::stringToWstring(const std::string& s)
 	std::wstring r(buf);
 	delete[] buf;
 	return r;
-}
-
-/// <summary>
-/// line의 text 파일을 종합하여 .lrc 포맷의 파일로 반환.
-/// </summary>
-/// <param name="videoPath">The video path.</param>
-void analyzer::makeLyrics(string videoPath)
-{
-	vector<string> vecLyricLine;
-	vector<string> vecLyricLine_debug;
-	for (int i = 0; i < m_lyric.getLinesSize(); i++)
-	{
-		string lineFileName = videoPath + "/Lines/Line" + to_string(i) + ".txt";
-		if (fileManager::isExist(lineFileName) != true)
-		{
-			printf("%s is not exist. \r\n", lineFileName.c_str());
-			continue;
-		}
-		string ocredText;
-		fileManager::readLine(lineFileName, ocredText);
-		Line* line = m_lyric.getLine(i);
-
-		line->text = ocredText;
-		//line->splitLineTextToWord();
-		//wordCalibrationByOCRText(*line);
-
-		String startTime = videoHandler::frameToTime(line->startFrame, *videoCapture);
-		String endTime = videoHandler::frameToTime(line->endFrame, *videoCapture);
-
-		//string lyricLine = "[" + to_string(lines[i].first) + "]\t" + line + "\t[" + to_string(lines[i].second) + "]";
-		string lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
-
-		printf("Line%d: %s\r\n", i, lyricLine.c_str());
-
-		vecLyricLine.push_back(lyricLine);
-
-		startTime = to_string(line->startFrame);  
-		endTime = to_string(line->endFrame); 
-		lyricLine = "[" + startTime + "]\t" + line->text + "\t[" + endTime + "]";
-		vecLyricLine_debug.push_back(lyricLine);
-	}
-
-	string filename = "Lyrics.txt";
-	fileManager::writeVector(filename, vecLyricLine);
-
-	filename = "Lyrics_debug.txt";
-	fileManager::writeVector(filename, vecLyricLine_debug);
-}
-
-void analyzer::makeLyrics_withWord()
-{
-	vector<string> vecLyricLine;
-	vector<string> vecLyricLine_debug;
-	for (int i = 0; i < m_lyric.getLinesSize(); i++)
-	{
-		Line* line = m_lyric.getLine(i);
-		for (int j = 0; j < line->words.size(); j++)
-		{
-			String startTime = to_string(line->words[j].startFrame);
-			String endTime = to_string(line->words[j].endFrame);
-			string stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
-			vecLyricLine_debug.push_back(stringLine);
-
-			startTime = videoHandler::frameToTime(line->words[j].startFrame, *videoCapture);
-			endTime = videoHandler::frameToTime(line->words[j].endFrame, *videoCapture);
-			stringLine = to_string(i) + "\t" + to_string(j) + "\t[" + startTime + "]\t[" + endTime + "]\t" + line->words[j].text;
-			vecLyricLine.push_back(stringLine);
-		}
-	}
-	string filename = "Lyrics_withWord_debug.txt";
-	fileManager::writeVector(filename, vecLyricLine_debug);
-
-	filename = "Lyrics_withWord.txt";
-	fileManager::writeVector(filename, vecLyricLine);
 }
 
 bool analyzer::setVideo(string videoPath)
@@ -1331,7 +1282,6 @@ Mat analyzer::getFullyContrastImage(Mat srcImage)
 
 /*
 	보풀 제거 : 특점 흰점의 좌우 또는 위아래가 흑색인 경우 흑색으로 변경 and HSV필터링 한 이미지가 흰색이 아닌 경우
-
 */
 Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 {
@@ -1381,15 +1331,10 @@ void analyzer::wordJudge()
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
-		//line->getSpacingWordsFromMaskImage();	
 
 		printf("Line%d : spacingWords : %d \r\n", i, line->spacingWords.size());
 
 		wordCalibration(*line);
-
-
-	
-
 	}
 
 }
@@ -1410,77 +1355,7 @@ void analyzer::wordCalibration(Line& line)
 	vector<pair<int, int>> paintedPoint;	// <frameNum, 진행도(x좌표)>	// out
 
 	paintedPoint = getPaintedPoint(line);	//
-
-	// getPaintedPoint
-	/*
-	int frameIndex = line.startFrame;
-	while (true)	// startFrame -> endFrame	// 한 라인의 진행도
-	{
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)frameIndex - 1);
-		videoCapture->read(readImage);
-		if (readImage.rows != 720)
-			readImage = imageHandler::resizeImageToAnalize(readImage);
-		subImage = imageHandler::getSubtitleImage(readImage);
-		Mat binImage;
-
-		// start
-		//Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
-		//inRange(fullyContrastImage, Scalar(254, 254, 254), Scalar(255, 255, 255), binImage);
-		// end
-
-		// start
-		Mat subImage_hsv;
-		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
-		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
-		bitwise_and(subImage_hsv, maskImage, binImage);	// 마스크 얻는방식 변경
-		// end
-
-		//if (beforeBinImage.empty())
-		//	beforeBinImage = binImage;
-
-		//Mat diffBinImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
-		//bitwise_and(diffBinImage, line.maskImage, diffBinImage);
-
-		if (rightistPoint == 0)// init first value
-			rightistPoint = imageHandler::getLeftistWhitePixel_x(maskImage);
-		//rightistPoint = imageHandler::getRightistWhitePixel_x(diffBinImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
-		rightistPoint = imageHandler::getRightistWhitePixel_x(binImage, rightistPoint, 200, 3);  // getRightistWhitePixel_x( diffBinImage, 관심영역x축, 타겟+x축(약 15pix), 3);
-
-		//Mat diffBinMorphImage = imageHandler::getMorphImage(diffBinImage, MORPH_ERODE);	// 느린 진행시 삭제됨..
-		//int rightistPoint = getRightistWhitePixel_x(diffBinMorphImage);	// getRightistWhitePixel_x함수 튜닝 (관심영역x축, 타겟+x축(약 15pix) )
-
-		if (paintedPoint.empty())
-		{
-			paintedPoint.push_back(make_pair(frameIndex, rightistPoint));
-		}
-		else
-		{
-			if (paintedPoint.back().second >= rightistPoint)
-			{
-				;// paintedPoint.push_back(make_pair(frameIndex, paintedPoint.back().second));
-			}
-			else
-			{
-				paintedPoint.push_back(make_pair(frameIndex, rightistPoint));
-			}
-		}
-		printf("%d %d \r\n", paintedPoint.back().first, paintedPoint.back().second);
-		
-
-		// diff 의 흰점으로 분석
-		// 의미있는 흰점중 가장 오른쪽점을 진행도로 함
-		// vector<pair<int, int>> paintedPoint; 에 정보를 모음	 ( pair<frame, xPoint> )
-		// (후처리 필요시 진행)
-
-		beforeBinImage = binImage.clone();
-
-		frameIndex++;
-		if (frameIndex > line.endFrame)
-			break;
-	}
-	*/
 	
-
 	// Line.spacingWord[x]보다 높은 값이 나오는 첫frame -> start
 	// Line.spacingWord[x]로 이미지를 잘라 가장 오른쪽 흰점의 좌표를 구함
 	// 좌표보다 큰 값이 나오는 첫 지점 -> end

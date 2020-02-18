@@ -64,9 +64,8 @@ public:
 	Mat getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat compositeImage, int limitX);
 	void capturedLinesToText(string videoPath);
 	void runOCR(string targetImage, string outFileName);
+	void readLyricsFromFile(string videoPath);
 	wstring stringToWstring(const std::string& s);
-	void makeLyrics(string videoPath);
-	void makeLyrics_withWord();
 
 	/* Inits */
 	bool setVideo(string videoPath);
@@ -85,7 +84,7 @@ public:
 	vector<pair<int, int>> getPaintedPoint(Line line);
 
 public:
-	VideoCapture *videoCapture;
+	VideoCapture *videoCapture;		// move to class videoHandler
 	int video_Frame;
 	int video_Width;
 	int video_Height;

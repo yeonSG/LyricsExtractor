@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdlib.h>
-#include <opencv2/opencv.hpp>
-#include "line.h"
+#include "videoAnalyzer.h"
+#include "Line.h"
+
 
 using namespace std;
 
@@ -15,8 +15,9 @@ public:
 	void init();
 
 	void removeInvalidLines();
-
-	void writeLyricFile();
+	
+	void writeLyricFile(VideoCapture* videoCapture);
+	void writeLyric_withWordFile(VideoCapture* videoCapture);
 
 private:
 	vector<Line> lines;
