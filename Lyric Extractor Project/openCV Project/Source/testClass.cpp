@@ -126,7 +126,123 @@ void testClass::test_Image2()
 
 void testClass::test_Image3()
 {
+	Mat orgImage = imread("debug_2.jpg");
+	Mat im1 = imageHandler::getResizeAndSubtitleImage(orgImage);
+	Mat blue = imageHandler::getPaintedBinImage_inner(im1, true);
+	Mat red = imageHandler::getPaintedBinImage_inner(im1, false);
 
+	//int alignContoursCount_blue = getAlinedContoursCount(outImage_blue);
+	//int alignContoursCount_red = getAlinedContoursCount(outImage_red);
+}
+
+void testClass::test_Image4()
+{
+	Mat orgImage = imread("debug_1.jpg");
+	Mat contourImage = orgImage.clone();
+
+	cvtColor(orgImage, orgImage, COLOR_BGR2GRAY);
+	//resize(orgImage, orgImage, cv::Size(orgImage.cols*4, orgImage.rows * 4), 0, 0, cv::INTER_CUBIC);
+	threshold(orgImage, orgImage, 200, 255, THRESH_BINARY);	
+
+	// get
+	// 4. canny 엣지 검출
+	//Mat image_canny;
+	//Canny(orgImage, image_canny, 200, 255);
+
+	// 5. contour 검출
+	vector<vector<Point>> contours;
+	//findContours(image_canny, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+	//findContours(orgImage, contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE, Point(0, 0));
+	findContours(orgImage, contours, RETR_LIST, CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+	vector<vector<Point>> contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+	vector<Rect> boundRect_filtered;
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 1, true);	// contour -> contourPolyDP
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+		printf("%d size\r\n", boundRect[i].size());
+		printf("%d area\r\n", boundRect[i].area());
+		printf("%d %d br\r\n", boundRect[i].br().x, boundRect[i].br().y);
+		printf("%d %d tl\r\n", boundRect[i].tl().x, boundRect[i].tl().y);
+		/*
+		if (boundRect[i].width < 6)
+			continue;
+		else if (boundRect[i].height < 6)
+			continue;
+		// 가로새로 비율 6배 이상인것 // 큰수/작은수 >6
+		int lower, bigger;
+		if (boundRect[i].height > boundRect[i].width)
+		{
+			bigger = boundRect[i].height;
+			lower = boundRect[i].width;
+		}
+		else
+		{
+			bigger = boundRect[i].width;
+			lower = boundRect[i].height;
+		}
+
+		if (bigger / lower >= 6)
+			continue;
+			
+		boundRect_filtered.push_back(boundRect[i]);
+		*/
+		rectangle(contourImage, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0));
+	}
+	//drawContours(orgImage, contours_poly, -1, Scalar(0, 255, 255), 1);
+
+	// => Blue에서 가장 많은 contur가 걸리는 선x를 구한다.
+	// => Red 에서 가장 많은 contur가 걸리는 선x를 구한다.
+	// ==> 더 많은 contur가 걸린 컬러영역이 Painted_Lyric이 된다.
+	/*
+	int biggestCount = 0;
+	int biggestCountCol = 0;
+	for (int col = 5; col < orgImage.cols; col += 3)
+	{
+		int count = 0;
+		for (int j = 0; j < boundRect_filtered.size(); j++)
+		{
+			int rectY = boundRect_filtered[j].y;
+			int rectHeight = boundRect_filtered[j].height;
+			if (rectY < col && rectY + rectHeight > col)	// Rect안에 
+				count++;
+		}
+		if (biggestCount < count)
+		{
+			biggestCount = count;
+			biggestCountCol = col;
+		}
+	}
+	 
+	printf("%d \r\n", biggestCount);
+	*/
+
+	// 1. 정렬
+	// 2. 모든 점 기준으로 진행
+	/*
+		for(int i=0;i<rect.size(); i++)
+		{
+			int count=0;		//
+			targetRect = rect[i];
+			for(intj=i+1; j<rect.size(); j++)
+			{
+				// x거리
+				// y
+			}
+		}
+
+	*/
+
+	// 컨투어링
+	// 사각형만들기
+	// 알고리즘
+	// 결과도출
+	// 좌우 끝점의 대칭정도
+	//
+	return;
 }
 
 void testClass::test_Video(string videoPath)
@@ -141,8 +257,22 @@ void testClass::test_Video(string videoPath)
 
 	while (vc->read(orgImage))
 	{
+		orgImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
 		imshow("Video", orgImage);
+
+		//Mat image_gray, image_binAT;
+		//cvtColor(orgImage, image_gray, COLOR_BGR2GRAY);
+		//adaptiveThreshold(image_gray, image_binAT, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
+		//imshow("image_binAT", image_binAT);
+
+		//Mat fullyContrastImage = imageHandler::getSharpenAndContrastImage(orgImage);
+		//Mat fullyContrastImage_white;
+		//inRange(fullyContrastImage, Scalar(250, 250, 250), Scalar(255, 255, 255), fullyContrastImage_white);
+		//imshow("fullyContrastImage_white", fullyContrastImage_white);
+
+		//Mat andImage;
+		//bitwise_and(image_binAT, fullyContrastImage_white, andImage);
 
 		videoHandler::printCurrentFrameSpec(*vc);
 		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
@@ -975,7 +1105,7 @@ void testClass::test_Video4(string videoPath)
 	Mat algorismMk1 = AlgolismMk1(fullContrastimage_NotBulr);
 	imshow("AlgolismMk1", algorismMk1);
 
-	Mat algorismMk2 = imageHandler::getPaintedBinImage_inner(fullContrastimage_NotBulr);
+	Mat algorismMk2 = imageHandler::getPaintedBinImage_inner(fullContrastimage_NotBulr, true);
 	imshow("algorismMk2", algorismMk2);
 
 	Mat algoANDDiff;

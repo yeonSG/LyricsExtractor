@@ -144,6 +144,138 @@ Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 	return binaryMat;
 }
 
+Mat imageHandler::getBorderFloodFilledImageForColor(Mat& rgbImage, bool toBlack)
+{
+	int nRows = rgbImage.rows;
+	int nCols = rgbImage.cols;
+
+	Vec3b color;
+	if (toBlack == true)
+	{
+		color[0] = 0;
+		color[1] = 0;
+		color[2] = 0;
+	}
+	else 
+	{
+		color[0] = 255;
+		color[1] = 255;
+		color[2] = 255;
+	}
+
+	// 상측 
+	for (int i = 0; i < nCols; i++)
+		if (rgbImage.at<Vec3b>(2, i) != color)
+			floodFill(rgbImage, Point(i, 2), color);
+
+	// 좌측
+	for (int i = 0; i < nRows; i++)
+		if (rgbImage.at<Vec3b>(i, 30) != color)
+			floodFill(rgbImage, Point(30, i), color);
+
+	// 우측
+	for (int i = 0; i < nRows; i++)
+		if (rgbImage.at<Vec3b>(i, nCols - 30) != color)
+			floodFill(rgbImage, Point(nCols - 30, i), color);
+
+	// 아래측
+	for (int i = 0; i < nCols; i++)
+		if (rgbImage.at<Vec3b>(nRows - 1, i) != color)
+			floodFill(rgbImage, Point(i, nRows - 1), color);
+
+	return rgbImage;
+}
+
+/// <summary>
+/// 필터링을 거친 Contours들을 가로 라인으로 뚫었을 때 가장 많이 걸린 개수.
+/// </summary>
+/// <param name="binImage">The bin image.</param>
+/// <returns></returns>
+int imageHandler::getAlinedContoursCount(Mat& binImage)
+{
+	Mat image_debug = binImage.clone();
+
+	// 5. contour 검출
+	vector<vector<Point>> contours;
+	findContours(binImage, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+
+	vector<vector<Point>> contours_poly(contours.size());
+	vector<Rect> boundRect;
+	vector<Rect> boundRect_filtered;
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 1, true);	// contour -> contourPolyDP
+		boundRect.push_back(boundingRect(Mat(contours_poly[i])));
+		
+		rectangle(image_debug, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0));	// forDebug
+	}
+	boundRect_filtered = getFillteredContours(boundRect);
+	
+	//drawContours(orgImage, contours_poly, -1, Scalar(0, 255, 255), 1);
+
+	// => Blue에서 가장 많은 contur가 걸리는 선x를 구한다.
+	// => Red 에서 가장 많은 contur가 걸리는 선x를 구한다.
+	// ==> 더 많은 contur가 걸린 컬러영역이 Painted_Lyric이 된다.
+	int biggestCount = 0;
+	int biggestCountCol = 0;
+	for (int col = 5; col < binImage.cols; col += 3)
+	{
+		int count = 0;
+		for (int j = 0; j < boundRect_filtered.size(); j++)
+		{
+			int rectY = boundRect_filtered[j].y;
+			int rectHeight = boundRect_filtered[j].height;
+			if (rectY < col && rectY + rectHeight > col)	// Rect안에 
+				count++;
+		}
+		if (biggestCount < count)
+		{
+			biggestCount = count;
+			biggestCountCol = col;
+		}
+	}
+
+	 return biggestCount;
+}
+
+/// <summary>
+/// Gets the filltered contours.
+/// </summary>
+/// <param name="contoursRect">The contours rect.</param>
+/// <returns></returns>
+vector<Rect> imageHandler::getFillteredContours(vector<Rect> contoursRect)
+{
+	vector<Rect> boundRect_filtered;
+
+	for (int i = 0; i < contoursRect.size(); i++)
+	{
+		if (contoursRect[i].width < 6)
+			continue;	// fillter : 너비가 6 이하인 것
+		else if (contoursRect[i].height < 6)
+			continue;	// fillter : 높이가 6 이하인 것
+
+		int lower, bigger;
+		if (contoursRect[i].height > contoursRect[i].width)
+		{
+			bigger = contoursRect[i].height;
+			lower = contoursRect[i].width;
+		}
+		else
+		{
+			bigger = contoursRect[i].width;
+			lower = contoursRect[i].height;
+		}
+
+		if (bigger / lower >= 6)	// 가로새로 비율이 6 이상인 것 
+			continue;
+
+		boundRect_filtered.push_back(contoursRect[i]);
+	}
+
+	return boundRect_filtered;
+}
+
 /// <summary>
 /// 깔끔한 MaskImage 얻기 위한 것, 
 ///  - 가로로 길게 뻗어있는 Object를 삭제
@@ -555,35 +687,29 @@ Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
 /*
 	흰 파(빨) 흰 조합인 곳을 찾아냄
 */
-Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
+Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage, bool isBluePaint)
 {
 	Mat fullyContrastImage = getFullyContrastImage(rgbImage);
+	//fullyContrastImage = getBorderFloodFilledImageForColor(fullyContrastImage);
 
+	int BlueCount = 0;
+	int RedCount = 0;
 	int height = fullyContrastImage.rows;
 	int width = fullyContrastImage.cols;
-	Mat outImage_row;
-	Mat outImage_col;
-	cvtColor(fullyContrastImage, outImage_row, COLOR_BGR2GRAY);
-	cvtColor(fullyContrastImage, outImage_col, COLOR_BGR2GRAY);
+	Mat outImage_painted;
+	outImage_painted = Mat::zeros(rgbImage.rows, rgbImage.cols, CV_8U);
 
 	// 행연산
 	for (int y = 0; y < height; y++)
 	{
-		uchar* yPtr = outImage_col.ptr<uchar>(y);	//in
+		uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//in
 		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
 		for (int x = 0; x < width; x++)
 		{
 			bool isRight = false;	// 조건만족?
 
-			if(isBlue(yPtr_FCImage[x]) || isRed(yPtr_FCImage[x]))
-			//if (isWhite(yPtr_FCImage[x]))
+			if((isBlue(yPtr_FCImage[x]) && isBluePaint) || (isRed(yPtr_FCImage[x]) && !isBluePaint))
 			{
-				bool targetColorisBlue;
-				if (isBlue(yPtr_FCImage[x]))
-					targetColorisBlue = true;
-				else
-					targetColorisBlue = false;
-
 				int count = 1;
 				int color_m = -1; // white=1, blue=2, red=3, other= -1    /// black==2, Blue,Red==1, other==-1
 				int color_p = -1;
@@ -591,7 +717,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 				{
 					Vec3b v3p = yPtr_FCImage[x - count];
 
-					if( (isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue) )
+					if( (isBlue(v3p) && isBluePaint) || (isRed(v3p) && !isBluePaint) )
 					{
 						count++;//x_m--;
 						if (count > 100)	// 파(빨)을 몇개까지 허용하는가
@@ -621,7 +747,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 				{
 					Vec3b v3p = yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
 
-					if ((isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue))
+					if ((isBlue(v3p) && isBluePaint) || (isRed(v3p) && !isBluePaint))
 					{
 						count++;//x_m--;
 						if (count > 100)	// 파(빨)을 몇개까지 허용하는가
@@ -646,36 +772,31 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 					}
 				}
 				
-				if((color_p == 1 && color_m == 1) || (color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
+				if ((color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
 					isRight = true;
 			}
 
 			if (isRight)	// 조건에 만족함
-				yPtr[x] = 255;
-			else
-				yPtr[x] = 0;
+			{
+				yPtr_painted[x] = 255;
+			}
 		}
 	}
 
 	// 열연산
 	for (int y = 0; y < height; y++)
 	{
-		uchar* yPtr = outImage_row.ptr<uchar>(y);	//in
+		uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//in
 		Vec3b* yPtr_FCImage = fullyContrastImage.ptr<Vec3b>(y); //
 
 		for (int x = 0; x < width; x++)
 		{
-			if (isWhite(yPtr[x]))	// 이미 흰색인곳
+			if (isWhite(yPtr_painted[x]))	// 이미 흰색인곳
 				continue;
 
 			bool isRight = false;	// 조건만족?
-			if (isBlue(yPtr_FCImage[x]) || isRed(yPtr_FCImage[x]))
+			if ((isBlue(yPtr_FCImage[x]) && isBluePaint) || (isRed(yPtr_FCImage[x]) && !isBluePaint))
 			{
-				bool targetColorisBlue;
-				if (isBlue(yPtr_FCImage[x]))
-					targetColorisBlue = true;
-				else
-					targetColorisBlue = false;
 
 				int count = 1;
 				int color_m = -1; // black==2, Blue,Red==1, other==-1
@@ -684,7 +805,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 				{
 					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y - count)[x];
 
-					if ( (isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue) )
+					if ( (isBlue(v3p) && isBluePaint) || (isRed(v3p) && !isBluePaint) )
 					{
 						count++;//x_m--;
 						if (count > 100)
@@ -713,7 +834,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 				while (y + count < height)	// 위쪽 색 확인
 				{
 					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(y + count)[x]; //yPtr_FCImage[x + count];//FCImage.at<cv::Vec3b>(y, x + count);
-					if ((isBlue(v3p) && targetColorisBlue) || (isRed(v3p) && !targetColorisBlue))
+					if ((isBlue(v3p) && isBluePaint) || (isRed(v3p) && !isBluePaint))
 					{
 						count++;//x_p++;
 						if (count > 100)
@@ -738,21 +859,23 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage)
 					}
 				}
 
-				if ((color_p == 1 && color_m == 1) || (color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
+				if ((color_p == 1 && color_m == 1))	// 한쪽이 흰색, 반대쪽도 흰색
 					isRight = true;
 			}
 
 			if (isRight)	// 조건에 만족함
-				yPtr[x] = 255;
+			{
+				yPtr_painted[x] = 255;
+			}
 			//else
 			//	yPtr[x] = 0;
 		}
 	}
-	Mat outimage;
-	bitwise_and(outImage_row, outImage_col, outimage);
-	threshold(outimage, outimage, 200, 255, THRESH_BINARY);
 
-	return outimage;
+	//bitwise_and(outImage_row, outImage_col, outimage);
+	threshold(outImage_painted, outImage_painted, 200, 255, THRESH_BINARY);
+	
+	return outImage_painted;
 }
 
 Mat imageHandler::getFullyContrastImage(Mat rgbImage)
@@ -798,6 +921,38 @@ Mat imageHandler::getSharpenImage(Mat srcImage)
 	//srcImage.copyTo(sharpened, lowContrastMask);
 
 	return sharpened;
+}
+
+/// <summary>
+/// ATImage에 compositeImage의 흰색점인 좌표에 floodfill 연산을 하고 나온 결과물을 반환
+/// </summary>
+/// <param name="ATImage">AdoptedThresold()의 결과이미지.</param>
+/// <param name="compositeImage"> ((Red_RGB)AND(Red_HSV)) OR ((Blue_RGB)AND(Blue_HSV))의 결과이미지.</param>
+/// <returns></returns>
+Mat imageHandler::getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage)
+{
+	Mat filteredImage_BGR = ATImage.clone();
+	cvtColor(filteredImage_BGR, filteredImage_BGR, COLOR_GRAY2BGR);
+
+	// 1. outimage에 mergedImage에 흰색인 점 좌표에 빨간색으로 floodfill() 수행 
+	int height = filteredImage_BGR.rows;
+	int width = filteredImage_BGR.cols;
+	Vec3b whiteColor = { 255, 255, 255 };
+	Vec3b redColor = { 0, 0, 255 };
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			Vec3b color = filteredImage_BGR.at<Vec3b>(Point(x, y));
+			if (compositeImage.at<uchar>(Point(x, y)) == 255 && color == whiteColor)	// 좌표색이 흰색이면
+				floodFill(filteredImage_BGR, Point(x, y), redColor);
+		}
+	}
+	// 2. 빨간색으로 inRange() 하여 다시 흰색 이미지를 얻음
+	Mat filteredImageToWhite;
+	inRange(filteredImage_BGR, Scalar(0, 0, 254), Scalar(0, 0, 255), filteredImageToWhite);	// binarize by rgb
+
+	return filteredImageToWhite;
 }
 
 // BinImage의 최소, 최대값 구한 후 해당 값 +-10 Vertical까지 자름

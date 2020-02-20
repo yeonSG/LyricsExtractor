@@ -22,6 +22,7 @@ public:
 	void test_Image();
 	void test_Image2();
 	void test_Image3();
+	void test_Image4();
 	void test_Video(string videoPath);
 
 	void test_Video_CountContours();

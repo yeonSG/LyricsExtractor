@@ -18,6 +18,9 @@ public:
 	static Mat getMorphImage(static Mat& sourceImage, cv::MorphTypes type);
 	static Mat getCannyImageWithBinaryImage(static Mat& binImage);
 	static Mat getBorderFloodFilledImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getBorderFloodFilledImageForColor(static Mat& rgbImage, bool toBlack = true);
+	static int getAlinedContoursCount(static Mat& binImage);
+	static vector<Rect> getFillteredContours(vector<Rect> contoursRect);
 	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
@@ -28,10 +31,12 @@ public:
 	static Mat getDifferenceImage(static Mat& binImageA, static Mat& binImageB);
 
 	static Mat getPaintedBinImage(static Mat& rgbImage);	
-	static Mat getPaintedBinImage_inner(static Mat& rgbImage);
+	static Mat getPaintedBinImage_inner(static Mat& rgbImage, bool isBluePaint);
 	static Mat getFullyContrastImage(Mat rgbImage);
 	static Mat getSharpenAndContrastImage(Mat rgbImage);
 	static Mat getSharpenImage(Mat srcImage);
+
+	static Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 
 
 	static Mat cutColumByHistorgram(Mat binImage);

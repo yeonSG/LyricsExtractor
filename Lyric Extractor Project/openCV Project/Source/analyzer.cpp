@@ -57,10 +57,17 @@ bool analyzer::videoAnalization(string videoPath)
 	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
 	//verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
 
-	int curFrame = 0;	
+	int curFrame = 0; 
+	//curFrame = 3740;	// debug
+	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+	//for(int i=0; i<curFrame; i++)
+	//	vecWhitePixelCounts.push_back(0);
+
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
 	{
+		//if (curFrame == 3786)		// debug
+		//	break;
 		videoHandler::printCurrentFrameSpec(*videoCapture);
 		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
@@ -478,8 +485,8 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-		if (i == 9)
-			i = 9;
+		//if (i == 56)	// debug
+		//	i = 56;
 		
 		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
 		{
@@ -509,9 +516,9 @@ void analyzer::calibrateLines()
 			// 부족하면 이전or다음 프레임 동원하여 해결할것.
 			newMaskImage_bin = removeLint(newMaskImage_bin, newMaskImage_gray);	// 튀어나온것 제거
 
-	// 1. fullContrastImage 
-	// 2. 흰색만 분리
-	// 3. and 연산 
+			// 1. fullContrastImage 
+			// 2. 흰색만 분리
+			// 3. and 연산 
 			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 1 )- 1);
 			videoCapture->read(sourceImg);
 
@@ -520,8 +527,13 @@ void analyzer::calibrateLines()
 			Mat fullyContrastImage_white;
 			inRange(fullyContrastImage, Scalar(250, 250, 250), Scalar(255, 255, 255), fullyContrastImage_white);
 
-
 			bitwise_and(newMaskImage_bin, fullyContrastImage_white, newMaskImage_bin);
+
+			Mat image_gray, image_binAT;
+			cvtColor(sourceImg, image_gray, COLOR_BGR2GRAY);
+			adaptiveThreshold(image_gray, image_binAT, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 11, 5);
+
+			bitwise_and(newMaskImage_bin, image_binAT, newMaskImage_bin);
 
 			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
 
@@ -559,11 +571,9 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)endFrame-1);
 	videoCapture->read(readImage);
 
-	maskImage = imageToSubBinImage(readImage);	
+	maskImage = imageToSubBinImage(readImage);
+	imwrite(fileManager::getSavePath()+"/Captures/Debug" + to_string(endFrame-1) + "_imageToSubBinImage.jpg", maskImage);
 	maskImage = imageHandler::getNoiseRemovedImage(maskImage, true);
-	Mat maskImage_back = maskImage.clone();
-	maskImage_back = imageHandler::removeSubLyricLine(maskImage);
-	maskImage = imageHandler::removeNotPrimeryLyricLine(maskImage);	// maskImage 
 
 	int maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
 	int maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
@@ -587,10 +597,21 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		}
 		maskImage = getBinImageByFloodfillAlgorism(maskImage, lyricMask);
 
+		Mat lyricMask_not;
+		bitwise_not(lyricMask, lyricMask_not);
+		Mat otherSide = getBinImageByFloodfillAlgorism(maskImage, lyricMask_not);
+		Mat otherSide_not;
+		bitwise_not(otherSide, otherSide_not);
+		bitwise_and(otherSide_not, maskImage, maskImage);
+
 		maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
 		maskImage_rightDot_x = imageHandler::getRightistWhitePixel_x(maskImage);
 		maskImage_middleDot_x = (maskImage_leftDot_x + maskImage_rightDot_x) / 2;
 	}
+
+	Mat maskImage_back = maskImage.clone();
+	maskImage_back = imageHandler::removeSubLyricLine(maskImage);
+	maskImage = imageHandler::removeNotPrimeryLyricLine(maskImage);	// maskImage 
 
 	int maskImage_pixelCount = imageHandler::getWihtePixelCount(maskImage);
 	// 2. 마스크 유효성 판단 - 흰점 500이하이면 탈락
@@ -628,6 +649,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 		cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
 		inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨
+		subImage_hsv = imageHandler::getBorderFloodFilledImage(subImage_hsv);
 
 		bitwise_and(subImage_hsv, maskImage, binImage);
 
@@ -1002,18 +1024,24 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 		}
 	}
 
-	Mat printImage = imageHandler::getPaintedBinImage_inner(mixedImage);
-	//printImage = imageHandler::getMorphImage(printImage, MORPH_ERODE);
-	/*
-		
-	*/
+	Mat printImage_blue = imageHandler::getPaintedBinImage_inner(mixedImage, true);
+	Mat printImage_red = imageHandler::getPaintedBinImage_inner(mixedImage, false);
 
 	Mat subImage_hsv;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))	// 채도가 255가까울수록 단색(파랑, 빨강), 
 	cvtColor(subImage, subImage_hsv, COLOR_BGR2HSV);
 	inRange(subImage_hsv, Scalar(0, 170, 100), Scalar(255, 255, 255), subImage_hsv);		//파, 빨 (단색)
 
-	Mat image_out;
-	image_out = getBinImageByFloodfillAlgorism(subImage_hsv, printImage);
+	Mat printImage_blue_filled = getBinImageByFloodfillAlgorism(subImage_hsv, printImage_blue);
+	Mat printImage_red_filled = getBinImageByFloodfillAlgorism(subImage_hsv, printImage_red);
+
+	int alignContoursCount_blue = imageHandler::getAlinedContoursCount(printImage_blue_filled);
+	int alignContoursCount_red = imageHandler::getAlinedContoursCount(printImage_red_filled);
+
+	Mat image_out; 
+	if (alignContoursCount_blue > alignContoursCount_red)
+		image_out = printImage_blue_filled;
+	else
+		image_out = printImage_red_filled;
 
 	image_out = imageHandler::getBorderFloodFilledImage(image_out, true);
 
