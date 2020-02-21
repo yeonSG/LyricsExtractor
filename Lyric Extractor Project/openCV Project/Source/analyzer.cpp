@@ -38,15 +38,7 @@ bool analyzer::videoAnalization(string videoPath)
 	{
 		return false;
 	}
-
-	//Mat readImage, maskImage;	// Debug
-	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)4906 - 1);
-	//videoCapture->read(readImage);
-	//	readImage = imageHandler::getResizeAndSubtitleImage(readImage);
-	//maskImage = imageToSubBinImage(readImage);
-	//imageHandler::getNoiseRemovedImage(maskImage, true);
-	//maskImage = imageHandler::removeSubLyricLine(maskImage);
-
+	
 	Mat orgImage;
 	Mat subImage;
 	Mat binImage;
@@ -58,7 +50,7 @@ bool analyzer::videoAnalization(string videoPath)
 	//verticalProjectionDatasOfDifferenceImage.push_back( vector<int>(videoCapture->get(CAP_PROP_FRAME_WIDTH)) );	// 프래임과 동기화 위해 배열 0번은 더미
 
 	int curFrame = 0; 
-	//curFrame = 3740;	// debug
+	//curFrame = 1573;	// debug
 	//videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
 	//for(int i=0; i<curFrame; i++)
 	//	vecWhitePixelCounts.push_back(0);
@@ -66,7 +58,7 @@ bool analyzer::videoAnalization(string videoPath)
 	/* 이미지 분석 */
 	while (videoCapture->read(orgImage))
 	{
-		//if (curFrame == 3786)		// debug
+		//if (curFrame == 1695)		// debug
 		//	break;
 		videoHandler::printCurrentFrameSpec(*videoCapture);
 		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
@@ -76,11 +68,14 @@ bool analyzer::videoAnalization(string videoPath)
 
 		//binImage = imageHandler::getCompositeBinaryImages(subImage);	// 파빨간색으로 
 
+		//binImage = imageHandler::getPaintedBinImage(subImage);
+
 		binImage = imageHandler::getPaintedBinImage(subImage);
 
 		//White dot Count
 		vecWhitePixelCounts.push_back(imageHandler::getWihtePixelCount(binImage));
 
+		/*	// 추가정보
 		if (beforeBinImage.empty() == true)
 		{
 			verticalProjectionDatasOfDifferenceImage.push_back(vector<int>(binImage.cols));	// 프래임과 동기화 위해 배열 0번은 더미
@@ -95,6 +90,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 			vecWhitePixelChangedCounts.push_back(imageHandler::getWihtePixelCount(DifferenceImage));
 		}
+		*/
 
 		beforeBinImage = binImage;
 
@@ -104,9 +100,10 @@ bool analyzer::videoAnalization(string videoPath)
 
 	string fileName = "WhitePixelCount.txt";
 	fileManager::writeVector(fileName, vecWhitePixelCounts);
+
+	/*	// 추가정보
 	fileName = "WhitePixelChangedCount.txt";
 	fileManager::writeVector(fileName, vecWhitePixelChangedCounts);
-
 
 	Mat changeHistogramMat; // 체인지 히스토그램	//changeHistogram = getChangeHistorgramMat(verticalProjectionDatasOfDifferenceImage, 10);//= Mat::ones(orgImage.cols, 0, CV_64F);	// col, row
 	vector<vector<bool>> changeHistorgramData = getChangeHistorgramData(verticalProjectionDatasOfDifferenceImage, 10);
@@ -119,63 +116,26 @@ bool analyzer::videoAnalization(string videoPath)
 
 	Mat changeHistogramAverageMat = averageVectorToBinaryMat(verticalHistogramAverage, changeHistogramMat.cols); // 체인지 히스토그램의 평균점 이미지
 	imwrite(fileManager::getSavePath() + "changeHistogramAverage.jpg", changeHistogramAverageMat);
+	*/
 	
 	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
-	getJudgedLine(verticalHistogramAverage);
+	getJudgedLine();
 
 	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
 	calibrateLines();
-
-	// 단어 나누기 wordJudge();
-	// wordJudge();
-
+	
 	/* Save pictures */
-	captureLines(fileManager::getSavePath());
-	capturedLinesToText(fileManager::getSavePath());
+	captureLines();
+	capturedLinesToText();
 
-	readLyricsFromFile(fileManager::getSavePath());
+	readLyricsFromFile();
 	m_lyric.writeLyricFile(videoCapture);
 
-	// new wordCalibration..
-	for (int i = 0; i < m_lyric.getLinesSize(); i++)
-	{
-		wordCalibrationByOCRText(*m_lyric.getLine(i));
-	}
+	wordCalibration();
 
 	m_lyric.writeLyric_withWordFile(videoCapture);
 
 	closeVideo();
-	return true;
-}
-
-bool analyzer::videoAnalization1(string videoPath)
-{
-	if (!setVideo(videoPath))
-	{
-		return false;
-	}
-
-	Mat orgImage, subImage;
-	Mat paintedBinImage;
-	vector<int> vecPaintedPixelCounts;		// 흰점수
-	// 체인지 영역 
-
-	vecPaintedPixelCounts.push_back(0);
-
-	while (videoCapture->read(orgImage))
-	{
-		videoHandler::printCurrentFrameSpec(*videoCapture);
-		
-		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
-
-		paintedBinImage = imageHandler::getPaintedBinImage(subImage);
-		vecPaintedPixelCounts.push_back(imageHandler::getWihtePixelCount(paintedBinImage));	// 픽셀 수 구함
-
-	}
-
-	string fileName = "PaintedPixelCount.txt";
-	fileManager::writeVector(fileName, vecPaintedPixelCounts);
-
 	return true;
 }
 
@@ -202,12 +162,10 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 /// <summary>
 /// 분석한 데이터로 가사 Line들의 시작점-끝점을 판단함
 /// </summary>
-/// <param name="vecWhitePixelCounts"> 프레임에 존재하는 흰 점의 합 </param>
-/// <param name="changeStatusAverage"> 변한 흰색의 평균 위치</param>
-void analyzer::getJudgedLine(const vector<int> verticalHistogramAverage)
+void analyzer::getJudgedLine()
 {
 	vector<int> peakValues;
-
+	vector<Line> lines;
 	// Peak 추출
 	peakValues = getPeakFromWhitePixelCounts(vecWhitePixelCounts);
 
@@ -217,10 +175,8 @@ void analyzer::getJudgedLine(const vector<int> verticalHistogramAverage)
 	string fileName = "peak.txt";
 	fileManager::writeVector(fileName, peakValues);
 
-	getLinesFromPeak(peakValues, vecWhitePixelCounts);
-
-	//linesRejudgeByLineLength();
-	//lineRejudgeByPixelCount(vecWhitePixelCounts);
+	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
+	m_lyric.setLines(lines);
 
 	// lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);	// 왼쪽의 점 좌표 평균, 오른쪽의 점 좌표평균
 
@@ -229,7 +185,7 @@ void analyzer::getJudgedLine(const vector<int> verticalHistogramAverage)
 	{
 		Line* line = m_lyric.getLine(i);
 		string line_string = to_string(line->startFrame) + "\t" + to_string(line->endFrame);
-		lines_string.push_back(line_string);// ("lines %2d : %d - %d\r\n", i, lines[i].first, lines[i].second);
+		lines_string.push_back(line_string);
 	}
 
 	fileName = "lineStart_End.txt";
@@ -317,8 +273,9 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 /// </summary>
 /// <param name="vecWhitePixelCounts">">프래임 별 흰 점의 테이터</param>
 /// <param name="peaks">피크</param>
-void analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCounts)
+vector<Line> analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCounts)
 {
+	vector<Line> lines;
 	for (int i = 0; i < peaks.size(); i++)	// find start point
 	{
 		// 이전peak값 index보다 큼
@@ -344,8 +301,10 @@ void analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCoun
 		Line line;
 		line.startFrame = minIndex;
 		line.endFrame = peaks[i];
-		m_lyric.addLine(line);
+		lines.push_back(line);
 	}
+
+	return lines;
 }
 
 /// <summary>
@@ -472,7 +431,6 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 
 void analyzer::calibrateLines()
 {
-	Mat maskImage;
 	int invaildCount = 0;
 
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
@@ -488,7 +446,7 @@ void analyzer::calibrateLines()
 		//if (i == 56)	// debug
 		//	i = 56;
 		
-		if (lineCalibration(line->startFrame, line->endFrame, maskImage, minFrame) == false)
+		if (lineCalibration(*line, minFrame) == false)
 		{
 			line->isValid = false;
 			printf("Caled Line%d is invaild will be removed.\r\n", i);
@@ -496,6 +454,8 @@ void analyzer::calibrateLines()
 		}
 		else
 		{
+			imwrite(fileManager::getSavePath() + "/Captures/DebugT2_" + to_string(line->endFrame) + "_imageToSubBinImage.jpg", line->maskImage);
+
 			line->isValid = true;
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
 
@@ -519,7 +479,7 @@ void analyzer::calibrateLines()
 			// 1. fullContrastImage 
 			// 2. 흰색만 분리
 			// 3. and 연산 
-			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 1 )- 1);
+			videoCapture->set(CAP_PROP_POS_FRAMES, (double)(line->startFrame - 2));
 			videoCapture->read(sourceImg);
 
 			sourceImg = imageHandler::getResizeAndSubtitleImage(sourceImg);
@@ -535,11 +495,11 @@ void analyzer::calibrateLines()
 
 			bitwise_and(newMaskImage_bin, image_binAT, newMaskImage_bin);
 
-			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, maskImage);
+			newMaskImage = getBinImageByFloodfillAlgorism(newMaskImage_bin, line->maskImage);
 
 			//Mat mofImag = imageHandler::getMorphImage(newMaskImage, MorphTypes::MORPH_DILATE);	// as
-			imageHandler::getNoiseRemovedImage(newMaskImage, true);
-			imageHandler::getBorderFloodFilledImage(newMaskImage, true);
+			newMaskImage = imageHandler::getNoiseRemovedImage(newMaskImage, true);
+			newMaskImage = imageHandler::getBorderFloodFilledImage(newMaskImage, true);
 			line->maskImage = newMaskImage.clone();
 			catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
 
@@ -555,24 +515,17 @@ void analyzer::calibrateLines()
 }
 
 /// <summary>
-/// 0. mask값에서 최좌측, 최우측 x 좌표 구함(기준으로 함)
-/// while()
-/// 1. 이전 프레임 저장
-/// 2. Diff Image 생성 (현재프래임binImage-이전프래임binImage)
-/// 3. Diff Image에서 흰색점의 평균 x좌표 구함	-- 
-/// 4. 평균 x변경점이 mask의 최좌측 과 최우측 기준으로 몇 % 쯤에 속하는지 구함(가장 높은 퍼센테이지를 갖는 곳이 끝점, whiteCount가 가장작은 부분이 시작점)
+/// 라인의 끝점과 시작점이 정확한 frame번호를 갖고 maskimage를 얻기 위함
 /// </summary>
-/// <param name="startFrame">The start frame.</param>
-/// <param name="endFrame">The end frame.</param>
-bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, static int minStartFrame)
+bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 {
 	bool isEffictiveLine = true;
 	Mat readImage;
-	videoCapture->set(CAP_PROP_POS_FRAMES, (double)endFrame-1);
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)line.endFrame-1);
 	videoCapture->read(readImage);
 
-	maskImage = imageToSubBinImage(readImage);
-	imwrite(fileManager::getSavePath()+"/Captures/Debug" + to_string(endFrame-1) + "_imageToSubBinImage.jpg", maskImage);
+	Mat maskImage = imageToSubBinImage(readImage);
+	imwrite(fileManager::getSavePath()+"/Captures/DebugT1_" + to_string(line.endFrame-1) + "_imageToSubBinImage.jpg", maskImage);
 	maskImage = imageHandler::getNoiseRemovedImage(maskImage, true);
 
 	int maskImage_leftDot_x = imageHandler::getLeftistWhitePixel_x(maskImage);
@@ -631,9 +584,9 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	int diffImage_avgPoint_PerMax = 0;	
 	int diffImage_avgPoint_PerMin = 100;
 	int MinimumPixelCount = 500;	// 임의 초기값
-	int startframe_org = startFrame;
+	int startframe_org = line.startFrame;
 	
-	int frameIndex = endFrame;
+	int frameIndex = line.endFrame;
 	int expectedRightistPoint = maskImage_rightDot_x;
 	bool underMiddlePoint = false;
 
@@ -670,34 +623,39 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		int diffImage_rightistPoint = imageHandler::getRightistWhitePixel_x(image_dilation);//getWhitePixelAverage(image_dilateion);	
 		int diffImage_rightistPoint_Per = (int)((diffImage_rightistPoint - maskImage_leftDot_x) / ( (maskImage_rightDot_x - maskImage_leftDot_x) / 100.0));
 
+
 		printf("frame %d - diffAvgPoint: %d, diffImage_avgPoint_Per: %d \r\n", frameIndex, diffImage_rightistPoint, diffImage_rightistPoint_Per);
 		printf("frame %d - pixelCount: %d \r\n", frameIndex, pixelCount);
 		
 		if (MinimumPixelCount > pixelCount)
 		{
 			MinimumPixelCount = pixelCount;
-			startFrame = frameIndex + 1;
+			line.startFrame = frameIndex + 1;
 		}
 		if (MinimumPixelCount < 100 && pixelCount>1000)	// 최소 픽셀카운트가 100이다가 갑자기 증가할때
 			break;
 
 		if (diffImage_avgPoint_PerMax <= diffImage_rightistPoint_Per)	// 가장 큰 Percent 변경점이 시작점, => 마스크 가장 오른쪽 점 
 		{					
-			endFrame = frameIndex + 1;
+			line.endFrame = frameIndex + 1;
 			diffImage_avgPoint_PerMax = diffImage_rightistPoint_Per;
 		}
 	
 		beforeBinImage = binImage.clone();
 
+		if (minStartFrame == frameIndex)
+			break;
+
 		frameIndex --;		
 		if (pixelCount == 0 || diffImage_rightistPoint_Per==0)
 			break;
+
 	}
 	
 	if (isEffictiveLine)		
 	{
-		printf("StartFrame : %d \r\n", startFrame -1);
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)startFrame - 2);	// frameIndex-1
+		printf("StartFrame : %d \r\n", line.startFrame -1);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line.startFrame - 2);	// frameIndex-1
 		videoCapture->read(readImage);
 
 		subImage = imageHandler::getResizeAndSubtitleImage(readImage);
@@ -706,6 +664,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 	// inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), image_bin_inRange);	
 		inRange(subImage, Scalar(190, 190, 190), Scalar(255, 255, 255), binImage);
 		maskImage = getBinImageByFloodfillAlgorism(maskImage_back, binImage);
+		line.maskImage = maskImage;
 	}	// 
 
 
@@ -719,7 +678,7 @@ bool analyzer::lineCalibration(int& startFrame, int& endFrame, Mat& maskImage, s
 		return isEffictiveLine;
 	}
 
-	if (lineRejudgeByLineLength(startFrame, endFrame) == false)	// 길이가 400 이하 
+	if (lineRejudgeByLineLength(line.startFrame, line.endFrame) == false)	// 길이가 400 이하 
 	{
 		isEffictiveLine = false;
 		printf("line Exception : LineLength is unter 400ms.\r\n");
@@ -943,8 +902,7 @@ float analyzer::getAverageOnVectorTarget(vector<int> vec, int target, int effect
 /// <summary>
 /// Line들의 시작점, 끝점의 이미지 + 끝점의 이미지를 저장함.
 /// </summary>
-/// <param name="videoPath">비디오 경로.</param>
-void analyzer::captureLines(string videoPath)
+void analyzer::captureLines()
 {
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
@@ -954,8 +912,8 @@ void analyzer::captureLines(string videoPath)
 		videoCapture->read(startImage);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->endFrame);	// -1
 		videoCapture->read(endImage);
-		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
-		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
+		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
+		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
 	}
 }
 
@@ -1003,14 +961,12 @@ Mat analyzer::imageToSubBinImage(Mat targetImage)
 {
 	Mat subImage = imageHandler::getResizeAndSubtitleImage(targetImage);
 	//Mat binCompositeImage = imageHandler::getCompositeBinaryImages(subImage);
-	Mat justFullContrastImage = imageHandler::getFullyContrastImage(subImage);
-	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);	// YSYS
+	Mat justFullContrastImage = imageHandler::getFullyContrastImage(subImage);		// FC이미지는 SC보다 Painted컬러를 잘 살려냄
+	Mat sharpenContrastImage = imageHandler::getSharpenAndContrastImage(subImage);	// SC이미지는 FC보다 흰색 태두리를 더 잘 살려냄
 	// justFullContrastImage에 sharpenContrastImage에 흰색인 곳의 좌표에 흰색처리함
 	Mat mixedImage = justFullContrastImage.clone();
 	Vec3b whiteColor;
-	whiteColor[0] = 255;
-	whiteColor[1] = 255;
-	whiteColor[2] = 255;
+	whiteColor = { 255, 255, 255 };
 
 	for (int row = 0; row < justFullContrastImage.rows; row++)
 	{
@@ -1121,21 +1077,19 @@ Mat analyzer::getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat comp
 /// <summary>
 /// binary 이미지를 텍스트 파일로 바꿈.
 /// </summary>
-/// <param name="lineSize">Size of the line.</param>
-/// <param name="videoPath">The video path.</param>
-void analyzer::capturedLinesToText(string videoPath)
+void analyzer::capturedLinesToText()
 {
 	// "Output/Captures/LineX_bin.jpg"
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		string targetPath = videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
+		string targetPath = fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
 		if (fileManager::isExist(targetPath) != true)
 		{
 			printf("%s is not exist. \r\n", targetPath.c_str());
 			continue;
 		}
 
-		string desName = videoPath + "/Lines/Line" + to_string(i);
+		string desName = fileManager::getSavePath() + "/Lines/Line" + to_string(i);
 		runOCR(targetPath, desName);
 	}
 }
@@ -1199,11 +1153,11 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	//ExitProcess(0);
 }
 
-void analyzer::readLyricsFromFile(string videoPath)
+void analyzer::readLyricsFromFile()
 {
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		string lineFileName = videoPath + "/Lines/Line" + to_string(i) + ".txt";
+		string lineFileName = fileManager::getSavePath() + "/Lines/Line" + to_string(i) + ".txt";
 		if (fileManager::isExist(lineFileName) != true)
 		{
 			printf("%s is not exist. \r\n", lineFileName.c_str());
@@ -1323,74 +1277,14 @@ Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 //		2-1. Sep이 0개인 경우 = 통 라인, 라인정보가 첫번째 word 정보와 같아짐
 //		2-2. Sep이 n개인 경우 = word수는 n+1
 /// </summary>
-void analyzer::wordJudge()
+void analyzer::wordCalibration()
 {
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
-
-		printf("Line%d : spacingWords : %d \r\n", i, line->spacingWords.size());
-
-		wordCalibration(*line);
+		wordCalibrationByOCRText(*line);
 	}
 
-}
-
-void analyzer::wordCalibration(Line& line)
-{
-	if (line.spacingWords.size() == 0)
-	{
-		Word word = Line::lineToWord(line);
-		line.words.push_back(word);
-		return;
-	}
-	Mat maskImage = line.maskImage;
-	Mat readImage;
-	Mat subImage;
-	Mat beforeBinImage;
-	int rightistPoint = 0;
-	vector<pair<int, int>> paintedPoint;	// <frameNum, 진행도(x좌표)>	// out
-
-	paintedPoint = getPaintedPoint(line);	//
-	
-	// Line.spacingWord[x]보다 높은 값이 나오는 첫frame -> start
-	// Line.spacingWord[x]로 이미지를 잘라 가장 오른쪽 흰점의 좌표를 구함
-	// 좌표보다 큰 값이 나오는 첫 지점 -> end
-	//vector<pair<int, int>> paintedPoint;
-	vector<Word> words;
-	// init
-	for (int i = 0; i < line.spacingWords.size()+1; i++)
-	{	// init
-		Word newWord;
-		if (i == 0)	// 첫 워드
-			newWord.startFrame = line.startFrame;
-		if (i == line.spacingWords.size() - 1)	// 마지막 워드 
-			newWord.endFrame = line.endFrame;
-		words.push_back(newWord);
-	}
-
-	for (int i = 0; i < line.spacingWords.size(); i++)	// words[i], words[i+1]
-	{
-		int spacingWordX = line.spacingWords[i];		// spacingWords[0]의 끝프래임은 spacing[0]보다 작은 값 중 가장 큰 값.
-		printf("SpaceWord[%d] : %d\r\n",i , spacingWordX);
-		for (int j = 0; j < paintedPoint.size(); j++)
-		{
-			if (spacingWordX < paintedPoint[j].second)	// 띄어쓰기보다 커지는순간
-			{
-				words[i + 1].startFrame = paintedPoint[j].first;	// 다음 워드의 시작점
-				int offset = 1;
-				//while(true)
-				//{
-				//	if (paintedPoint[j-1].second != paintedPoint[(j) - offset].second)
-				//		break;
-				//	offset++;
-				//}
-				words[i].endFrame = paintedPoint[j-(offset)].first;	// 현재 워드의 끝점 ()
-				break;
-			}
-		}
-	}
-	line.words = words;
 }
 
 void analyzer::wordCalibrationByOCRText(Line& line)

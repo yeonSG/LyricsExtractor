@@ -1,5 +1,10 @@
 #include "lyric.h"
 
+void lyric::setLines(vector<Line> lines)
+{
+	this->lines = lines;
+}
+
 void lyric::addLine(Line line)
 {
 	lines.push_back(line);

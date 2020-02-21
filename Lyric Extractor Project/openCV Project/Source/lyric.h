@@ -9,6 +9,7 @@ using namespace std;
 class lyric
 {
 public:
+	void setLines(vector<Line> lines);
 	void addLine(Line line);
 	Line* getLine(int index);
 	int getLinesSize();
