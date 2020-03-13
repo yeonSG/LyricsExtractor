@@ -18,29 +18,48 @@ using namespace cv;
 int main(int, char**)
 {
 	clock_t startClock = (int)clock();
-	loger_init();
+	loger_init(); 
 	_logging("start", severity_level::normal);
 
-
+	//system("python deblur.py debug_2_upscale.png");
+	
 	testClass testClass;
 	//testClass.test_Image();
 	//testClass.test_Image2();
+	//testClass.test_Image4();
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
+	//testClass.test_Video("40009.mp4");
+
 	//testClass.test_Video4("40009.mp4");
+	//testClass.test_Video4("40011_forTest.mp4");
+	//testClass.test_Video4("40011.mp4");
 	//testClass.test_Video4("movie1_forTest.mp4");
+	//testClass.test_Video4("movie1_forTest2.mp4");
 	//testClass.test_Video4("movie.mp4");
+	//testClass.test_Video4("movie1.mp4");
 
 	analyzer ana;
 	//ana.videoAnalization1("movie1.mp4");
 	//ana.videoAnalization1("40009.mp4");
 
-	//ana.videoAnalization("movie1_forTest.mp4");
-	//ana.videoAnalization("movie.mp4");
+	//ana.videoAnalization("movie1_forTest2.mp4");
+
+	//ana.videoAnalization("40009_forDebug.mp4");
+	//ana.videoAnalization("movie1_forTest2.mp4");
+	//ana.videoAnalization("movie1_forTest2.mp4");
+	//ana.videoAnalization("40011_forTest.mp4");
+	//ana.videoAnalization("40011_forTest_upscale.mp4");
 	ana.videoAnalization("movie1.mp4");
-	//ana.videoAnalization("40011.mp4");
-	//ana.videoAnalization("40009.mp4");
+	ana.videoAnalization("movie.mp4");
+	ana.videoAnalization("40009.mp4");
+	ana.videoAnalization("40011.mp4");
+	ana.videoAnalization("40006.mp4");
+	ana.videoAnalization("40003.mp4");
+
+	//ana.videoAnalization("gramy_vol8_4.mp4");
+	ana.videoAnalization("gramy_vol8_6.mp4");
 	
 
 	/*named_scope_logging();

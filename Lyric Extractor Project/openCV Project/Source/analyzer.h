@@ -82,6 +82,8 @@ public:
 
 	vector<pair<int, int>> getPaintedPoint(Line line);
 
+	Mat getDeblurImage(Mat sourceImage, int frameNum);
+
 public:
 	VideoCapture *videoCapture = nullptr;		
 

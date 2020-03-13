@@ -79,10 +79,10 @@ Mat imageHandler::getMorphImage(Mat& sourceImage, cv::MorphTypes type)
 	switch (type)
 	{
 	case MORPH_DILATE:
-		dilate(sourceImage, image_morp, element);	// 팽창연산
+		dilate(sourceImage, image_morp, element);	// 흰색 넓힘
 		break;
 	case MORPH_ERODE:
-		erode(sourceImage, image_morp, element);	// 팽창연산
+		erode(sourceImage, image_morp, element);	// 흰색 깍음
 		break;
 	case MORPH_CLOSE:
 		morphologyEx(sourceImage, image_morp, MORPH_CLOSE, element);
@@ -327,8 +327,63 @@ Mat imageHandler::getNoiseRemovedImage(Mat& binaryMat, bool toBlack)
 		}
 	}
 
+	Mat removedMat = getDotRemovedImage(binaryMat, toBlack);
 
-	return binaryMat;
+	return removedMat;
+}
+
+/// <summary>
+/// 컨투어해서 면적이 x이하인 것 삭제
+/// </summary>
+/// <param name="binaryMat">The binary mat.</param>
+/// <param name="toBlack">if set to <c>true</c> [to black].</param>
+/// <returns></returns>
+Mat imageHandler::getDotRemovedImage(Mat& binaryMat, bool toBlack)
+{
+	threshold(binaryMat, binaryMat, 128, 255, THRESH_BINARY);
+
+	int color;
+	if (toBlack == true)
+		color = 0;
+	else
+		color = 255;
+
+	vector<vector<Point>> contours;
+	findContours(binaryMat, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+	vector<Moments> mu(contours.size());
+	for (unsigned int i = 0; i < contours.size(); i++)
+		mu[i] = moments(contours[i]);
+
+	/*
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		std::cout << "# of contour points: " << contours[i].size() << " " << contours[i][0] << std::endl;
+		mu[i] = moments(contours[i]);		
+
+		for (unsigned int j = 0; j < contours[i].size(); j++)
+		{
+			//std::cout << "Point(x,y)=" << contours[i][j] << std::endl;
+		}
+		std::cout << " Area: " << contourArea(contours[i]) << std::endl;
+		std::cout << mu[i].m10 / mu[i].m00 << ", " << mu[i].m01 / mu[i].m00 << std::endl;	// Center of Contour
+	}
+	*/
+
+	Mat removedMat = binaryMat.clone();
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		int conArea = contourArea(contours[i]);
+		if (conArea == 0)
+			floodFill(removedMat, contours[i][0], color);
+		else if (contourArea(contours[i]) < 10)
+		{
+			Point middlePoint = Point((int)((mu[i].m10 / mu[i].m00)+0.5), (int)((mu[i].m01 / mu[i].m00)+0.5));
+			floodFill(removedMat, middlePoint, color);
+		}
+			//floodFill(removedMat, contours[i][0], color);
+	}
+
+	return removedMat;
 }
 
 /// <summary>
@@ -1214,5 +1269,47 @@ int imageHandler::getRightistWhitePixel_x(Mat binImage, int targetStartX, int ra
 
 	return targetStartX;	// 못찾으면 값 유지 
 }
+
+// 편중된 색상에 대한 흑백 이미지를 얻음
+Mat imageHandler::getBiasedColorImage(Mat rgbImage, Color biasedColor)
+{
+		int height = rgbImage.rows;
+		int width = rgbImage.cols;
+
+		Mat outImage_painted;
+		outImage_painted = Mat::zeros(rgbImage.rows, rgbImage.cols, CV_8U);
+
+		// 행연산
+		for (int y = 0; y < height; y++)
+		{
+			Vec3b* yPtr_RGBImage = rgbImage.ptr<Vec3b>(y); //in	BGR [0~2]
+			uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//
+
+			for (int x = 0; x < width; x++)
+			{
+				if (yPtr_RGBImage[x][biasedColor] > 10)
+				{
+					float ratio = 1;
+					switch (biasedColor)
+					{
+					case Color::BLUE:
+						ratio = (yPtr_RGBImage[x][1] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][0];	// b g r   0에 가까울수록 더 불루;
+						break;
+					case Color::GREEN:
+						ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][1];
+						break;
+					case Color::RED:
+						ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][1]) / yPtr_RGBImage[x][2];
+						break;
+					}
+					if (ratio < 1)	
+						yPtr_painted[x] = 255;
+				}
+			}
+		}
+		
+		return outImage_painted;
+}
+
 
 

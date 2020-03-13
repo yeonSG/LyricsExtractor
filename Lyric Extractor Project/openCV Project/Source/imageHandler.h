@@ -22,6 +22,7 @@ public:
 	static int getAlinedContoursCount(static Mat& binImage);
 	static vector<Rect> getFillteredContours(vector<Rect> contoursRect);
 	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getDotRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
 	static Mat getCompositeBinaryImages(static Mat& subImage);
@@ -57,5 +58,6 @@ public:
 	static int getRightistWhitePixel_x(Mat binImage);
 	static int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);
 
+	static Mat getBiasedColorImage(Mat rgbImage, Color biasedColor);
 };
 

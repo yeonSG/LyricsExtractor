@@ -85,27 +85,35 @@
          ==> LineX의 (start, end) => (2, 4);
 
     * 테스트 영상 정보
-    Movie.mp4
+    Movie.mp4(1280x720)
      - 태국어
      - 0~27Lines
-    Movie1.mp4
+    Movie1.mp4           
      - 태국어, 영어
      - 0~62Lines
-    40009.mp4
+
+    40009.mp4(352x288, Movie2.mp4)
      - 태국어
      - 0~66Lines
-    40011.mp4
+    40011.mp4(Movie3.mp4)   
      - 태국어, 영어
      - 0~46Lines
+    40006.mp4
+     - 태국어
+     - 0~43Lines
+    40003.mp4
+     - 태국어(그림자형 폰트)
+     - 0~60Lines
+
+     gramy_vol8_6.mp4
+     - 태국어(빨, 파 존재)
+     - 0~79Lines
+     gramy_vol8_4.mp4
+     - 태국어(태두리에 검정 없는 폰트)
+     - 0~52Lines
 
     할것
      - 로깅
      - 디버깅
-     - * Word 분할
-     - Lyric Detection  : 가사 위치를 알아냄
-                        : horizontal projection 함, 
-                          1개의 구역이 나오면 해당 영역 사용 
-                          2개의 구역이 나온다면 항상 위에의 구역 사용
-                          floodfillAlgorism 뿌림(흰색만 상관없이)
 
      - UI 
