@@ -30,7 +30,7 @@ int main(int, char**)
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	//testClass.test_Video("40009.mp4");
+	//testClass.test_Video("gramy_vol8_6.mp4");
 
 	//testClass.test_Video4("40009.mp4");
 	//testClass.test_Video4("40011_forTest.mp4");
@@ -44,31 +44,32 @@ int main(int, char**)
 	//ana.videoAnalization1("movie1.mp4");
 	//ana.videoAnalization1("40009.mp4");
 
-	//ana.videoAnalization("movie1_forTest2.mp4");
+	ana.videoAnalization("40009_forDebug.mp4");
 
 	//ana.videoAnalization("40009_forDebug.mp4");
 	//ana.videoAnalization("movie1_forTest2.mp4");
 	//ana.videoAnalization("movie1_forTest2.mp4");
 	//ana.videoAnalization("40011_forTest.mp4");
 	//ana.videoAnalization("40011_forTest_upscale.mp4");
-	ana.videoAnalization("movie1.mp4");
-	ana.videoAnalization("movie.mp4");
-	ana.videoAnalization("40009.mp4");
-	ana.videoAnalization("40011.mp4");
-	ana.videoAnalization("40006.mp4");
-	ana.videoAnalization("40003.mp4");
+	//ana.videoAnalization("movie1.mp4");
+	//ana.videoAnalization("movie.mp4");
+	//ana.videoAnalization("40009.mp4");
+	//ana.videoAnalization("40011.mp4");
+	//ana.videoAnalization("40006.mp4");
+	//ana.videoAnalization("40003.mp4");
 
 	//ana.videoAnalization("gramy_vol8_4.mp4");
-	ana.videoAnalization("gramy_vol8_6.mp4");
+	//ana.videoAnalization("gramy_vol8_6.mp4");
 	
 
 	/*named_scope_logging();
 	tagged_logging();
 	timed_logging();*/
 	
-
+	BOOST_LOG(my_logger::get()) << "nProcess Successed : " <<(clock() - startClock) / CLOCKS_PER_SEC <<"Sec";
 	printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
-	return 0;
+
+	return 1;
 }
 
 //

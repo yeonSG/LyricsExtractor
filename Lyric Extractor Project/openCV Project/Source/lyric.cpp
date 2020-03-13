@@ -29,7 +29,7 @@ void lyric::init()
 		lines.clear();
 }
 
-void lyric::removeInvalidLines()
+void lyric::cleanupInvalidLines()
 {
 	int lineCount = 0;
 	Mat maskImage;

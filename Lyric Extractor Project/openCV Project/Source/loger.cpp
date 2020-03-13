@@ -47,6 +47,7 @@
 //
 #include "loger.h"
 
+
 void _logging(std::string msg, severity_level logType)
 {
     src::severity_logger< severity_level > slg;
@@ -54,6 +55,13 @@ void _logging(std::string msg, severity_level logType)
     printf("%s", msg);
     BOOST_LOG_SEV(slg, logType) << msg;
 }
+
+src::severity_logger< severity_level > getSL()
+{
+    src::severity_logger< severity_level > slg;
+    return slg;
+}
+
 
 void logging_function()
 {

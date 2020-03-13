@@ -1,5 +1,7 @@
 ﻿#include "analyzer.h"
 #include "testClass.h"
+#include "loger.h"
+#include <boost/log/trivial.hpp>
 
 bool desc(pair<int,int> a, pair<int, int> b)
 {
@@ -27,15 +29,20 @@ int analyzer::getContourCount(Mat cannyImage)
 
 bool analyzer::videoAnalization(string videoPath)
 {
+	//src::severity_logger< severity_level > slg;
+	//BOOST_LOG_SEV(slg, severity_level::normal) << videoPath;
+	//BOOST_LOG_SEV(getSL(), severity_level::normal) << "hello";
 	initVariables();
 
 	if (!setVideo(videoPath))
 	{
+		BOOST_LOG(my_logger::get()) << "fail to open the video";
 		return false;
 	}	
 	videoCapture = videoHandler::getVideoCapture();
 	if (videoCapture == nullptr)
 	{
+		BOOST_LOG(my_logger::get()) << "fail to getVideoCapture";
 		return false;
 	}
 	
@@ -69,6 +76,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 		//White dot Count
 		vecWhitePixelCounts.push_back(imageHandler::getWihtePixelCount(binImage));
+		BOOST_LOG(my_logger::get()) << "Frame :" << curFrame << " pixelCount :" + vecWhitePixelCounts.back();
 
 		/*	// 추가정보
 		if (beforeBinImage.empty() == true)
@@ -159,6 +167,7 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 /// </summary>
 void analyzer::getJudgedLine()
 {
+	BOOST_LOG(my_logger::get()) << "getJudgedLine()";
 	vector<int> peakValues;
 	vector<Line> lines;
 	// Peak 추출
@@ -321,7 +330,7 @@ void analyzer::linesRejudgeByLineLength(int fps)
 		else
 			line->isValid = true;
 	}
-	m_lyric.removeInvalidLines();
+	m_lyric.cleanupInvalidLines();
 }
 
 bool analyzer::lineRejudgeByLineLength(int startFrame, int endFrame, int fps)
@@ -361,7 +370,7 @@ void analyzer::lineRejudgeByPixelCount(vector<int> vecWhitePixelCounts)
 			line->isValid = true;
 		}
 	}
-	m_lyric.removeInvalidLines();
+	m_lyric.cleanupInvalidLines();
 
 }
 
@@ -426,6 +435,7 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 
 void analyzer::calibrateLines()
 {
+	BOOST_LOG(my_logger::get()) << "calibrateLines()";
 	int invaildCount = 0;
 
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
@@ -438,11 +448,13 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+		BOOST_LOG(my_logger::get()) << "Cal Line" << i << ":" << line->startFrame << line->endFrame;
 		
 		if (lineCalibration(*line, minFrame) == false)
 		{
 			line->isValid = false;
 			printf("Caled Line%d is invaild will be removed.\r\n", i);
+			BOOST_LOG(my_logger::get()) << "Caled Line" << i << "is invaild will be removed.";
 			invaildCount++;
 		}
 		else
@@ -451,11 +463,12 @@ void analyzer::calibrateLines()
 
 			line->isValid = true;
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
+			BOOST_LOG(my_logger::get()) << "Caled Line" << i << ":" << line->startFrame << line->endFrame;
 
 			catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
 		}
 	}
-	m_lyric.removeInvalidLines();
+	m_lyric.cleanupInvalidLines();
 	   	
 	linesRejudgeByLineLength();
 
@@ -879,6 +892,7 @@ float analyzer::getAverageOnVectorTarget(vector<int> vec, int target, int effect
 /// </summary>
 void analyzer::captureLines()
 {
+	BOOST_LOG(my_logger::get()) << "captureLines";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
@@ -1071,6 +1085,7 @@ Mat analyzer::getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat comp
 /// </summary>
 void analyzer::capturedLinesToText()
 {
+	BOOST_LOG(my_logger::get()) << "capturedLinesToText";
 	// "Output/Captures/LineX_bin.jpg"
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
@@ -1118,11 +1133,11 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	// tesseract_5.0.exe . . 
 	// $tesseract o.jpg o.out -l kor -l tha+eng --oem 1 --psm 7 -c 
 	// 인자 : "인풋이미지" + "아웃.txt경로" + "-l tha+eng"
-	string procName = "tesseract_5.0.exe";		// tesseract 경로
+	string procName = "tesseract\\tesseract_5.0.exe";		// tesseract 경로
 	string options = " -l tha+eng --oem 1 --psm 7";
-	string tessdataPath = " --tessdata-dir tessdata";
+	string tessdataPath = " --tessdata-dir tesseract\\tessdata";
 	string params = " -c tessedit_char_blacklist=\"|:;/\" -c preserve_interword_spaces=1  -c load_system_dawg=0 -c load_freq_dawg=0 -c tosp_min_sane_kn_sp=10";	// 블랙리스트, 띄어쓰기 제거
-	string commandString = procName + " " + targetImage + " " + outFileName + options + params;
+	string commandString = procName + " " + targetImage + " " + outFileName + tessdataPath + options + params;
 	// tesseract_5.0.exe "TARGET" "OUTIMAGE -l tha+eng --oem 1 --psm 7 -c tessedit_char_blacklist=\"|:;/\" -c preserve_interword_spaces=1  -c load_system_dawg=0 -c load_freq_dawg=0  -c tosp_min_sane_kn_sp=10" 
 	wstring args = stringToWstring(commandString);
 	STARTUPINFO si;
@@ -1148,6 +1163,7 @@ void analyzer::runOCR(string targetImage, string outFileName)
 
 void analyzer::readLyricsFromFile()
 {
+	BOOST_LOG(my_logger::get()) << "readLyricsFromFile";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		string lineFileName = fileManager::getSavePath() + "/Lines/Line" + to_string(i) + ".txt";
@@ -1272,6 +1288,7 @@ Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 /// </summary>
 void analyzer::wordCalibration()
 {
+	BOOST_LOG(my_logger::get()) << "wordCalibration";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
@@ -1320,7 +1337,7 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	}
 
 	sort(spacesLength.begin(), spacesLength.end(), desc);	// 확인 요(Length로 sorting 되어야 함) YS
-
+	
 	vector<string> tokens;
 	boost::split(tokens, line.text, boost::is_any_of(" ")); 
 	vector<Word> words;

@@ -38,6 +38,13 @@
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/attributes/scoped_attribute.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/move/utility.hpp> 
+#include <boost/log/sources/logger.hpp> 
+#include <boost/log/sources/record_ostream.hpp> 
+#include <boost/log/sources/global_logger_storage.hpp> 
+#include <boost/log/utility/setup/file.hpp> 
+#include <boost/log/utility/setup/common_attributes.hpp>
+
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
@@ -56,13 +63,16 @@ enum severity_level
     critical
 };
 
+BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(my_logger, src::logger_mt);
+
 BOOST_LOG_ATTRIBUTE_KEYWORD(line_id, "LineID", unsigned int)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level)
 BOOST_LOG_ATTRIBUTE_KEYWORD(tag_attr, "Tag", std::string)
 BOOST_LOG_ATTRIBUTE_KEYWORD(scope, "Scope", attrs::named_scope::value_type)
 BOOST_LOG_ATTRIBUTE_KEYWORD(timeline, "Timeline", attrs::timer::value_type)
 
-void _logging(std::string msg, severity_level logType);
+void _logging(std::string msg, severity_level logType = severity_level::normal);
+src::severity_logger< severity_level > getSL();
 void log_timer_start();
 void logging_function();
 void named_scope_logging();

@@ -15,7 +15,7 @@ public:
 	int getLinesSize();
 	void init();
 
-	void removeInvalidLines();
+	void cleanupInvalidLines();
 	
 	void writeLyricFile(VideoCapture* videoCapture);
 	void writeLyric_withWordFile(VideoCapture* videoCapture);
