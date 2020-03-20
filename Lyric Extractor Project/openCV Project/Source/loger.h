@@ -19,7 +19,7 @@
 //
 //// √‚√≥: https://itability.tistory.com/54 [aBiLiTy BLoG]
 
-
+#include <iostream>
 #include <cstddef>
 #include <string>
 #include <ostream>
@@ -79,4 +79,4 @@ void named_scope_logging();
 void tagged_logging();
 void timed_logging();
 std::ostream& operator<< (std::ostream& strm, severity_level level);
-void loger_init();
+void loger_init(std::string savePath);

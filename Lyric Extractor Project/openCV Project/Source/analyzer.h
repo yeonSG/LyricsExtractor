@@ -24,6 +24,7 @@ public:
 
 	int getWhitePixelAverage(Mat binImage);
 
+	bool startVideoAnalization(string videoPath);
 	bool videoAnalization(string videoPath);
 
 	/* 데이터 분석 함수 */

@@ -1,4 +1,5 @@
 #include "lyric.h"
+#include "loger.h"
 
 void lyric::setLines(vector<Line> lines)
 {
@@ -31,6 +32,7 @@ void lyric::init()
 
 void lyric::cleanupInvalidLines()
 {
+	BOOST_LOG(my_logger::get()) << "cleanupInvalidLines()";
 	int lineCount = 0;
 	Mat maskImage;
 	for (vector<Line>::iterator it = lines.begin(); it != lines.end(); /*it++*/)
@@ -38,6 +40,7 @@ void lyric::cleanupInvalidLines()
 		printf("Line%d : %d - %d\r\n", lineCount, it->startFrame, it->endFrame);
 		if (it->isValid == false)
 		{
+			BOOST_LOG(my_logger::get()) << "Line" << lineCount << "remove(line Invalid).";
 			printf("Line%d remove(line Invalid).\r\n\r\n", lineCount);
 			it = lines.erase(it);
 			lineCount++;
@@ -78,6 +81,7 @@ void lyric::writeLyricFile(VideoCapture* videoCapture)
 
 void lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
 {
+	BOOST_LOG(my_logger::get()) << "save _withWord file (Lines:"<< getLinesSize() << ")";
 	printf("save _withWord file (%dLines)\r\n", getLinesSize());
 
 	vector<string> vecLyricLine;

@@ -27,18 +27,39 @@ int analyzer::getContourCount(Mat cannyImage)
 	return contours.size();
 }
 
-bool analyzer::videoAnalization(string videoPath)
+bool analyzer::startVideoAnalization(string videoPath)
 {
-	//src::severity_logger< severity_level > slg;
-	//BOOST_LOG_SEV(slg, severity_level::normal) << videoPath;
-	//BOOST_LOG_SEV(getSL(), severity_level::normal) << "hello";
 	initVariables();
-
 	if (!setVideo(videoPath))
 	{
-		BOOST_LOG(my_logger::get()) << "fail to open the video";
+		cout << "fail to open the video : " << videoPath << endl;
 		return false;
-	}	
+	}
+	fileManager::initDirectory(fileManager::videoName);	// 
+	loger_init(fileManager::getSavePath());
+
+	clock_t startClock = (int)clock();
+	_logging("start Analization", severity_level::normal);
+	BOOST_LOG(my_logger::get(), severity_level::normal) << fileManager::getSavePath();
+
+	bool isSuccessed = videoAnalization(videoPath);
+
+	if (isSuccessed == false)
+	{
+		BOOST_LOG(my_logger::get(), severity_level::normal) << "nProcess Not Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec";
+		printf("\r\nProcess Failed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
+	}
+	else
+	{
+		BOOST_LOG(my_logger::get(), severity_level::normal) << "nProcess Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec";
+		printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
+	}
+
+	return true;
+}
+
+bool analyzer::videoAnalization(string videoPath)
+{
 	videoCapture = videoHandler::getVideoCapture();
 	if (videoCapture == nullptr)
 	{
@@ -76,7 +97,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 		//White dot Count
 		vecWhitePixelCounts.push_back(imageHandler::getWihtePixelCount(binImage));
-		BOOST_LOG(my_logger::get()) << "Frame :" << curFrame << " pixelCount :" + vecWhitePixelCounts.back();
+		BOOST_LOG(my_logger::get()) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
 
 		/*	// 추가정보
 		if (beforeBinImage.empty() == true)
@@ -98,8 +119,6 @@ bool analyzer::videoAnalization(string videoPath)
 		beforeBinImage = binImage;
 
 	}	// end while
-
-	fileManager::initDirectory(videoPath);
 
 	string fileName = "WhitePixelCount.txt";
 	fileManager::writeVector(fileName, vecWhitePixelCounts);
@@ -174,7 +193,10 @@ void analyzer::getJudgedLine()
 	peakValues = getPeakFromWhitePixelCounts(vecWhitePixelCounts);
 
 	for (int i = 0; i < peakValues.size(); i++)
+	{
 		printf("Peak %2d : %d\r\n", i, peakValues[i]);
+		BOOST_LOG(my_logger::get()) << "Peak " << i << " : " << peakValues[i];
+	}
 
 	string fileName = "peak.txt";
 	fileManager::writeVector(fileName, peakValues);
@@ -317,6 +339,7 @@ vector<Line> analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhiteP
 /// <param name="fps">The FPS.</param>
 void analyzer::linesRejudgeByLineLength(int fps)
 {
+	BOOST_LOG(my_logger::get()) << "linesRejudgeByLineLength()";
 	for (int i =0; i<m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
@@ -324,6 +347,7 @@ void analyzer::linesRejudgeByLineLength(int fps)
 
 		if (lineRejudgeByLineLength(line->startFrame, line->endFrame, fps) == false)
 		{
+			BOOST_LOG(my_logger::get()) << "exceptionLine: " << line->startFrame <<"-"<< line->endFrame;
 			printf("exceptionLine: (%d - %d)\r\n", line->startFrame, line->endFrame);
 			line->isValid = false;
 		}
@@ -448,13 +472,13 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-		BOOST_LOG(my_logger::get()) << "Cal Line" << i << ":" << line->startFrame << line->endFrame;
+		BOOST_LOG(my_logger::get()) << "Cal Line" << i << ":" << line->startFrame << "-"<< line->endFrame;
 		
 		if (lineCalibration(*line, minFrame) == false)
 		{
 			line->isValid = false;
 			printf("Caled Line%d is invaild will be removed.\r\n", i);
-			BOOST_LOG(my_logger::get()) << "Caled Line" << i << "is invaild will be removed.";
+			BOOST_LOG(my_logger::get()) << "Caled Line" << i << " is invaild will be removed.";
 			invaildCount++;
 		}
 		else
@@ -463,7 +487,7 @@ void analyzer::calibrateLines()
 
 			line->isValid = true;
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-			BOOST_LOG(my_logger::get()) << "Caled Line" << i << ":" << line->startFrame << line->endFrame;
+			BOOST_LOG(my_logger::get()) << "Caled Line" << i << ": " << line->startFrame << "-" <<line->endFrame;
 
 			catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
 		}
@@ -1092,6 +1116,7 @@ void analyzer::capturedLinesToText()
 		string targetPath = fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
 		if (fileManager::isExist(targetPath) != true)
 		{
+			BOOST_LOG(my_logger::get()) << targetPath<<" is not exist.";
 			printf("%s is not exist. \r\n", targetPath.c_str());
 			continue;
 		}
@@ -1169,6 +1194,7 @@ void analyzer::readLyricsFromFile()
 		string lineFileName = fileManager::getSavePath() + "/Lines/Line" + to_string(i) + ".txt";
 		if (fileManager::isExist(lineFileName) != true)
 		{
+			BOOST_LOG(my_logger::get()) << lineFileName <<" is not exist.";
 			printf("%s is not exist. \r\n", lineFileName.c_str());
 			continue;
 		}
@@ -1299,6 +1325,7 @@ void analyzer::wordCalibration()
 
 void analyzer::wordCalibrationByOCRText(Line& line)
 {
+	BOOST_LOG(my_logger::get()) << "wordCalibrationByOCRText()";
 	// Line space 구함
 	// 결과물 길이로 소팅
 	// line에 ' '의 개수만큼 space기준으로 word화 
@@ -1367,18 +1394,8 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	vector<pair<int, int>> paintedPoint;
 	paintedPoint = getPaintedPoint(line);
 
-	// init
-	//for (int i = 0; i < line.spacingWords.size(); i++)
-	//{	// init
-	//	if (i == 0)	// 첫 워드
-	//		words[i].startFrame = line.startFrame;
-	//	else if (i == line.spacingWords.size()-1)	// 마지막 워드 
-	//		words[i].endFrame = line.endFrame;
-	//}
 	words[0].startFrame = line.startFrame;
 	words[words.size()-1].endFrame = line.endFrame;
-	//words.begin()->startFrame = line.startFrame;
-	//words.end()->startFrame = line.endFrame;
 
 	for (int i = 0; i < line.spacingWords.size(); i++)	// words[i], words[i+1]
 	{
@@ -1470,6 +1487,7 @@ Mat analyzer::getDeblurImage(Mat sourceImage, int frameNum)
 	imwrite("ML/deBlur_before.jpg", sourceImage);
 	system("python ML/deblur.py ML/deBlur_before.jpg");
 	Mat deBlurImage = imread("ML/deBlur_after.png");
+	// TODO : deBulurImage Null 처리
 	imwrite(fileManager::getSavePath() + "/Captures/ML_" + to_string(frameNum) + "_imageToSubBinImage.jpg", deBlurImage);
 	return deBlurImage;
 }

@@ -118,10 +118,8 @@ bool videoHandler::setVideo(string videoPath)
 {
 	videoCapture = new VideoCapture(videoPath);
 	if (!videoCapture->isOpened())
-	{
-		cout << "fail to open the video" << endl;
 		return false;
-	}
+
 	boost::filesystem::path p(videoPath);
 	fileManager::videoName = p.filename().string();
 

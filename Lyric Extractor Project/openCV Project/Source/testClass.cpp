@@ -245,6 +245,30 @@ void testClass::test_Image4()
 	return;
 }
 
+void testClass::test_Video_captureFrame(string videoPath)
+{
+	VideoCapture* vc;
+	if (!videoHandler::setVideo(videoPath))
+		return;
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
+
+	Mat orgImage;
+	int frame = 100;
+
+	for (int i = 0; i < 30; i++)
+	{
+		vc->set(CAP_PROP_POS_FRAMES, (double)(frame*i));
+		vc->read(orgImage);
+		string filename = "saveImage\\"+videoPath + "_" + to_string(i * frame) + ".png";
+		imwrite(filename, orgImage);
+		// orgImage ÀúÀå
+	}
+
+	vc->release();
+
+}
+
 void testClass::test_Video(string videoPath)
 {
 	VideoCapture* vc;

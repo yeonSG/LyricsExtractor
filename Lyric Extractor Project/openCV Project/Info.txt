@@ -4,3 +4,5 @@
 	boost_1.72.0
 	tesseract_5.0
 
+	python	3.6
+	cuDNN	V10.2.89

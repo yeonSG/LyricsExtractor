@@ -132,20 +132,20 @@ std::ostream& operator<< (std::ostream& strm, severity_level level)
     return strm;
 }
 
-void loger_init()
+void loger_init(std::string savePath)
 {
     typedef sinks::synchronous_sink< sinks::text_ostream_backend > text_sink;
     boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
 
     sink->locked_backend()->add_stream(
-        boost::make_shared< std::ofstream >("sample.log"));
+        boost::make_shared< std::ofstream >(savePath+"\\log.txt"));
 
     sink->set_formatter
     (
         expr::stream
         << std::hex << std::setw(8) << std::setfill('0') << line_id << std::dec << std::setfill(' ')
         << ": <" << severity << ">\t"
-        << "(" << scope << ") "
+        //<< "(" << scope << ") "
         << expr::if_(expr::has_attr(tag_attr))
         [
             expr::stream << "[" << tag_attr << "] "
