@@ -112,9 +112,12 @@
      - 태국어(태두리에 검정 없는 폰트)
      - 0~52Lines
 
+
     할것
-     - 로깅
+     - 기능 구현(xml형식 데이터)
      - 디버깅
+     - 로깅
+        : 로깅 재구현
 
      - UI 구성 : 
         1. 입력 : 파일 1개 or Directory 
@@ -122,3 +125,45 @@
                 인자1 : 파일 or 폴더
                    - 파일이면 해당 파일만 분석
                    - 폴더면 해당 폴더 내부의 모든 파일 분석
+
+    
+
+    어떻게 하면 완성도를 높일 수 있을까..?
+    - 로깅 재구현
+    - 폴더가 중복된다면 
+
+
+*프로그램 흐름
+1. 영상 frame별 흰점 개수 Count
+    - input : 영상
+    - output: 영상의 frame별 White Pixcel Count
+    : 가사 색칠된 픽샐의 개수 Count (색칠된것은 검-흰-빨(파) 의 배열이 존재하는 곳에서 흰색 지점을 말함 )
+
+2. Peak 판별
+    - input : 영상의 frame별 White Pixcel Count
+    - output: 판별된 Peak의 frame 
+    : 이상적으로 추출된 Peak는 Line의 끝점 frame이 됨.
+
+3. Peak에서 Line 판별
+    - input : 판별된 Peak의 frame, frame별 White Pixcel Count
+    - output: 대략적인 Line의 start-end frame
+
+4. Line 중 유효한 라인을 걸러내고 정확한 start-end frame을 잡아냄
+    - input : 대략적인 Line의 start-end frame, 영상
+    - output: 유효한 라인의 정확한 start-end frame, 해당 라인의 OCR 입력 이미지 (글자 흑백으로 이루어진 이미지)
+    : python코드의 ML 아웃풋 사용해 mask image를 사용함.
+
+5. 확정된 라인의 text를 얻음
+    - input : 유효한 라인의 정확한 start-end frame, 해당 라인의 OCR 입력 이미지 (글자 흑백으로 이루어진 이미지)
+    - output: 라인의 OCR output인 text, "Lyric.txt"
+    : 글자의 흑백 이미지인 mask image를 저장한 후 각각을 OCR 입력으로 넣어 text를 얻어냄
+
+6. OCR의 결과와 mask image를 비교해 워드 단위의 시간을 뽑아냄
+    - input : 라인의 OCR output text, 라인의 start-end 정보, 라인의 mask image
+    - output: 라인의 word 개수와 word별 start-end frame, "Lyrics_withWord.txt"
+    
+*예상 문제점
+1. 예상치 못한 영상의 Lyric 스타일
+    - 현 구현상태의 1단계에서 흰점 개수를 count할 때 사용되는 알고리즘에 벗어나는 입력이 들어 올 경우 알아채지 못함. (EX. grammy_vol8_4.mp4)
+    - 이 문제가 발생했을 때 고칠 수 있는 부분은 뭘까?
+        : 일단 1번 whiteCount 하

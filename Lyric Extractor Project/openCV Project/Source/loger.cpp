@@ -46,6 +46,7 @@
 //
 //
 #include "loger.h"
+#include <boost/log/support/date_time.hpp>
 
 
 void _logging(std::string msg, severity_level logType)
@@ -134,32 +135,27 @@ std::ostream& operator<< (std::ostream& strm, severity_level level)
 
 void loger_init(std::string savePath)
 {
+ 
     typedef sinks::synchronous_sink< sinks::text_ostream_backend > text_sink;
     boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
 
     sink->locked_backend()->add_stream(
-        boost::make_shared< std::ofstream >(savePath+"\\log.txt"));
+        boost::make_shared< std::ofstream >(savePath+"\\log.txt")); 
 
-    sink->set_formatter
-    (
-        expr::stream
-        << std::hex << std::setw(8) << std::setfill('0') << line_id << std::dec << std::setfill(' ')
-        << ": <" << severity << ">\t"
-        //<< "(" << scope << ") "
-        << expr::if_(expr::has_attr(tag_attr))
-        [
-            expr::stream << "[" << tag_attr << "] "
-        ]
-    << expr::if_(expr::has_attr(timeline))
-        [
-            expr::stream << "[" << timeline << "] "
-        ]
-    << expr::smessage
-        );
+    sink->set_formatter(expr::format("[%1%] : %2%") 
+        //% expr::attr< unsigned int >("RecordID") 
+        % expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S.%e") 
+        //% severity
+        % expr::message);
+    
+    sink->flush();
 
+    logging::core::get()->remove_all_sinks();
     logging::core::get()->add_sink(sink);
+
 
     // Add attributes
     logging::add_common_attributes();
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
+       
 }

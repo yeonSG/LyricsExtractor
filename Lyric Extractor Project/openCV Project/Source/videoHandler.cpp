@@ -1,4 +1,5 @@
 #include "videoHandler.h"
+#include "loger.h"
 
 VideoCapture* videoHandler::videoCapture = nullptr;
 
@@ -52,6 +53,12 @@ void videoHandler::printVideoSpec()
 	printf("Video frameCount	: %d \r\n", getVideoFrameCount());
 	printf("Video frameWidth	: %d \r\n", getVideoWidth());
 	printf("Video frameHeight	: %d \r\n", getVideoHeight());
+
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "***Video SPEC***";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Video fps		: " << getVideoFPS();
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Video frameCount	: " << getVideoFrameCount();
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Video frameWidth	: " << getVideoWidth();
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Video frameHeight	: " << getVideoHeight();
 }
 
 void videoHandler::printCurrentFrameSpec(VideoCapture vc)
@@ -122,8 +129,6 @@ bool videoHandler::setVideo(string videoPath)
 
 	boost::filesystem::path p(videoPath);
 	fileManager::videoName = p.filename().string();
-
-	printVideoSpec();
 
 	return true;
 }

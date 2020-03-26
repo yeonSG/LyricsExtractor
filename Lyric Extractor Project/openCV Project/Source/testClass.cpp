@@ -252,15 +252,19 @@ void testClass::test_Video_captureFrame(string videoPath)
 		return;
 	videoHandler::printVideoSpec();
 	vc = videoHandler::getVideoCapture();
-
+	fileManager::createDir("saveImage\\" + videoPath);
 	Mat orgImage;
-	int frame = 100;
+	int frame = 1600;
 
-	for (int i = 0; i < 30; i++)
+	for (int i = 0; i < 100; i++)
 	{
-		vc->set(CAP_PROP_POS_FRAMES, (double)(frame*i));
+		vc->set(CAP_PROP_POS_FRAMES, (double)(frame+i));
 		vc->read(orgImage);
-		string filename = "saveImage\\"+videoPath + "_" + to_string(i * frame) + ".png";
+		char s[9] = { 0, };	// 00000000.png
+		printf("%08d", i);
+		sprintf_s(s, sizeof(s), "%08d", i);
+
+		string filename = "saveImage\\"+videoPath + "\\" + s + ".png";
 		imwrite(filename, orgImage);
 		// orgImage ÀúÀå
 	}
@@ -278,7 +282,7 @@ void testClass::test_Video(string videoPath)
 	vc = videoHandler::getVideoCapture();
 
 	Mat orgImage;
-
+	int curFrame = 0;
 	while (vc->read(orgImage))
 	{
 		orgImage = imageHandler::getResizeAndSubtitleImage(orgImage);
@@ -299,7 +303,9 @@ void testClass::test_Video(string videoPath)
 		//bitwise_and(image_binAT, fullyContrastImage_white, andImage);
 
 		videoHandler::printCurrentFrameSpec(*vc);
-		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+		//int curFrame = (int)vc->get(CAP_PROP_POS_MSEC);
+		//curFrame = (int)vc->get(CAP_PROP_POS_MSEC);
+		cout << "cur Frame : " << curFrame;
 
 		int key = waitKey(0);
 		if (key == KEY_ESC)
@@ -323,7 +329,8 @@ void testClass::test_Video(string videoPath)
 		else if (key == '?')
 			videoHandler::printVideoSpec();
 
-		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+		//vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+		vc->set(CAP_PROP_POS_MSEC, (double)curFrame );	// frame*0.1 msec
 	}
 	
 	vc->release();

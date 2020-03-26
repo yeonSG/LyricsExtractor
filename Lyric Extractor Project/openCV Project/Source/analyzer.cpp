@@ -2,6 +2,7 @@
 #include "testClass.h"
 #include "loger.h"
 #include <boost/log/trivial.hpp>
+#include <Python.h>
 
 bool desc(pair<int,int> a, pair<int, int> b)
 {
@@ -37,21 +38,31 @@ bool analyzer::startVideoAnalization(string videoPath)
 	}
 	fileManager::initDirectory(fileManager::videoName);	// 
 	loger_init(fileManager::getSavePath());
+	videoHandler::printVideoSpec();
 
 	clock_t startClock = (int)clock();
-	_logging("start Analization", severity_level::normal);
-	BOOST_LOG(my_logger::get(), severity_level::normal) << fileManager::getSavePath();
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Start Analization";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Output dir : " << fileManager::getSavePath();
 
-	bool isSuccessed = videoAnalization(videoPath);
+	bool isSuccessed = false;
+	
+	try 
+	{
+		isSuccessed = videoAnalization(videoPath);
+	}
+	catch (exception & e)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "*****Exception***** : " << e.what();
+	}
 
 	if (isSuccessed == false)
 	{
-		BOOST_LOG(my_logger::get(), severity_level::normal) << "nProcess Not Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec";
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "nProcess Not Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec" << endl;
 		printf("\r\nProcess Failed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
 	}
 	else
 	{
-		BOOST_LOG(my_logger::get(), severity_level::normal) << "nProcess Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec";
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "nProcess Successed : " << (clock() - startClock) / CLOCKS_PER_SEC << "Sec" << endl;
 		printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);
 	}
 
@@ -63,7 +74,7 @@ bool analyzer::videoAnalization(string videoPath)
 	videoCapture = videoHandler::getVideoCapture();
 	if (videoCapture == nullptr)
 	{
-		BOOST_LOG(my_logger::get()) << "fail to getVideoCapture";
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
 		return false;
 	}
 	
@@ -90,14 +101,14 @@ bool analyzer::videoAnalization(string videoPath)
 		//	break;
 		videoHandler::printCurrentFrameSpec(*videoCapture);
 		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);	// curFrame 을 얻어서 다시 세팅해 주는 이유는 순차적으로 읽다가 frame이 높은 프레임에 도달했을 때 읽힌 image가 실재 frame의 image+-1의 이미지가 읽히는 등의 현상이 생김.
 		
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage); 		
 		binImage = imageHandler::getPaintedBinImage(subImage);
 
 		//White dot Count
 		vecWhitePixelCounts.push_back(imageHandler::getWihtePixelCount(binImage));
-		BOOST_LOG(my_logger::get()) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
 
 		/*	// 추가정보
 		if (beforeBinImage.empty() == true)
@@ -114,10 +125,9 @@ bool analyzer::videoAnalization(string videoPath)
 
 			vecWhitePixelChangedCounts.push_back(imageHandler::getWihtePixelCount(DifferenceImage));
 		}
-		*/
 
 		beforeBinImage = binImage;
-
+		*/
 	}	// end while
 
 	string fileName = "WhitePixelCount.txt";
@@ -186,7 +196,7 @@ vector<int> analyzer::vectorToAverageVector(vector<int> vec, int effectiveRange)
 /// </summary>
 void analyzer::getJudgedLine()
 {
-	BOOST_LOG(my_logger::get()) << "getJudgedLine()";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "getJudgedLine()";
 	vector<int> peakValues;
 	vector<Line> lines;
 	// Peak 추출
@@ -195,12 +205,13 @@ void analyzer::getJudgedLine()
 	for (int i = 0; i < peakValues.size(); i++)
 	{
 		printf("Peak %2d : %d\r\n", i, peakValues[i]);
-		BOOST_LOG(my_logger::get()) << "Peak " << i << " : " << peakValues[i];
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peakValues[i];
 	}
 
 	string fileName = "peak.txt";
 	fileManager::writeVector(fileName, peakValues);
 
+	/* peaks -> lines */
 	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
 	m_lyric.setLines(lines);
 
@@ -301,6 +312,7 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 /// <param name="peaks">피크</param>
 vector<Line> analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhitePixelCounts)
 {
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "getLinesFromPeak()";
 	vector<Line> lines;
 	for (int i = 0; i < peaks.size(); i++)	// find start point
 	{
@@ -339,7 +351,7 @@ vector<Line> analyzer::getLinesFromPeak(vector<int> peaks, vector<int> vecWhiteP
 /// <param name="fps">The FPS.</param>
 void analyzer::linesRejudgeByLineLength(int fps)
 {
-	BOOST_LOG(my_logger::get()) << "linesRejudgeByLineLength()";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "linesRejudgeByLineLength()";
 	for (int i =0; i<m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
@@ -347,7 +359,7 @@ void analyzer::linesRejudgeByLineLength(int fps)
 
 		if (lineRejudgeByLineLength(line->startFrame, line->endFrame, fps) == false)
 		{
-			BOOST_LOG(my_logger::get()) << "exceptionLine: " << line->startFrame <<"-"<< line->endFrame;
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "exceptionLine: " << line->startFrame <<"-"<< line->endFrame;
 			printf("exceptionLine: (%d - %d)\r\n", line->startFrame, line->endFrame);
 			line->isValid = false;
 		}
@@ -459,8 +471,8 @@ void analyzer::lineRejudgeByVerticalHistogramAverage(vector<pair<int, int>>& jud
 
 void analyzer::calibrateLines()
 {
-	BOOST_LOG(my_logger::get()) << "calibrateLines()";
-	int invaildCount = 0;
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "calibrateLines()";
+	//int invaildCount = 0;
 
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
@@ -472,14 +484,14 @@ void analyzer::calibrateLines()
 			minFrame = 0;
 
 		printf("Cal Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-		BOOST_LOG(my_logger::get()) << "Cal Line" << i << ":" << line->startFrame << "-"<< line->endFrame;
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Cal Line" << i << ":" << line->startFrame << "-"<< line->endFrame;
 		
 		if (lineCalibration(*line, minFrame) == false)
 		{
 			line->isValid = false;
 			printf("Caled Line%d is invaild will be removed.\r\n", i);
-			BOOST_LOG(my_logger::get()) << "Caled Line" << i << " is invaild will be removed.";
-			invaildCount++;
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Caled Line" << i << " is invaild will be removed.";
+			//invaildCount++;
 		}
 		else
 		{
@@ -487,9 +499,9 @@ void analyzer::calibrateLines()
 
 			line->isValid = true;
 			printf("Caled Line%d : %d - %d\r\n", i, line->startFrame, line->endFrame);
-			BOOST_LOG(my_logger::get()) << "Caled Line" << i << ": " << line->startFrame << "-" <<line->endFrame;
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Caled Line" << i << ": " << line->startFrame << "-" <<line->endFrame;
 
-			catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
+			//catpureBinaryImageForOCR(line->maskImage.clone(), i-invaildCount, fileManager::getSavePath());
 		}
 	}
 	m_lyric.cleanupInvalidLines();
@@ -511,7 +523,7 @@ bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 	Mat maskImage;
 	if (USE_ML)	
 	{
-		Mat deblurImg = getDeblurImage(sourceImg, line.endFrame - 1);
+		Mat deblurImg = getDeblurImage(sourceImg, line.endFrame - 1);	
 		maskImage = imageToSubBinImage(deblurImg);
 	}
 	else
@@ -916,7 +928,7 @@ float analyzer::getAverageOnVectorTarget(vector<int> vec, int target, int effect
 /// </summary>
 void analyzer::captureLines()
 {
-	BOOST_LOG(my_logger::get()) << "captureLines";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "captureLines()";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
@@ -927,6 +939,8 @@ void analyzer::captureLines()
 		videoCapture->read(endImage);
 		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
 		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
+
+		catpureBinaryImageForOCR(line->maskImage.clone(), i, fileManager::getSavePath());
 	}
 }
 
@@ -1109,19 +1123,19 @@ Mat analyzer::getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat comp
 /// </summary>
 void analyzer::capturedLinesToText()
 {
-	BOOST_LOG(my_logger::get()) << "capturedLinesToText";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "capturedLinesToText()";
 	// "Output/Captures/LineX_bin.jpg"
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		string targetPath = fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
+		string targetPath = fileManager::getSavePath() + "Captures/Line" + to_string(i) + "_Bin.jpg";	// ./Output/Captures/
 		if (fileManager::isExist(targetPath) != true)
 		{
-			BOOST_LOG(my_logger::get()) << targetPath<<" is not exist.";
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << targetPath<<" is not exist.";
 			printf("%s is not exist. \r\n", targetPath.c_str());
 			continue;
 		}
 
-		string desName = fileManager::getSavePath() + "/Lines/Line" + to_string(i);
+		string desName = fileManager::getSavePath() + "Lines/Line" + to_string(i);
 		runOCR(targetPath, desName);
 	}
 }
@@ -1173,6 +1187,7 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	ZeroMemory(&pi, sizeof(pi));	// 프로그램 매모리 할당
 
 	printf("runOCR : %s  \r\n", commandString.c_str());
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "runOCR() :" << commandString;
 
 	if (!CreateProcess(NULL, (LPWSTR)args.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
 	{
@@ -1183,25 +1198,34 @@ void analyzer::runOCR(string targetImage, string outFileName)
 	WaitForMultipleObjects(1, &H, true, INFINITE);	// 모든 child가 완료될때까지 대기
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
+
+	if (fileManager::isExist(outFileName+".txt") != true)
+	{
+		printf("OCR failed");
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "OCR failed : path - " << outFileName;
+
+	}
 	//ExitProcess(0);
 }
 
 void analyzer::readLyricsFromFile()
 {
-	BOOST_LOG(my_logger::get()) << "readLyricsFromFile";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "readLyricsFromFile()";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
-		string lineFileName = fileManager::getSavePath() + "/Lines/Line" + to_string(i) + ".txt";
+		string lineFileName = fileManager::getSavePath() + "/Lines/Line" + to_string(i) + ".txt";	// YS - 에러 발생시킴
+		Line* line = m_lyric.getLine(i);
 		if (fileManager::isExist(lineFileName) != true)
 		{
-			BOOST_LOG(my_logger::get()) << lineFileName <<" is not exist.";
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << lineFileName <<" is not exist.";
 			printf("%s is not exist. \r\n", lineFileName.c_str());
-			continue;
+
+			//continue;	// 에러 처리 필요			
 		}
 		string ocredText;
 		fileManager::readLine(lineFileName, ocredText);
-		Line* line = m_lyric.getLine(i);
 
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Read text: " << ocredText;
 		line->text = ocredText;
 	}
 }
@@ -1314,18 +1338,17 @@ Mat analyzer::removeLint(Mat srcImage, Mat refImage)
 /// </summary>
 void analyzer::wordCalibration()
 {
-	BOOST_LOG(my_logger::get()) << "wordCalibration";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "wordCalibration()";
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
 		wordCalibrationByOCRText(*line);
 	}
-
 }
 
 void analyzer::wordCalibrationByOCRText(Line& line)
 {
-	BOOST_LOG(my_logger::get()) << "wordCalibrationByOCRText()";
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "wordCalibrationByOCRText()";
 	// Line space 구함
 	// 결과물 길이로 소팅
 	// line에 ' '의 개수만큼 space기준으로 word화 
@@ -1363,15 +1386,15 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 		}
 	}
 
-	sort(spacesLength.begin(), spacesLength.end(), desc);	// 확인 요(Length로 sorting 되어야 함) YS
+	sort(spacesLength.begin(), spacesLength.end(), desc);	
 	
-	vector<string> tokens;
+	vector<string> tokens;	// OCR out text에서 ' ' 단위로 분리해낸 string
 	boost::split(tokens, line.text, boost::is_any_of(" ")); 
-	vector<Word> words;
+	vector<Word> words;		// 워드 text, frame start-end를 가지는 객체
 	for (int i = 0; i < tokens.size(); i++)
 	{
 		Word word;
-		if (tokens[i].find_first_not_of(' ') != std::string::npos)
+		//if (tokens[i].find_first_not_of(' ') != std::string::npos)	// ' '가 없다면 npos를 반환함
 		{
 			// There's a non-space.
 			word.text = tokens[i];
@@ -1382,20 +1405,22 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	//vector<pair<int, int>> spacesLength_cut;	// <index, length>
 	//spacesLength_cut.assign(spacesLength.begin(), spacesLength.begin() + words.size());
 
-	for (int i = 0; i < words.size()-1; i++)	// token만큼의 스페이스바
+	printf("words.size() : %d", words.size());
+	for (int i = 0; i < static_cast<int>(words.size()-1); i++)	// token만큼의 스페이스바 - word 수가 더 많으면 에러 발생 YS
 	{
 		int startFrame = spaces[spacesLength[i].second].first;  // [index].first
 		int endFrame = spaces[spacesLength[i].second].second;
 
 		line.spacingWords.push_back((endFrame-startFrame)/2 + startFrame);
+		cout << i << "\n";
 	}
 	sort(line.spacingWords.begin(), line.spacingWords.end());
 
 	vector<pair<int, int>> paintedPoint;
 	paintedPoint = getPaintedPoint(line);
 
-	words[0].startFrame = line.startFrame;
-	words[words.size()-1].endFrame = line.endFrame;
+	words[0].startFrame = line.startFrame;			// 배열 첫번째에 시작점 넣음
+	words[words.size()-1].endFrame = line.endFrame; // 배열에 마지막에 끝점 넣음
 
 	for (int i = 0; i < line.spacingWords.size(); i++)	// words[i], words[i+1]
 	{
@@ -1484,12 +1509,43 @@ Mat analyzer::getDeblurImage(Mat sourceImage, int frameNum)
 	2. python 실행
 	3. 이미지 로드
 	*/
-	imwrite("ML/deBlur_before.jpg", sourceImage);
-	system("python ML/deblur.py ML/deBlur_before.jpg");
-	Mat deBlurImage = imread("ML/deBlur_after.png");
-	// TODO : deBulurImage Null 처리
-	imwrite(fileManager::getSavePath() + "/Captures/ML_" + to_string(frameNum) + "_imageToSubBinImage.jpg", deBlurImage);
-	return deBlurImage;
+	imwrite("ML\\deBlur_before.jpg", sourceImage);
+	system("python ML\\deblur.py ML\\deBlur_before.jpg");
+	
+	// read file last line
+	ifstream readFile;
+	string lastLine;
+	readFile.open("ML\\PythonLog.txt");
+	if (readFile.is_open())
+	{
+		while (!readFile.eof())
+		{
+			string tmp;
+			getline(readFile, tmp);
+			cout << "line:: " <<tmp << endl;
+			if(tmp.length()>1)
+				lastLine = tmp;
+		}
+	}
+	cout << "last line : "<< lastLine << endl;
+
+	bool isSucess = false;
+	if (string::npos != lastLine.find("successed"))
+		isSucess = true;
+	
+	if (isSucess)
+	{
+		Mat deBlurImage = imread("ML\\deBlur_after.png");
+		imwrite(fileManager::getSavePath() + "\\Captures\\ML_" + to_string(frameNum) + "_imageToSubBinImage.jpg", deBlurImage);
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "python deblur sucessed";
+		return deBlurImage;
+	}
+	else
+	{
+		// python deblur Failed!
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "python deblur Not sucessed";
+		return sourceImage;
+	}
 }
 
 int analyzer::getWhitePixelAverage(Mat binImage)

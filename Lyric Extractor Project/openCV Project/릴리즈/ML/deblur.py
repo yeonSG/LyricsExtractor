@@ -25,7 +25,9 @@ dependencies = {
     
 def load_model_jpegDeblocking(path):
         dependencies = { 'psnr_metric':[psnr_metric] }
-        loadModel = tf.keras.models.load_model(path+'\\'+'lyric_jpegdeblock_deblur_model.h5', custom_objects=dependencies)
+        targetModel = path+'\\'+'lyric_jpegdeblock_deblur_model.h5'
+        print("target model : " + targetModel )
+        loadModel = tf.keras.models.load_model(targetModel, custom_objects=dependencies)
         return loadModel
     
 def saveImage(tensor, fileName, isTensor):
@@ -46,27 +48,43 @@ def saveImage(tensor, fileName, isTensor):
 
     
 def main(filePath) :
+    imgPath = os.path.split(filePath)   # "ML", "deBlur_before.jpg"
+    logFile = open(imgPath[0]+"/PythonLog.txt", 'w')
+
+    logFile.write("---Python Start---\n")
     print("---Python Start---")
-    print("image debluring"+filePath)    
-    imgPath = os.path.split(filePath)
+    logFile.write("image debluring "+filePath + "\n")
+    print("image debluring "+filePath)    
+    try:
+        #이미지 로드
+        img =  tf.io.read_file(filePath)
+        img = tf.image.decode_jpeg(img, channels=3)
+        img = tf.image.convert_image_dtype(img, tf.float32)
 
-#이미지 로드
-    img =  tf.io.read_file(filePath)
-    img = tf.image.decode_jpeg(img, channels=3)
-    img = tf.image.convert_image_dtype(img, tf.float32)
+        #모델 로드
+        model_deblock = load_model_jpegDeblocking(imgPath[0])
 
-#모델 로드
-    model_deblock = load_model_jpegDeblocking(imgPath[0])
+        # 디블로킹 이미지 생성 (int)
+        img_resize = model_deblock.predict(np.expand_dims(img, axis=0))
 
-# 디블로킹 이미지 생성 (int)
-    img_resize = model_deblock.predict(np.expand_dims(img, axis=0))
+        savePath = imgPath[0]+"\\deBlur_after"
+        saveImage(np.squeeze(img_resize, axis=0), savePath, False)
 
-    savePath = imgPath[0]+"\\deBlur_after"
-    saveImage(np.squeeze(img_resize, axis=0), savePath, False)
+        logFile.write("---Python End---\n")
+        print("---Python End---")
+        logFile.write("deblur successed!\n")
+        print("deblur successed!")
+    except Exception as ex:
+        print("Error occur")
+        print(ex)
+        logFile.write(ex + "\n")
 
-# 메모리 할당 해제
-    del model_deblock
-    print("---Python End---")
+    finally:
+        # 메모리 할당 해제
+        del model_deblock
+
+        logFile.close()
+
 
 if __name__ == "__main__" :
     main(sys.argv[1])

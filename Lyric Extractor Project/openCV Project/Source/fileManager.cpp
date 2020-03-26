@@ -1,4 +1,5 @@
 #include "fileManager.h"
+#include "loger.h"
 
 string fileManager::videoName;
 
@@ -176,26 +177,16 @@ string fileManager::getLineImageName(string videoName, int index)
 
 bool fileManager::writeVector(string& fileName, vector<int>& vec)
 {
-	ofstream* outStream = new ofstream((getSavePath() + fileName).data());
-	if (outStream == NULL)
-		outStream = new ofstream(fileName.data());
-	if (outStream->fail())
+	bool res;
+	vector<string> stringVec;
+	for (int i = 0; i < vec.size(); i++)
 	{
-		cout << "Fail to open files" << endl;
-		return false;
+		stringVec.push_back(to_string(vec[i]));
 	}
 
-	if (outStream->is_open())
-	{
-		for (int i = 0; i < vec.size(); i++)
-			(*outStream) << vec.at(i) << "\n";
-		outStream->close();
-		return true;
-	}
-	else
-		return false;
+	res = writeVector(fileName, stringVec);
 
-	return false;
+	return res;
 }
 
 bool fileManager::writeVector(string& fileName, vector<string>& vec)
@@ -206,6 +197,7 @@ bool fileManager::writeVector(string& fileName, vector<string>& vec)
 	if (outStream->fail())
 	{
 		cout << "Fail to open files" << endl;
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
 		return false;
 	}
 
@@ -214,11 +206,11 @@ bool fileManager::writeVector(string& fileName, vector<string>& vec)
 		for (int i = 0; i < vec.size(); i++)
 			(*outStream) << vec.at(i) << "\n";
 		outStream->close();
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file success : " << fileName;
 		return true;
 	}
-	else
-		return false;
 
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
 	return false;
 }
 
