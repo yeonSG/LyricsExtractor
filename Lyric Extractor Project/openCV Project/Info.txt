@@ -1,6 +1,6 @@
 
 @ Version Infomation
-	OpenCV412
+	OpenCV420
 	boost_1.72.0
 	tesseract_5.0
 
