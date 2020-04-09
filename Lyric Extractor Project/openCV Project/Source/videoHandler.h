@@ -16,6 +16,7 @@ public :
 	static void printVideoSpec();
 	static void printCurrentFrameSpec(VideoCapture vc);
 
+	static int frameToMs(int frame, VideoCapture& vc);
 	static String frameToTime(int frame, VideoCapture& vc);
 
 	static VideoCapture* getVideoCapture();

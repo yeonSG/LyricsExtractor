@@ -12,6 +12,7 @@
 #include <string>
 #include <locale>
 #include <codecvt>
+#include "videoAnalyzer.h"
 
 #include "nlohmann/json.hpp"
 

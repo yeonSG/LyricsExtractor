@@ -52,6 +52,22 @@ void Lyric::cleanupInvalidLines()
 	}
 }
 
+void Lyric::getTimeDataFromframeNum(VideoCapture* videoCapture)
+{
+	for (int i = 0; i < getLinesSize(); i++)
+	{
+		Line* line = getLine(i);
+		line->startFrame_ms = videoHandler::frameToMs(line->startFrame, *videoCapture);
+		line->endFrame_ms = videoHandler::frameToMs(line->endFrame, *videoCapture);
+		
+		for (int j = 0; j < line->words.size(); j++)
+		{
+			line->words[j].startFrame_ms = videoHandler::frameToMs(line->words[j].startFrame, *videoCapture);
+			line->words[j].endFrame_ms = videoHandler::frameToMs(line->words[j].endFrame, *videoCapture);			
+		}
+	}
+}
+
 void Lyric::writeLyricFile(VideoCapture* videoCapture)
 {
 	vector<string> vecLyricLine;

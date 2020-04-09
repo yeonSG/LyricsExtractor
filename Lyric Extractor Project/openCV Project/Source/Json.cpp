@@ -66,25 +66,7 @@ void Json::nlohmannJson1()
 
 void Json::writeDoc(json& j)
 {
-    //string path = fileManager::getSavePath() + "output.json";
-
-    //std::ofstream writeFile;
-    //writeFile.open(path);
-
-    //string s = j.dump();
-    //char* cc = new char[s.size() + 1];
-    ////char c[s.size() + 1];
-    //strcpy_s(cc, s.size() + 1, s.c_str());
-
-    //cout << s.c_str() << endl;
-
-    //if (writeFile.is_open())
-    //{
-    //    writeFile.write(cc, s.size());
-    //}
-    //writeFile.close();
-
-    string path = fileManager::getSavePath() + "output.json";
+    string path = fileManager::getSavePath() + "Lyric.json";
     std::ofstream o(path);
     o << std::setw(4) << j << std::endl;
 }
@@ -96,13 +78,7 @@ void Json::makeJson(Lyric lyric)
     j["copyright"] = m_copyright;
     j["genre"] = m_genre;
     j["key"] = m_key;
-
-    // line
-    json json_lineObject;
-    {
-        json_lineObject = getObject_line(lyric);
-    }
-    j["line"] = json_lineObject;
+    j["line"] = getObject_line(lyric);
     j["national"] = m_national;
     j["optionType"] = m_optionType;
     j["singer"] = m_singer;
@@ -119,16 +95,33 @@ json Json::getObject_line(Lyric lyric)
 {
     json json_lineObject = json::array();
 
-    json_lineObject.push_back(getObject_eventInterludeObject(5000));
-    json_lineObject.push_back(getObject_eventCountObject(5000));
 
     // lyric
     for (int i = 0; i < lyric.getLinesSize(); i++)
     {
+        if (i == 0)
+        {
+            // 첫 시작이 2초 이후라면 count 넣어줌
+            int firstLineStartTime = lyric.getLine(0)->words[0].startFrame_ms;
+            if(firstLineStartTime>2000)
+                json_lineObject.push_back(getObject_eventCountObject(firstLineStartTime-2000)); //4 * 500
+        }
+
+        else // 이전 line->end 와 현재 line->start와의 차이가 10sec 이상이면 interude 넣음
+        {
+            int beforeLineEndMs = lyric.getLine(i-1)->endFrame_ms;
+            int currentLineStartMs = lyric.getLine(i)->startFrame_ms;
+            if (currentLineStartMs - beforeLineEndMs >= 10000)
+            {
+                json_lineObject.push_back(getObject_eventInterludeObject(beforeLineEndMs));
+                json_lineObject.push_back(getObject_eventCountObject(currentLineStartMs - 2000)); //4 * 500
+            }
+        }
+
         json_lineObject.push_back(getObject_eventLyricObject(*lyric.getLine(i)));
     }
 
-    return json();
+    return json_lineObject;
 }
 
 json Json::getObject_eventObject(eType_object_name evnetType)
@@ -186,19 +179,9 @@ json Json::getObject_eventLyricObject(Line line)
     json objValue;
 
     objValue["event"]= "lyrics";
-    // get object arr
-    json json_lineObject;
-    json_lineObject = getObject_linePartArr(line);
-
-    objValue["linepart"] = json_lineObject;
+    objValue["linepart"] = getObject_linePartArr(line);
     objValue["part"] = "N";
-    if(line.words.size()>0)
-        if(line.words[0].startFrame - 500 >0)
-            objValue["start"] = line.words[0].startFrame-500;
-        else
-            objValue["start"] = line.words[0].startFrame;
-    else 
-        objValue["start"] = line.words[0].startFrame;
+	objValue["start"] = line.words[0].startFrame_ms;
 
     return objValue;
 }
@@ -210,8 +193,8 @@ json Json::getObject_linePartArr(Line line)
     for (int i = 0; i < line.words.size(); i++)
     {
         json arrObject;
-        arrObject["end"] = line.words[i].endFrame;
-        arrObject["start"] = line.words[i].startFrame;
+        arrObject["end"] = line.words[i].endFrame_ms;
+        arrObject["start"] = line.words[i].startFrame_ms;
         arrObject["text"] = line.words[i].text;
 
         linepartArray.push_back(arrObject);

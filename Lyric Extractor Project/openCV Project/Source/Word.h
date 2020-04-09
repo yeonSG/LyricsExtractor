@@ -13,6 +13,9 @@ public:
 	int endFrame;
 	string text;
 
+	int startFrame_ms;
+	int endFrame_ms;
+
 private:
 	;
 };

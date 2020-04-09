@@ -81,6 +81,20 @@ void videoHandler::printCurrentFrameSpec(VideoCapture vc)
 	snprintf(buff, sizeof(buff), "%02d:%02d.%03d", curMin, curSec % 60, ((int)curMsec) % 1000);
 	String buffasStrt = buff;
 }
+int videoHandler::frameToMs(int frame, VideoCapture& vc)
+{
+	if (!vc.isOpened())
+	{
+		printf("video is not opened\r\n");
+		return 0;
+	}
+	vc.set(CAP_PROP_POS_FRAMES, (double)frame);
+	Mat startImage;
+	vc.read(startImage);
+	double sourceMsec = vc.get(CAP_PROP_POS_MSEC);
+	
+	return sourceMsec;
+}
 
 String videoHandler::frameToTime(int frame, VideoCapture& vc)
 {
@@ -89,10 +103,8 @@ String videoHandler::frameToTime(int frame, VideoCapture& vc)
 		printf("video is not opened\r\n");
 		return "";
 	}
-	vc.set(CAP_PROP_POS_FRAMES, (double)frame);
-	Mat startImage;
-	vc.read(startImage);
-	double sourceMsec = vc.get(CAP_PROP_POS_MSEC);
+	
+	int sourceMsec = frameToMs(frame, vc);
 	
 	int curMsec = (int)sourceMsec % 1000;
 	int curSec = ((int)sourceMsec/1000) % 60;

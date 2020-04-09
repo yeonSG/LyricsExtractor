@@ -103,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\YS\Dev\json-develop\json-develop\include;C:\YS\Dev\rapidjson\rapidjson-master\include;C:\Users\YS\Anaconda3\include;C:\YS\Dev\opencv\420\build\include;.\openCV Project\Header;%BOOST_ROOT%;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\YS\Dev\json-develop\json-develop\include;C:\Users\YS\Anaconda3\include;C:\YS\Dev\opencv\420\build\include;.\openCV Project\Header;%BOOST_ROOT%;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -139,7 +139,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\YS\Dev\json-develop\json-develop\include;C:\YS\Dev\rapidjson\rapidjson-master\include;C:\Users\YS\Anaconda3\include;C:\YS\Dev\opencv\420\build\include;.\openCV Project\Header;%BOOST_ROOT%;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\YS\Dev\json-develop\json-develop\include;C:\Users\YS\Anaconda3\include;C:\YS\Dev\opencv\420\build\include;.\openCV Project\Header;%BOOST_ROOT%;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>

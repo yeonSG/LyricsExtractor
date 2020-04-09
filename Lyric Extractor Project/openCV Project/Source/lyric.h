@@ -16,6 +16,8 @@ public:
 	void init();
 
 	void cleanupInvalidLines();
+
+	void getTimeDataFromframeNum(VideoCapture* videoCapture);
 	
 	void writeLyricFile(VideoCapture* videoCapture);
 	void writeLyric_withWordFile(VideoCapture* videoCapture);

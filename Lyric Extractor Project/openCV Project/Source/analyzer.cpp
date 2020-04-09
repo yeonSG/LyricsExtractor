@@ -167,6 +167,7 @@ bool analyzer::videoAnalization(string videoPath)
 
 	m_lyric.writeLyric_withWordFile(videoCapture);
 
+	m_lyric.getTimeDataFromframeNum(videoCapture);
 	Json json;
 	json.makeJson(m_lyric);
 
