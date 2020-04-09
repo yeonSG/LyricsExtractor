@@ -6,7 +6,7 @@
 
 using namespace std;
 
-class lyric
+class Lyric
 {
 public:
 	void setLines(vector<Line> lines);

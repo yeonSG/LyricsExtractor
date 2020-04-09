@@ -10,6 +10,7 @@
 #include <boost/filesystem/path.hpp>
 #include "Line.h"
 #include "lyric.h"
+#include "Json.h"
 
 using namespace cv;
 using namespace std;
@@ -91,5 +92,5 @@ public:
 	vector<int> vecWhitePixelCounts;			// 프래임 별 흰색 개수
 	vector<int> vecWhitePixelChangedCounts;		// 이전 프래임 대비 흰색 변화량
 
-	lyric m_lyric;
+	Lyric m_lyric;
 };

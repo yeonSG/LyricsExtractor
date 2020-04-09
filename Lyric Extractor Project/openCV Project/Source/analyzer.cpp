@@ -167,6 +167,9 @@ bool analyzer::videoAnalization(string videoPath)
 
 	m_lyric.writeLyric_withWordFile(videoCapture);
 
+	Json json;
+	json.makeJson(m_lyric);
+
 	closeVideo();
 	return true;
 }

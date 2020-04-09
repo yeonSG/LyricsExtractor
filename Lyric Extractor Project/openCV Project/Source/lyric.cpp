@@ -1,17 +1,17 @@
-#include "lyric.h"
+#include "Lyric.h"
 #include "loger.h"
 
-void lyric::setLines(vector<Line> lines)
+void Lyric::setLines(vector<Line> lines)
 {
 	this->lines = lines;
 }
 
-void lyric::addLine(Line line)
+void Lyric::addLine(Line line)
 {
 	lines.push_back(line);
 }
 
-Line* lyric::getLine(int index)
+Line* Lyric::getLine(int index)
 {
 	if (index < getLinesSize())
 		return &lines.at(index);
@@ -19,18 +19,18 @@ Line* lyric::getLine(int index)
 		return nullptr;
 }
 
-int lyric::getLinesSize()
+int Lyric::getLinesSize()
 {
 	return lines.size();
 }
 
-void lyric::init()
+void Lyric::init()
 {
 	if(!lines.empty())
 		lines.clear();
 }
 
-void lyric::cleanupInvalidLines()
+void Lyric::cleanupInvalidLines()
 {
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "cleanupInvalidLines()";
 	int lineCount = 0;
@@ -52,7 +52,7 @@ void lyric::cleanupInvalidLines()
 	}
 }
 
-void lyric::writeLyricFile(VideoCapture* videoCapture)
+void Lyric::writeLyricFile(VideoCapture* videoCapture)
 {
 	vector<string> vecLyricLine;
 	vector<string> vecLyricLine_debug;
@@ -80,7 +80,7 @@ void lyric::writeLyricFile(VideoCapture* videoCapture)
 	fileManager::writeVector(filename, vecLyricLine_debug);
 }
 
-void lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
+void Lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
 {
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "save _withWord file (Lines:"<< getLinesSize() << ")";
 	printf("save _withWord file (%dLines)\r\n", getLinesSize());
