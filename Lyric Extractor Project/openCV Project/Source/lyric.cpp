@@ -125,3 +125,32 @@ void Lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
 	filename = "Lyrics_withWord.txt";
 	fileManager::writeVector(filename, vecLyricLine);
 }
+
+void Lyric::sortingLine()
+{
+	sort(lines.begin(), lines.end(), Line::desc_Line);
+}
+
+void Lyric::saveBinaryImage(string videoPath)
+{
+	for (int i = 0; i < lines.size(); i++)
+	{
+		//imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", lines[i].maskImage);
+
+		Mat binImage = lines[i].maskImage;
+		cvtColor(binImage, binImage, COLOR_RGB2GRAY);
+		threshold(binImage, binImage, 10, 255, THRESH_BINARY);
+		binImage = imageHandler::removeSubLyricLine(binImage);
+
+		bitwise_not(binImage, binImage);
+		// resize
+
+		//resize(binImage, binImage, cv::Size(binImage.cols * 0.6, binImage.rows * 0.6), 0, 0, cv::INTER_CUBIC);
+
+		resize(binImage, binImage, cv::Size(0, 0), 0.8, 0.8, cv::INTER_CUBIC);	// for text Height Size
+
+		threshold(binImage, binImage, 128, 255, THRESH_BINARY);
+
+		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", binImage);
+	}
+}

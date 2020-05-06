@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <windows.h>
+#include "MVInformation.h"
 
 using namespace std;
 
@@ -33,6 +34,8 @@ public:
 	static bool writeVector(string& fileName, vector<string>& vec);
 	
 	static bool readLine(string& fileName, string& readLine);
+
+	static bool writeMVInfomation(string& fileName, MVInformation mvInfo);
 
 };
 

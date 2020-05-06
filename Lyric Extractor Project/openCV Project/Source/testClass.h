@@ -43,6 +43,12 @@ public:
 	Mat getFullContrastImage_YCbCr(Mat srcImage);
 	Mat removeLint(Mat srcImage, Mat refImage);
 
+	void test_getTypeRoutin2(string videoPath);
+	void test_getTypeRoutin(string videoPath);
+	void test_whiteCountImage(string videoPath);
+	Mat getBWBPatternImage(Mat FCImage );
+
+	Mat getMaskedImage(Mat subImage, Mat mask);
 	/*
 	FullyContrast(FC)된 이미지로 누적
 	누적이미지는 흑백이미지이며, 각 픽셀은 다음 규칙을 따른다.
@@ -53,7 +59,8 @@ public:
 			다음 FC픽셀이 파랑or빨강이 아니면 Clear.
 	*/
 	// void testX();
-	void stackFCImage(Mat FCImage, Mat FCImage_before ,Mat& stackBinImage);
+	void stackFCImage(Mat FCImage, Mat FCImage_before ,Mat& stackBinImage, Mat maskImage);
+	void stackFCImage_BlackToWhite(Mat subImage, Mat subImage_before, Mat& stackBinImage);
 	bool isWhite(const Vec3b& ptr);
 	bool isBlack(const Vec3b& ptr);
 	bool isBlue(const Vec3b& ptr);
@@ -98,4 +105,6 @@ public:
 	int getLeftistWhitePixel_x(Mat binImage);
 	int getRightistWhitePixel_x(Mat binImage);
 	int getWhitePixelAverage(Mat binImage);
+
+	Mat getFullyContrast_withDilate(Mat rgbImage, Scalar color);
 };

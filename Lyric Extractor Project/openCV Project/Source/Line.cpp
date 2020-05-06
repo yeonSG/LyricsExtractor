@@ -77,3 +77,9 @@ Word Line::lineToWord(Line line)
 
 	return word;
 }
+
+bool Line::desc_Line(Line a, Line b)
+{
+	return false;
+}
+

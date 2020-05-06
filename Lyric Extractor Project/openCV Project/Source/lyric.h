@@ -22,6 +22,10 @@ public:
 	void writeLyricFile(VideoCapture* videoCapture);
 	void writeLyric_withWordFile(VideoCapture* videoCapture);
 
+	void sortingLine();
+
+	void saveBinaryImage(string videoPath);		// catpureBinaryImageOfLinesEnd()
+
 private:
 	vector<Line> lines;
 	vector<int> vecWhiteCount;

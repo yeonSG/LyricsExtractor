@@ -194,10 +194,12 @@ bool fileManager::writeVector(string& fileName, vector<string>& vec)
 	ofstream* outStream = new ofstream((getSavePath() + fileName).data());
 	if (outStream == NULL)
 		outStream = new ofstream(fileName.data());
+
 	if (outStream->fail())
 	{
 		cout << "Fail to open files" << endl;
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
+		delete outStream;
 		return false;
 	}
 
@@ -207,10 +209,12 @@ bool fileManager::writeVector(string& fileName, vector<string>& vec)
 			(*outStream) << vec.at(i) << "\n";
 		outStream->close();
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file success : " << fileName;
+		delete outStream;
 		return true;
 	}
 
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
+	delete outStream;
 	return false;
 }
 
@@ -221,6 +225,7 @@ bool fileManager::readLine(string& fileName, string& readLine)
 	if (_inStream->fail())
 	{
 		cout << "Fail to open files" << endl;
+		delete _inStream;
 		return false;
 	}
 
@@ -229,9 +234,44 @@ bool fileManager::readLine(string& fileName, string& readLine)
 		if (_inStream->eof())
 		{
 			cout << "End of file" << endl;
+			delete _inStream;
 			return false;
 		}
 		getline(*_inStream, readLine);
 	}
+	delete _inStream;
 	return true;
+}
+
+bool fileManager::writeMVInfomation(string& fileName, MVInformation mvInfo)
+{
+	ofstream* outStream = new ofstream((getSavePath() + fileName).data());
+	if (outStream == NULL)
+		outStream = new ofstream(fileName.data());
+
+	if (outStream->fail())
+	{
+		cout << "Fail to open files" << endl;
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
+		delete outStream;
+		return false;
+	}
+
+	if (outStream->is_open())
+	{
+
+		(*outStream) << "m_isinfoCatched : " << mvInfo.m_isinfoCatched << "\n";
+		(*outStream) << "m_PrintType : " << mvInfo.m_PrintType<< "\n";
+		(*outStream) << "m_UnprintType : " << mvInfo.m_UnprintType << "\n";
+		(*outStream) << "m_TwinLine : " << mvInfo.m_TwinLine << "\n";
+
+		outStream->close();
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file success : " << fileName;
+		delete outStream;
+		return true;
+	}
+
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "write file fail : " << fileName;
+	delete outStream;
+	return false;
 }

@@ -45,14 +45,26 @@
     <ClCompile Include="Source\videoAnalyzer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Source\lyric.cpp">
-      <Filter>소스 파일\data</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Line.cpp">
       <Filter>소스 파일\data</Filter>
     </ClCompile>
     <ClCompile Include="Source\Word.cpp">
       <Filter>소스 파일\data</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Json.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Lyric.cpp">
+      <Filter>소스 파일\data</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MVInformation.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\LineInfoFinder.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\OCRHandler.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -84,14 +96,26 @@
     <ClInclude Include="Source\videoAnalyzer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Source\lyric.h">
-      <Filter>헤더 파일\data</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Line.h">
       <Filter>헤더 파일\data</Filter>
     </ClInclude>
     <ClInclude Include="Source\Word.h">
       <Filter>헤더 파일\data</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Json.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Lyric.h">
+      <Filter>헤더 파일\data</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MVInformation.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\LineInfoFinder.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\OCRHandler.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

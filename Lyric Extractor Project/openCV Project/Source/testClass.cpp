@@ -137,17 +137,20 @@ void testClass::test_Image3()
 
 void testClass::test_Image4()
 {
-	Mat orgImage = imread("debug_1.jpg");
+	Mat orgImage = imread("pic.png");
 	Mat contourImage = orgImage.clone();
 
 	cvtColor(orgImage, orgImage, COLOR_BGR2GRAY);
 	//resize(orgImage, orgImage, cv::Size(orgImage.cols*4, orgImage.rows * 4), 0, 0, cv::INTER_CUBIC);
-	threshold(orgImage, orgImage, 200, 255, THRESH_BINARY);	
+	//threshold(orgImage, orgImage, 200, 255, THRESH_BINARY);	
 
 	// get
 	// 4. canny 엣지 검출
-	//Mat image_canny;
-	//Canny(orgImage, image_canny, 200, 255);
+	Mat image_canny;
+	Canny(orgImage, image_canny, 50, 255);
+	string filename = "edge.png";
+	imwrite(filename, image_canny);
+	saveImage(image_canny);
 
 	// 5. contour 검출
 	vector<vector<Point>> contours;
@@ -283,6 +286,10 @@ void testClass::test_Video(string videoPath)
 
 	Mat orgImage;
 	int curFrame = 0;
+
+	int vc_fps = (int)vc->get(CAP_PROP_FPS);
+	int frameMsec = 1000 / vc_fps;
+
 	while (vc->read(orgImage))
 	{
 		orgImage = imageHandler::getResizeAndSubtitleImage(orgImage);
@@ -305,7 +312,12 @@ void testClass::test_Video(string videoPath)
 		videoHandler::printCurrentFrameSpec(*vc);
 		//int curFrame = (int)vc->get(CAP_PROP_POS_MSEC);
 		//curFrame = (int)vc->get(CAP_PROP_POS_MSEC);
-		cout << "cur Frame : " << curFrame;
+		cout << "curFrame : " << curFrame << endl;
+		cout << "curMSec : " << 1000/25*curFrame << endl;
+		cout << "CAP_PROP_POS_FRAMES : " << vc->get(CAP_PROP_POS_FRAMES)  << endl;
+		cout << "CAP_PROP_POS_MSEC: " << vc->get(CAP_PROP_POS_MSEC) << endl;
+	
+
 
 		int key = waitKey(0);
 		if (key == KEY_ESC)
@@ -329,8 +341,8 @@ void testClass::test_Video(string videoPath)
 		else if (key == '?')
 			videoHandler::printVideoSpec();
 
-		//vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
-		vc->set(CAP_PROP_POS_MSEC, (double)curFrame );	// frame*0.1 msec
+		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+		//vc->set(CAP_PROP_POS_MSEC, (double)curFrame* frameMsec);	// frame*0.1 msec
 	}
 	
 	vc->release();
@@ -463,7 +475,7 @@ void testClass::test_Video_CountContours2()
 		Mat image_getBlue;	// Scalar (H=색조(180'), S=채도(255), V=명도(255))
 		inRange(subImage_hsv, Scalar(115, 100, 100), Scalar(140, 255, 255), image_getBlue);	// HSV값은 테스트로 얻은 값임...
 
-		// 4. 부피 계산	getWihtePixelCount(Mat binMat);
+		// 4. 부피 계산	getWhitePixelCount(Mat binMat);
 		getWhitePixels(image_getBlue);				
 		
 		// 3-3. 3-1과 3-2의 And
@@ -1042,7 +1054,7 @@ void testClass::test_Video4(string videoPath)
 {
 	double sigma = 5, threshold = 0, amount = 5;		// setting (for sharpen)
 	VideoCapture* vc;
-	if (!videoHandler::setVideo("movie.mp4"))
+	if (!videoHandler::setVideo(videoPath))
 		return;
 	videoHandler::printVideoSpec();
 	vc = videoHandler::getVideoCapture();
@@ -1068,7 +1080,7 @@ void testClass::test_Video4(string videoPath)
 	imshow("subImage", subImage);
 
 	Mat testbinImage = imageHandler::getPaintedBinImage(subImage);
-	int countW = imageHandler::getWihtePixelCount(testbinImage);
+	int countW = imageHandler::getWhitePixelCount(testbinImage);
 	printf("whiteC:%d \r\n", countW);
 	//if(testBinBefore.empty())
 	//	testBinBefore = testBin ;
@@ -1086,7 +1098,7 @@ void testClass::test_Video4(string videoPath)
 
 	Mat CompositeBinaryImage = imageHandler::getCompositeBinaryImages(subImage);
 	imshow("CompositeBinaryImage", CompositeBinaryImage);
-	printf("whiteCount : %d \r\n", imageHandler::getWihtePixelCount(CompositeBinaryImage));
+	printf("whiteCount : %d \r\n", imageHandler::getWhitePixelCount(CompositeBinaryImage));
 	//if (beforeFCImage.empty() == true)
 		
 	
@@ -1129,8 +1141,8 @@ void testClass::test_Video4(string videoPath)
 		stackBinImage = DifferenceImage.clone();	//dummy
 	if (FCImage_before.empty() != true)
 	{
-		stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
-		imshow("stackBinImage", stackBinImage);
+		//stackFCImage(fullContrastimage_NotBulr, FCImage_before, stackBinImage);
+		//imshow("stackBinImage", stackBinImage);
 	}		
 
 	Mat algorismMk1 = AlgolismMk1(fullContrastimage_NotBulr);
@@ -1288,7 +1300,509 @@ Mat testClass::removeLint(Mat srcImage, Mat refImage)
 	return outLintedImage;
 }
 
-void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage)
+/*
+라인 찾아내는 조건
+ - 조건1. 갑자기 diff Dot 수가 증가 
+ - 조건2. diff Dot들의 hight히스토그램에서 특정부분에 군집됨
+ - (모든 프레임을 기록하고 가장 큰 변화가 생기는 지점 순으로 두 조건이 맞는 곳을 분석한다.)
+*/
+void testClass::test_getTypeRoutin2(string videoPath)
+{
+	vector<pair<int, int>> diffDotCount;	// <frame, count>
+	vector<Scalar> vecPrintTypes;
+	vecPrintTypes.push_back(Scalar(255, 0, 0));	// Blue
+	vecPrintTypes.push_back(Scalar(0, 0, 255));	// Red
+	vecPrintTypes.push_back(Scalar(255, 0, 255));	// Purple
+
+	Mat stackBinImage;
+	Mat stackBinImage_before, stackBinImage_diff;
+	Mat FCImage_before;
+	Mat subImage_before;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo(videoPath))
+		return;
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
+
+	Mat orgImage;
+
+	while (vc->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+
+		Mat binImage = imageHandler::getPaintedBinImage(subImage);
+		imshow("subImage", subImage);
+		imshow("fullyContrastImage", fullyContrastImage);
+		imshow("binImage", binImage);
+		Scalar color(255, 0, 0);
+		Mat FC_withDilate = imageHandler::getFullyContrast_withDilate(subImage, color);
+		imshow("FC_withDilate", FC_withDilate);
+
+
+		if (stackBinImage.empty() == true)
+			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
+		if (FCImage_before.empty() != true)
+		{
+			stackBinImage_before = stackBinImage.clone();
+			imageHandler::stackFCImage_BlackToWhite(subImage, subImage_before, stackBinImage);
+			//stackBinImage_diff = imageHandler::getDifferenceImage(stackBinImage, stackBinImage_before);
+			stackBinImage_diff = imageHandler::getWhiteToBlackImage(stackBinImage_before, stackBinImage);
+			stackBinImage_diff = imageHandler::getBorderFloodFilledImage(stackBinImage_diff);
+			imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
+			imshow("stackBinImage_diff", stackBinImage_diff);
+			// stackBinImage_diff 노이즈 연산
+			Mat diff_Denoise = imageHandler::removeNotLyricwhiteArea(stackBinImage_diff);
+			imshow("diff_Denoise", diff_Denoise);
+
+			int dotCount = imageHandler::getWhitePixelCount(diff_Denoise);
+			printf("dotCount : %d \r\n", dotCount);
+			// diffDotCount.push_back(make_pair(curFrame, dotCount))
+			
+			Mat HorizontalProjection = getHorizontalProjection(stackBinImage_diff);
+			imshow("HorizontalProjection", HorizontalProjection);
+			vector<int> verticalProjectionData = imageHandler::getHorizontalProjectionData(stackBinImage_diff);
+
+			Mat VerticalProjection = getVerticalProjection(stackBinImage_diff);
+			imshow("VerticalProjection", VerticalProjection);
+
+			// get mask image
+		}
+
+		//Mat bluePatternBin = imageHandler::getPaintedPattern(subImage, Scalar(255, 0, 0));
+		//Mat redPatternBin = imageHandler::getPaintedPattern(subImage, Scalar(0, 0, 255));
+		//imshow("bluePatternBin", bluePatternBin);
+		//imshow("redPatternBin", redPatternBin);
+
+		//Mat FC_blue;
+		//inRange(fullyContrastImage, Scalar(254, 0, 0), Scalar(255, 0, 0), FC_blue);	// 파랑만이미지
+		//cvtColor(FC_blue, FC_blue, COLOR_GRAY2BGR);
+		//Mat bluePatternFullfill;
+		//bluePatternFullfill = imageHandler::getFloodfillImage(FC_blue, bluePatternBin);
+		//imshow("bluePatternFullfill", bluePatternFullfill);
+		//Mat erodeImage = imageHandler::getMorphImage(bluePatternFullfill, MORPH_ERODE);	// 침식연산
+		//int pixelCount = imageHandler::getWhitePixelCount(erodeImage);
+		//
+		//printf("pixelCount (blue) : %d \r\n", pixelCount);
+
+		for (int i = 0; i < vecPrintTypes.size(); i++)
+		{
+			Mat PatternBin = imageHandler::getPaintedPattern(subImage, vecPrintTypes[i]);	// 내부에서 dilate함
+
+			Mat FC_Bin;
+			Scalar patternMin = vecPrintTypes[i];
+			for (int i = 0; i < 3; i++)
+				if (patternMin[i] != 0)
+					patternMin[i] = patternMin[i] - 1;
+
+			inRange(fullyContrastImage, patternMin, vecPrintTypes[i], FC_Bin);	// 파랑만이미지
+			cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
+			Mat PatternFullfill;
+			PatternFullfill = imageHandler::getFloodfillImage(FC_Bin, PatternBin);	// FullCont 이미지에 패턴으로 인식한 좌표로 패인트통연산
+			PatternFullfill = imageHandler::getBorderFloodFilledImage(PatternFullfill);
+			Mat erodeImage = imageHandler::getMorphImage(PatternFullfill, MORPH_ERODE);	// 침식연산
+			Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(erodeImage);	// 사각박스있는곳 제거
+
+			int pixelCount = imageHandler::getWhitePixelCount(erodeImage_Denoise);
+
+			printf("pixelCount (colorType=%d) : %d \r\n", i, pixelCount);
+			if (i == 0)	// debug	// 0= 파랑, 1=빨강, 2=퍼플
+			{
+				imshow("PatternFullfill", PatternFullfill);
+				imshow("erodeImage", erodeImage);
+
+				Mat maskedImage = getMaskedImage(subImage, PatternFullfill);
+				imshow("maskedImage", maskedImage);	// 디버깅 확인용 : 색감 확인용으로 사용가능
+			}
+			// erode의 결과에서 contour 연산 추가하여 정확도 높일 수 있음
+
+
+		}
+		
+
+
+		//int countW = imageHandler::getWhitePixelCount(binImage);
+
+		//int key = waitKey(1);
+		int key = waitKey(0);
+		if (key == KEY_ESC)
+			break;
+		else if (key == 'a')	// before frame
+			curFrame -= 1;
+		else if (key == 'd')	// next frame
+			curFrame += 1;
+		else if (key == 'w')	// +50th frame
+			curFrame += 50;
+		else if (key == 's')	// -50th frame
+			curFrame -= 50;
+		else if (key == 'r')	// +10th frame
+			curFrame += 10;
+		else if (key == 'f')	// -10th frame
+			curFrame -= 10;
+		else if (key == 'e')	// +500th frame
+			curFrame += 500;
+		else if (key == 'q')	// -500th frame
+			curFrame -= 500;
+		else if (key == '?')
+			videoHandler::printVideoSpec();
+
+		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+
+		FCImage_before = fullyContrastImage.clone();
+		subImage_before = subImage.clone();
+	}
+
+	vc->release();
+}
+/*
+ 
+*/
+void testClass::test_getTypeRoutin(string videoPath)
+{
+	VideoCapture* vc;
+	if (!videoHandler::setVideo(videoPath))
+		return;
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
+
+	Mat orgImage;
+
+	while (vc->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+		Mat FC_withDilate = getFullyContrast_withDilate(subImage, Scalar(255, 0, 0));
+		Mat BWBPatternImage = getBWBPatternImage(FC_withDilate.clone());	// ## YS - 이거 카운팅해서 가장 높은숫자로 사용?/
+
+		Mat printImage_blue = imageHandler::getPaintedBinImage_inner(FC_withDilate, true);
+		Mat printImage_red = imageHandler::getPaintedBinImage_inner(FC_withDilate, false);
+		Mat printImage;
+
+		Mat BWBPaintImage;
+		Mat FC_WhiteArea;
+//		inRange(fullyContrastImage, Scalar(254, 254, 254), Scalar(255, 255, 255), FC_WhiteArea);	// binarize by rgb
+
+		BWBPaintImage = imageHandler::getFloodfillImage(fullyContrastImage.clone(), BWBPatternImage.clone());
+		
+
+		//BWBPatternImage // 의 흰점 
+	
+
+		imshow("subImage", subImage);
+//		imshow("fullyContrastImage", fullyContrastImage);
+		imshow("FC_withDilate", FC_withDilate);
+		imshow("BWBPatternImage", BWBPatternImage);
+//		imshow("printImage_blue", printImage_blue);
+//		imshow("printImage_red", printImage_red);
+		imshow("BWBPaintImage", BWBPaintImage);
+		
+		//int countW = imageHandler::getWhitePixelCount(binImage);
+
+		//int key = waitKey(1);
+		int key = waitKey(0);
+		if (key == KEY_ESC)
+			break;
+		else if (key == 'a')	// before frame
+			curFrame -= 1;
+		else if (key == 'd')	// next frame
+			curFrame += 1;
+		else if (key == 'w')	// +50th frame
+			curFrame += 50;
+		else if (key == 's')	// -50th frame
+			curFrame -= 50;
+		else if (key == 'r')	// +10th frame
+			curFrame += 10;
+		else if (key == 'f')	// -10th frame
+			curFrame -= 10;
+		else if (key == 'e')	// +500th frame
+			curFrame += 500;
+		else if (key == 'q')	// -500th frame
+			curFrame -= 500;
+		else if (key == '?')
+			videoHandler::printVideoSpec();
+
+		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+
+	}
+
+	vc->release();
+}
+
+
+void testClass::test_whiteCountImage(string videoPath)
+{
+	Mat stackBinImage;
+	Mat FCImage_before;
+	Mat BWBPatternImage_before;
+	VideoCapture* vc;
+	if (!videoHandler::setVideo(videoPath))
+		return;
+	videoHandler::printVideoSpec();
+	vc = videoHandler::getVideoCapture();
+
+	Mat orgImage;
+
+	while (vc->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*vc);
+		int curFrame = (int)vc->get(CAP_PROP_POS_FRAMES);
+
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+		Mat FC_withDilate = getFullyContrast_withDilate(subImage, Scalar(255, 0, 0));
+		// fully contrast에 추가 연산 -->>
+		// 1. 이미지에서 파란색만 추출 -> 이진이미지 생성
+		// 2. 이진이미지 delite 실행(확산)
+		// 3. 2번 이미지에 흰점인곳 && fully contrastd의 흰점이 아닌곳 => 파란색칠
+		// 4. 이미지 사용
+		Mat BWBPatternImage = getBWBPatternImage(FC_withDilate.clone());	// ## YS - 이거 카운팅해서 가장 높은숫자로 사용?/
+		Mat printImage_blue = imageHandler::getPaintedBinImage_inner(FC_withDilate, true);
+		Mat printImage_red = imageHandler::getPaintedBinImage_inner(FC_withDilate, false);
+		Mat printImage;
+		bitwise_or(printImage_blue, printImage_red, printImage);
+		
+		Mat binImage = imageHandler::getPaintedBinImage(subImage);
+		imshow("subImage", subImage);
+		imshow("fullyContrastImage", fullyContrastImage);
+		imshow("FC_withDilate", FC_withDilate);
+		imshow("BWBPatternImage", BWBPatternImage);
+		imshow("printImage_blue", printImage_blue);
+		imshow("printImage_red", printImage_red);
+		imshow("binImage", binImage);
+
+		 
+
+		if (stackBinImage.empty() == true)
+			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
+		if (FCImage_before.empty() != true && BWBPatternImage_before.empty() != true)
+		{
+			stackFCImage(FC_withDilate, FCImage_before, stackBinImage, BWBPatternImage_before);
+			imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
+			Mat mergedImage;
+			bitwise_and(printImage, stackBinImage, mergedImage);
+			imshow("mergedImage", mergedImage);
+			imageHandler::getWhitePixelCount(stackBinImage);
+		}
+
+
+		//int countW = imageHandler::getWhitePixelCount(binImage);
+
+		//int key = waitKey(1);
+		int key = waitKey(0);
+		if (key == KEY_ESC)
+			break;
+		else if (key == 'a')	// before frame
+			curFrame -= 1;
+		else if (key == 'd')	// next frame
+			curFrame += 1;
+		else if (key == 'w')	// +50th frame
+			curFrame += 50;
+		else if (key == 's')	// -50th frame
+			curFrame -= 50;
+		else if (key == 'r')	// +10th frame
+			curFrame += 10;
+		else if (key == 'f')	// -10th frame
+			curFrame -= 10;
+		else if (key == 'e')	// +500th frame
+			curFrame += 500;
+		else if (key == 'q')	// -500th frame
+			curFrame -= 500;
+		else if (key == '?')
+			videoHandler::printVideoSpec();
+
+		vc->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+
+		FCImage_before = FC_withDilate.clone();
+		BWBPatternImage_before = BWBPatternImage.clone();
+	}
+
+	vc->release();
+}
+
+Mat testClass::getBWBPatternImage(Mat FCImage)
+{
+	int height = FCImage.rows;
+	int width = FCImage.cols;
+
+	Mat outImage_painted;
+	outImage_painted = Mat::zeros(FCImage.rows, FCImage.cols, CV_8U);
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = FCImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			int colorStart = x;
+			int colorEnd = x;
+			bool isRight = false;	// 조건만족?
+
+			if (isWhite(yPtr_FCImage[x]))
+			{
+				int color_m = -1; /// black==2, white==1, other==-1
+				int color_p = -1;
+				while (colorEnd < width - 1)
+				{
+					Vec3b v3p = yPtr_FCImage[colorEnd + 1];
+					if (isWhite(v3p))
+						colorEnd++;
+					else
+						break;
+				}
+
+				if (colorStart - 2 > 0)	// 연속되는지 확인
+				{
+					Vec3b v3p = yPtr_FCImage[colorStart - 1];
+					if (isBlack(v3p))
+					{
+						Vec3b v3p_ = yPtr_FCImage[colorStart - 2]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+						if (isBlack(v3p_))
+						{
+							color_m = 2;	// B
+						}
+					}
+				}
+
+				if (colorEnd + 2 < width)	// 연속되는지 확인
+				{
+					Vec3b v3p = yPtr_FCImage[colorEnd + 1];
+					if (isBlack(v3p))
+					{
+						Vec3b v3p_ = yPtr_FCImage[colorEnd + 2];
+						if (isBlack(v3p_))
+						{
+							color_p = 2;	// B
+						}
+					}
+				}
+				if ((color_p == 2 && color_m == 2))	// 검-흰-검 패턴
+					isRight = true;
+
+				if (isRight)	// 조건에 만족함
+				{
+					for (int i = colorStart; i <= colorEnd; i++)
+						yPtr_painted[i] = 255;
+				}
+				x = colorEnd;
+			}
+		}
+	}
+
+	// 열연산
+	for (int x = 0; x < width; x++)
+	{
+		for (int y = 0; y < height; y++)
+		{
+			//if (isWhite(outImage.ptr<uchar>(y)[x]))	// 이미 흰색인곳
+			//	continue;
+
+			bool isRight = false;	// 조건만족?
+			if (isWhite(FCImage.ptr<Vec3b>(y)[x]))
+			{
+				int colorStart = y;
+				int colorEnd = y;
+				int color_m = -1; // lack==2, Blue,Red==1, other==-1
+				int color_p = -1;
+
+				while (colorEnd < height - 1)	// 어디까지 컬러인가
+				{
+					//Vec3b v3p = fullyContrastImage.ptr<Vec3b>(colorEnd + 1)[x];//yPtr_FCImage[whiteEnd + 1];
+					Vec3b v3p = FCImage.ptr<Vec3b>(colorEnd + 1)[x];
+					if (isWhite(v3p))
+						colorEnd++;
+					else
+						break;
+				}
+
+				if (colorStart - 2 > 0)	// 연속되는지 확인
+				{
+					Vec3b v3p = FCImage.ptr<Vec3b>(colorStart - 1)[x];
+					if (isBlack(v3p))
+					{
+						Vec3b v3p_ = FCImage.ptr<Vec3b>(colorStart - 2)[x]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+						if (isBlack(v3p_))
+						{
+							color_m = 2;	// Black
+						}
+					}
+				}
+
+				if (colorEnd + 2 < height)	// 연속되는지 확인
+				{
+					Vec3b v3p = FCImage.ptr<Vec3b>(colorEnd + 1)[x];
+					if (isBlack(v3p))
+					{
+						Vec3b v3p_ = FCImage.ptr<Vec3b>(colorEnd + 2)[x]; // FCImage.at<cv::Vec3b>(y, x - (count + 1));
+						if (isBlack(v3p_))
+						{
+							color_p = 2;	// B
+						}
+					}
+				}
+
+				if ((color_p == 2 && color_m == 2))	// 검-흰-검
+					isRight = true;
+
+				if (isRight)	// 조건에 만족함
+				{
+					for (int i = colorStart; i <= colorEnd; i++)
+					{
+						outImage_painted.ptr<uchar>(i)[x] = 255;
+					}
+				}
+				y = colorEnd;
+			}
+		}
+	}
+
+	threshold(outImage_painted, outImage_painted, 200, 255, THRESH_BINARY);
+
+	return outImage_painted;
+}
+
+Mat testClass::getMaskedImage(Mat subImage, Mat mask)
+{
+	int height = subImage.rows;
+	int width = subImage.cols;
+
+	Mat outImage_masked = subImage.clone();
+	Vec3b blackColor = { 0,0,0 };
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+			uchar* yPtr_mask = mask.ptr<uchar>(y);	//in
+			Vec3b* yPtr_out = outImage_masked.ptr<Vec3b>(y); //
+			for (int x = 0; x < width; x++)
+			{
+				int colorStart = x;
+				int colorEnd = x;
+				bool isRight = false;	// 조건만족?
+
+				if (yPtr_mask[x]!=255)
+				{
+					yPtr_out[x] = blackColor;
+				}
+			}
+		}
+
+	return outImage_masked;
+}
+
+/// <summary>
+/// Stacks the fc image.
+/// </summary>
+/// <param name="FCImage">Fully Contrast image.</param>
+/// <param name="FCImage_before"> Fully Contrast image before.</param>
+/// <param name="stackBinImage"> 이전 이진 이미지.</param>
+/// <param name="maskImage"> 마스크.</param>
+void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage, Mat maskImage)
 {
 	int height = stackBinImage.rows;
 	int width = stackBinImage.cols;
@@ -1298,16 +1812,24 @@ void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage
 		uchar* yPtr = stackBinImage.ptr<uchar>(y);
 		Vec3d* yPtr_FC = FCImage.ptr<Vec3d>(y);
 		Vec3d* yPtr_FC_before = FCImage_before.ptr<Vec3d>(y);
+		uchar* yPtr_Mask = maskImage.ptr<uchar>(y);
 		for (int x = 0; x < width; x++)
 		{
 			/*printf("%d ", yPtr_FC_before[x][0]);
 			printf("%d ", yPtr_FC_before[x][1]);
 			printf("%d \r\n", yPtr_FC_before[x][2]);*/
+			/*
+			On << mask ==1, before==w, cur==color
+			bin이 0일때
+				
+			*/
 
 			// 누적법
-			if (yPtr[x] == 0)
+			if (yPtr[x] == 0)	// 0인곳 
 			{
-				if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isBlue(FCImage.at<cv::Vec3b>(y, x)))
+				if (yPtr_Mask[x] != 255)	// 패턴에 부합하는곳
+					yPtr[x] = 0;
+				else if (isWhite(FCImage_before.at<cv::Vec3b>(y, x)) && isBlue(FCImage.at<cv::Vec3b>(y, x)))
 				{
 					//yPtr[x] = 10;
 					yPtr[x] = 255;
@@ -1336,7 +1858,7 @@ void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage
 			//	if (isWhite(FCImage_before.ptr<Vec3d>(y)[x]) && isBlue(FCImage.ptr<Vec3d>(y)[x])
 			//		|| isWhite(FCImage_before.ptr<Vec3d>(y)[x]) && isRed(FCImage.ptr<Vec3d>(y)[x]))
 			//		yPtr[x] = 255;
-			//}
+			//}getHorizontalProjection
 			//else
 			//{
 			//	if (isBlue(FCImage.ptr<Vec3d>(y)[x]) || isRed(FCImage.ptr<Vec3d>(y)[x]))
@@ -1347,6 +1869,65 @@ void testClass::stackFCImage(Mat FCImage, Mat FCImage_before, Mat& stackBinImage
 
 		}
 	}
+	;
+}
+
+void testClass::stackFCImage_BlackToWhite(Mat subImage, Mat subImage_before, Mat& stackBinImage)
+{
+	int height = stackBinImage.rows;
+	int width = stackBinImage.cols;
+
+	int newDot = 0;
+	int delDot = 0;
+	Mat subImage_black;
+	Mat subImage_white;
+	Mat subImageBefore_black;
+	Mat subImageBefore_white;
+	inRange(subImage, Scalar(0, 0, 0), Scalar(50, 50, 50), subImage_black);
+	inRange(subImage, Scalar(200, 200, 200), Scalar(255, 255, 255), subImage_white);
+	inRange(subImage_before, Scalar(0, 0, 0), Scalar(50, 50, 50), subImageBefore_black);
+	inRange(subImage_before, Scalar(200, 200, 200), Scalar(255, 255, 255), subImageBefore_white);
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = stackBinImage.ptr<uchar>(y);
+		//Vec3d* yPtr_FC = FCImage.ptr<Vec3d>(y);
+		//Vec3d* yPtr_FC_before = FCImage_before.ptr<Vec3d>(y);
+		uchar* yPtr_sub_black = subImage_black.ptr<uchar>(y);
+		uchar* yPtr_sub_white = subImage_white.ptr<uchar>(y);
+		uchar* yPtr_subBefore_black = subImageBefore_black.ptr<uchar>(y);
+		uchar* yPtr_subBefore_white = subImageBefore_white.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+
+			// 누적법
+			if (yPtr[x] == 0)	// 0인곳  On 조건
+			{
+				if(yPtr_subBefore_black[x]==0 && yPtr_sub_white[x]==255)
+				//if (isBlack(FCImage_before.at<cv::Vec3b>(y, x)) && isWhite(FCImage.at<cv::Vec3b>(y, x)))
+				{
+					yPtr[x] = 255;
+					newDot++;
+				}
+			}
+			else
+			{
+				if(yPtr_sub_white[x]==255)
+				//if (isWhite(FCImage.at<cv::Vec3b>(y, x)))	// 유지
+				{
+					yPtr[x] = 255;
+				}
+				else  // 0이 아닌곳 Off 함
+				{
+					yPtr[x] = 0;
+					delDot++;
+				}
+			}
+
+		}
+	}
+	cout << "newDot = " << newDot << " delDot = " << delDot << endl;
 	;
 }
 
@@ -1674,6 +2255,13 @@ Mat testClass::getVerticalProjection(Mat binMat)
 	vector<int> counts;
 	counts = getVerticalProjectionData(binMat);
 
+	double sum = 0;
+	for (int i = 0; i < counts.size(); i++)
+		sum += counts[i];
+	int avg = 0;
+	if (counts.size() != 0)
+		avg = sum / counts.size();
+
 	int nRows = binMat.rows;
 	int nCols = binMat.cols;
 	
@@ -1684,8 +2272,13 @@ Mat testClass::getVerticalProjection(Mat binMat)
 		for (int i = 0; i < nCols; i++) {
 			outImage.at<uchar>(j, i) = 0;	// init;
 
-			if(counts[i]>j)
-				outImage.at<uchar>(j, i) = 255;	
+			if (counts[i] > j)
+			{
+				if (j > avg)
+					outImage.at<uchar>(j, i) = 255;
+				else
+					outImage.at<uchar>(j, i) = 255 / 2;
+			}
 		}
 	}
 
@@ -1714,7 +2307,14 @@ Mat testClass::getHorizontalProjection(Mat binMat)
 {
 	vector<int> counts;
 	counts = getHorizontalProjectionData(binMat);
-
+	
+	double sum = 0;
+	for (int i = 0; i < counts.size(); i++)
+		sum += counts[i];
+	int avg = 0;
+	if(counts.size()!=0)
+		avg = sum / counts.size();
+	
 	int nRows = binMat.rows;
 	int nCols = binMat.cols;
 
@@ -1726,7 +2326,12 @@ Mat testClass::getHorizontalProjection(Mat binMat)
 			outimage.at<uchar>(j, i) = 0;	// init;
 
 			if (counts[j] > i)
-				outimage.at<uchar>(j, i) = 255;
+			{
+				if( i > avg )
+					outimage.at<uchar>(j, i) = 255;
+				else
+					outimage.at<uchar>(j, i) = 255/2;
+			}
 		}
 	}
 
@@ -2038,4 +2643,53 @@ int testClass::getWhitePixelAverage(Mat binImage)
 		return 0;
 	else
 		return whitePixelXSum / whiteCount;
+}
+
+// Color 딜레이트 연산하는데 흰색부분이 아닌곳만 함
+Mat testClass::getFullyContrast_withDilate(Mat rgbImage, Scalar color)
+{
+	Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
+	
+	Scalar targetColorMin = color;
+	for (int i = 0; i < 3; i++)
+	{
+		if (targetColorMin[i] != 0)
+			targetColorMin[i] = targetColorMin[i] - 1;
+	}
+	
+	Mat colorMat;
+	//inRange(fullyContrastImage, Scalar(254, 0, 0), Scalar(255, 0, 0), blue);	// binarize by rgb
+	inRange(fullyContrastImage, targetColorMin, color, colorMat);
+
+	Mat colorMat_dilate = imageHandler::getMorphImage(colorMat, MORPH_DILATE);
+
+	int height = rgbImage.rows;
+	int width = rgbImage.cols;
+
+	for (int y = 0; y < height; y++)
+	{
+		Vec3b* yPtr_FC = fullyContrastImage.ptr<Vec3b>(y);
+		uchar* yPtr_colorMat = colorMat_dilate.ptr<uchar>(y);
+		
+		for (int x = 0; x < width; x++)
+		{
+			if (yPtr_colorMat[x] == 255 )
+			{
+				if (!isWhite(yPtr_FC[x]))
+				{
+					Vec3b& ptr = fullyContrastImage.at<Vec3b>(y, x);
+					//ptr[0] = 255;	// B
+					//ptr[1] = 0;	// G
+					//ptr[2] = 0;	// R
+					
+					ptr[0] = color[0];
+					ptr[1] = color[1];
+					ptr[2] = color[2];
+
+				}
+
+			}
+		}
+	}
+	return fullyContrastImage;
 }

@@ -4,10 +4,16 @@
 #include <boost/log/trivial.hpp>
 #include <Python.h>
 
+
 bool desc(pair<int,int> a, pair<int, int> b)
 {
 	return a.first > b.first;
 }
+bool asc(pair<int, int> a, pair<int, int> b)
+{
+	return a.first < b.first;
+}
+
 
 
 void analyzer::initVariables()
@@ -48,7 +54,9 @@ bool analyzer::startVideoAnalization(string videoPath)
 	
 	try 
 	{
-		isSuccessed = videoAnalization(videoPath);
+		// @@@@@@@@@@@ START @@@@@@@@@@@@@@
+		isSuccessed = videoAnalization2(videoPath);	// for noew
+		//isSuccessed = videoAnalization(videoPath);
 	}
 	catch (exception & e)
 	{
@@ -107,7 +115,7 @@ bool analyzer::videoAnalization(string videoPath)
 		binImage = imageHandler::getPaintedBinImage(subImage);
 
 		//White dot Count
-		vecWhitePixelCounts.push_back(imageHandler::getWihtePixelCount(binImage));
+		vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(binImage));
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
 
 		/*	// 추가정보
@@ -123,7 +131,7 @@ bool analyzer::videoAnalization(string videoPath)
 			Mat DifferenceImage = imageHandler::getDifferenceImage(binImage, beforeBinImage);
 			verticalProjectionDatasOfDifferenceImage.push_back(imageHandler::getVerticalProjectionData(DifferenceImage) ); // 현 프레임의 vertical 프로젝션
 
-			vecWhitePixelChangedCounts.push_back(imageHandler::getWihtePixelCount(DifferenceImage));
+			vecWhitePixelChangedCounts.push_back(imageHandler::getWhitePixelCount(DifferenceImage));
 		}
 
 		beforeBinImage = binImage;
@@ -175,6 +183,527 @@ bool analyzer::videoAnalization(string videoPath)
 	return true;
 }
 
+bool analyzer::videoAnalization2(string videoPath)
+{
+	videoCapture = videoHandler::getVideoCapture();
+	if (videoCapture == nullptr)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
+		return false;
+	}
+
+	/* 새 알고리즘 */
+	LineInfoFinder lineFinder(videoCapture);
+	m_lyric;
+	// lineFinder.start2();
+	if (0)
+	{
+		vector<PeakInfo> peaks;
+		vector<int> peaks_int;
+		peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
+		printf(" \r\n	Color_blue \r\n");
+		for (int i = 0; i < peaks.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
+			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+			peaks_int.push_back(peaks[i].frameNum);
+		}
+
+		vector<Line> lines = lineFinder.peakToLine(peaks);
+		for(int i=0; i< lines.size(); i++)
+			m_lyric.addLine(lines[i]);
+
+		string fileName = "getPeak_0(Blue).txt";
+		fileManager::writeVector(fileName, peaks_int);
+
+		lineFinder.WriteLineInfo_toLog(lines);
+	}
+	if (0)
+	{
+		vector<PeakInfo> peaks;
+		vector<int> peaks_int;
+		peaks = lineFinder.start2_getLinePeak(1);	// redColoer
+		printf(" \r\n	Color_red \r\n");
+		for (int i = 0; i < peaks.size(); i++)
+		{
+			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+			peaks_int.push_back(peaks[i].frameNum);
+		}
+
+		vector<Line> lines = lineFinder.peakToLine(peaks);
+		for (int i = 0; i < lines.size(); i++)
+			m_lyric.addLine(lines[i]);
+
+		string fileName = "getPeak_1(Red).txt";
+		fileManager::writeVector(fileName, peaks_int);
+
+		lineFinder.WriteLineInfo_toLog(lines);
+	}
+	if (1)
+	{
+		vector<PeakInfo> peaks;
+		vector<int> peaks_int;
+		peaks = lineFinder.start2_getLinePeak(2);	// purpleColoer
+		printf(" \r\n	Color_purple \r\n");
+		for (int i = 0; i < peaks.size(); i++)
+		{
+			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+			peaks_int.push_back(peaks[i].frameNum);
+		}
+
+		vector<Line> lines = lineFinder.peakToLine(peaks);
+		for (int i = 0; i < lines.size(); i++)
+			m_lyric.addLine(lines[i]);
+
+		string fileName = "getPeak_2(Purple).txt";
+		fileManager::writeVector(fileName, peaks_int);
+
+		lineFinder.WriteLineInfo_toLog(lines);
+	}
+
+	m_lyric.sortingLine();
+
+	m_lyric.saveBinaryImage(fileManager::getSavePath());		// catpureBinaryImageOfLinesEnd()
+	capturedLinesToText();
+
+	readLyricsFromFile();
+	m_lyric.writeLyricFile(videoCapture);
+
+	// wordCalibration();	 << 재구현 해야함
+	//m_lyric.writeLyric_withWordFile(videoCapture);	// WordCal 완료시 수행할 것
+
+	m_lyric.getTimeDataFromframeNum(videoCapture);
+
+	Json json;
+	json.makeJson(m_lyric);
+
+	return 0;		// END,
+
+	
+	Mat orgImage;
+	Mat subImage;
+	Mat binImage;
+	Mat beforeBinImage;	// 이전 바이너리 이미지
+
+	Mat stackBinImage;
+	Mat FCImage_before;
+	Mat BWBPatternImage_before;
+
+	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
+	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
+
+	int curFrame = 0;
+
+	/* 이미지 분석 */
+	while (videoCapture->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*videoCapture);
+		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);	// curFrame 을 얻어서 다시 세팅해 주는 이유는 순차적으로 읽다가 frame이 높은 프레임에 도달했을 때 읽힌 image가 실재 frame의 image+-1의 이미지가 읽히는 등의 현상이 생김.
+
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		//Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrast_withDilate(subImage, Scalar(255, 0, 0));
+		Mat BWBPatternImage = imageHandler::getBWBPatternImage(fullyContrastImage.clone());
+
+		Mat printImage_blue = imageHandler::getPaintedBinImage_inner(fullyContrastImage, true);
+		Mat printImage_red = imageHandler::getPaintedBinImage_inner(fullyContrastImage, false);
+		Mat printImage;
+		bitwise_or(printImage_blue, printImage_red, printImage);
+
+		Mat mergedImage;
+		//binImage = imageHandler::getPaintedBinImage(subImage);
+
+		if (stackBinImage.empty() == true)
+			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
+		if (FCImage_before.empty() != true && BWBPatternImage_before.empty() != true)
+		{
+			imageHandler::stackFCImage(fullyContrastImage, FCImage_before, stackBinImage, BWBPatternImage_before);
+			//imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
+			bitwise_and(printImage, stackBinImage, mergedImage);
+		}
+
+		//White dot Count
+		//vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(binImage));
+		vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(mergedImage));
+	
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
+
+		FCImage_before = fullyContrastImage.clone();
+		BWBPatternImage_before = BWBPatternImage.clone();
+	}	// end while
+
+	string fileName = "WhitePixelCount.txt";
+	fileManager::writeVector(fileName, vecWhitePixelCounts);
+
+	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
+	getJudgedLine();
+
+	//return true;		// debug
+	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
+	calibrateLines();
+
+	/* Save pictures */
+	captureLines();
+	capturedLinesToText();
+
+	readLyricsFromFile();
+	m_lyric.writeLyricFile(videoCapture);
+
+	//wordCalibration();
+
+	//m_lyric.writeLyric_withWordFile(videoCapture);
+
+	//m_lyric.getTimeDataFromframeNum(videoCapture);
+	//Json json;
+	//json.makeJson(m_lyric);
+
+	closeVideo();
+	return true;
+}
+
+/*
+	1. 백->흑으로 바뀌는 점이 많은 Frame 탐색
+	 - Frame이 2000 이상이면서
+	 - Frame-1 과 Frame+1 보다 10배이상 많은곳.
+	2. 해당 Frame 기준으로 정보를 얻음
+*/
+MVInformation analyzer::findLineInfo(VideoCapture* videoCapture)
+{
+	MVInformation mvInfo;
+	int type_PrintCount[3] = { 0, };
+	int type_unPrintCount[2] = { 0, };
+	
+	vector<pair<int, int>> diffDotCount;	// <frame, count>
+	vector<Scalar> vecPrintTypes;
+	vecPrintTypes.push_back(Scalar(255, 0, 0));	// Blue
+	vecPrintTypes.push_back(Scalar(0, 0, 255));	// Red
+	vecPrintTypes.push_back(Scalar(255, 0, 255));	// Purple
+
+	vector<Scalar> vecUnPrintTypes;
+	vecUnPrintTypes.push_back(Scalar(255, 255, 255));	// white
+	vecUnPrintTypes.push_back(Scalar(0, 255, 255));		// yellow(Orange)
+	
+	Mat stackBinImage;
+	Mat stackBinImage_before, stackBinImage_diff;
+	Mat FCImage_before;
+	Mat subImage_before;
+	videoHandler::printVideoSpec();
+
+	Mat orgImage;
+
+	while (videoCapture->read(orgImage))
+	{
+		videoHandler::printCurrentFrameSpec(*videoCapture);
+		int curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+
+		//Mat binImage = imageHandler::getPaintedBinImage(subImage);
+		//imshow("subImage", subImage);
+		//imshow("fullyContrastImage", fullyContrastImage);
+		//imshow("binImage", binImage);
+			   
+		if (stackBinImage.empty() == true)
+			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
+		if (FCImage_before.empty() != true)
+		{
+			stackBinImage_before = stackBinImage.clone();
+			imageHandler::stackFCImage_BlackToWhite(subImage, subImage_before, stackBinImage);
+			stackBinImage_diff = imageHandler::getWhiteToBlackImage(stackBinImage_before, stackBinImage);
+
+			//	stackBinImage_diff = imageHandler::getBorderFloodFilledImage(stackBinImage_diff);
+			//imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
+			//imshow("stackBinImage_diff", stackBinImage_diff);
+			// stackBinImage_diff 노이즈 연산
+			Mat diff_Denoise = imageHandler::removeNotLyricwhiteArea(stackBinImage_diff);
+			//imshow("diff_Denoise", diff_Denoise);
+
+			int dotCount = imageHandler::getWhitePixelCount(diff_Denoise);
+			diffDotCount.push_back(make_pair(curFrame, dotCount));
+
+			/* 다음 루틴 : */
+			// Mat HorizontalProjection = imageHandler::getHorizontalProjection(stackBinImage_diff);
+			// imshow("HorizontalProjection", HorizontalProjection);
+			// vector<int> verticalProjectionData = imageHandler::getHorizontalProjectionData(stackBinImage_diff);
+
+		}
+		
+		FCImage_before = fullyContrastImage.clone();
+		subImage_before = subImage.clone();
+	}
+
+	vector<int> ExpectedFrame;		// 예상되는 프레임
+	for (int i = 0; i < diffDotCount.size(); i++)
+	{
+		cout << "frame " << i << " : \t" << diffDotCount[i].second << endl;
+		if (i != 0 && i < diffDotCount.size() - 1)
+		{
+			if (diffDotCount[i].second < 5000)	// 기본적으로 5000 이상인값중
+				continue;
+
+			if (diffDotCount[i - 1].second < diffDotCount[i].second / 2 &&
+				diffDotCount[i + 1].second < diffDotCount[i].second / 2)	// 이전, 이후 프레임의 whiteCount보다 두배이상 많아야함
+				ExpectedFrame.push_back(diffDotCount[i].first);
+
+		}
+	}
+
+	vector<int> lineAppireCoordinate;
+	for (int i = 0; i < stackBinImage.rows; i++)
+		lineAppireCoordinate.push_back(0);
+
+	cout << "ExpectedFrame size : " << ExpectedFrame.size() << endl;
+
+	for (int i = 0; i < ExpectedFrame.size(); i++)
+	{
+		cout << "ExpectedFrame" << i << " : \t" << ExpectedFrame[i] << "\t";
+
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)ExpectedFrame[i] - 2);
+		videoCapture->read(orgImage);
+		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+		Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+		Mat erodeImage_Denoise[3];
+		int printTypePixelCount[3] = { 0, };	// [vecPrintTypes.size()] 
+		// 라인 분석 루틴
+		for (int i = 0; i < vecPrintTypes.size(); i++)	// 색깔 타입 검출
+		{
+			Mat PatternBin = imageHandler::getPaintedPattern(subImage, vecPrintTypes[i]);	// 내부에서 dilate함
+
+			Mat FC_Bin;
+			Scalar patternMin = vecPrintTypes[i];
+			for (int i = 0; i < 3; i++)
+				if (patternMin[i] != 0) patternMin[i] = patternMin[i] - 1;
+
+			inRange(fullyContrastImage, patternMin, vecPrintTypes[i], FC_Bin);	// 파랑만이미지
+			cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
+			Mat PatternFullfill;
+			PatternFullfill = imageHandler::getFloodfillImage(FC_Bin, PatternBin);	// FullCont 이미지에 패턴으로 인식한 좌표로 패인트동연산
+			PatternFullfill = imageHandler::getBorderFloodFilledImage(PatternFullfill);
+			Mat erodeImage = imageHandler::getMorphImage(PatternFullfill, MORPH_ERODE);	// 침식연산
+			erodeImage_Denoise[i] = imageHandler::removeNotLyricwhiteArea(erodeImage);
+			int pixelCount = imageHandler::getWhitePixelCount(erodeImage_Denoise[i]);
+
+			printTypePixelCount[i] = pixelCount;
+			// erode의 결과에서 contour 연산 추가하여 정확도 높일 수 있음
+		}
+		int type_Print = 0;
+		for (int i = 0; i < 3; i++)
+			if (printTypePixelCount[type_Print] < printTypePixelCount[i])
+				type_Print = i;	// Print 타입 체크
+		printf("%d	%d	%d	(type : %d)\r\n", printTypePixelCount[0], printTypePixelCount[1], printTypePixelCount[2], type_Print);
+		if (printTypePixelCount[0] + printTypePixelCount[1] + printTypePixelCount[2] < 100)	// 점 합이 100 이하면 재대로된 라인이 아니라 판단하고 넘김
+			continue;
+		type_PrintCount[type_Print]++;
+
+		// 라인 분석 루틴 : Unprint 색 검출
+		/*	1. expectLine 의 마스크, expectLine과 expectLine-10 Frame
+			2. 마스크지역의 변화 ( expectLine - expectLine-10f )
+			3. 변한 지역이 흰색 or 노란색 인지 확인(type1 or type2)
+		*/
+
+		Mat fullyContrastImage_before;		
+		{
+			Mat middleImage;		// printTypePixelCount[type_Print] 의 50% 아래가 되는 프레임
+			for (int j = 5; j < 10 * 25; j += 5)	// frame 5단위로 최대 10초까지 진행
+			{
+				videoCapture->set(CAP_PROP_POS_FRAMES, (double)ExpectedFrame[i] - j);	// 이부분 동적으로 적용해야함
+				videoCapture->read(orgImage);
+				subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+				fullyContrastImage_before = imageHandler::getFullyContrastImage(subImage);
+				// FC에서 type_print인 부분에 대한 흑백이미지 get
+				Mat binTypeColor = imageHandler::getBinImageTargetColored(fullyContrastImage_before, vecPrintTypes[type_Print]);
+				// getBinImage()
+				Mat binAndInput = erodeImage_Denoise[type_Print];
+				Mat binAndImage;
+				bitwise_and(erodeImage_Denoise[type_Print], binTypeColor, binAndImage);
+				// 해당이미지 BitwiseAnd erodeImage_Denoise
+				int before_whitecount = imageHandler::getWhitePixelCount(binAndImage);
+				if ((printTypePixelCount[type_Print] / 2) > before_whitecount)
+				{
+					printf("whiteCount(-%dframe) : %d %d \r\n", j, printTypePixelCount[type_Print], before_whitecount);
+					Mat hProjection = imageHandler::getHorizontalProjection(binAndInput);
+
+					vector<int> hData = imageHandler::getHorizontalProjectionData(binAndInput);
+					int sum = 0;
+					int hCount=0;
+					int hAvg;
+					for (int i = 0; i < hData.size(); i++)
+					{
+						if (hData[i] != 0)
+						{
+							sum += hData[i];
+							hCount++;
+						}
+					}
+					hAvg = sum / hCount;	// 평균
+					for (int i = 0; i < hData.size(); i++)
+					{
+						hData[i] = hData[i] - hAvg;
+					}
+
+					vector<pair<int, int>> hIslands;
+					int start = 0;
+					for (int i = 0; i < hData.size(); i++)
+					{
+						if (hData[i] > 0)
+						{
+							if (start == 0)
+								start = i;
+						}
+						else
+						{
+							if (start == 0)
+								;
+							else
+							{
+								hIslands.push_back(make_pair(start, i));
+								start = 0;
+							}
+						}
+					}
+
+					for (int i = hIslands[0].first; i < hIslands[0].second; i++)
+						lineAppireCoordinate[i]++;
+
+					// 1. binAndInput 이거 흰점있는곳을 vecVertical에 ++해둠 
+					// 1-1. 1의 결과에서 여러개의 섬 중 가장 규모가 큰2개의 섬만 남긴 후 위에 섬만 살림 (즉 한 frame에선 하나의 섬만 입력되도록)
+					// 1-2. 그 결과에 해당하는 y좌표를 vecVertical에 ++해둠
+					/*
+						-> binAndInput에서 Vertical 누적함
+						-> 0이 아닌값중 평균 이하 버림 (위에붙는 짜잘이 사라짐)
+						-> 남은 값 중 섬이 2개면 위에 섬만 남김
+
+						=> 누적 int[width] lineAppareCoordinate;
+					*/
+					
+					// 2. 0이 아닌 vecVertical의 섬이 몇게인지 카운팅 -> 1개면 1라인, 2개면 TwinLine
+					//
+
+					break;
+				}
+			}
+		}
+		//Mat diffimage = imageHandler::getDifferenceImage(fullyContrastImage, fullyContrastImage_before);
+
+		Mat mask = imageHandler::getMaskedImage(fullyContrastImage_before, erodeImage_Denoise[type_Print]);
+		Mat printColorRemovedMask = imageHandler::getColorToBlackImage(mask, vecPrintTypes[type_Print]);// printColorRemovedMask
+
+		Mat delateMask = imageHandler::getMorphImage(printColorRemovedMask, MORPH_ERODE);
+
+		Vec3b mostRGB = imageHandler::getMostHaveRGB(printColorRemovedMask);	// mostHaveColor
+
+		// 바뀐영역의 색 + type_print 색 하면  => 흰색인지 노랑색인지 알 수 있음
+		Vec3b unPrintColor = mostRGB;
+		//if(unPrintColor)
+
+		int type_unPrint = 0;	// 0 = white, 1 = orange
+		if (imageHandler::isBlack(unPrintColor))
+			continue;
+		else if (unPrintColor[0] == 0 &&
+			unPrintColor[1] == 255 &&
+			unPrintColor[2] == 255)
+			type_unPrint = 1;
+		else
+			type_unPrint = 0;	// white
+
+		printf("unPrint Color = %d %d %d  (type : %d)\r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2], type_unPrint);
+		// 가장 많은 경우의 수로 type 정함
+		type_unPrintCount[type_unPrint]++;
+
+		// 라인 분석 루틴 : TwinLine 검출
+		/*	1. Print, UnPrint 색 알고있음, 
+			2. ExpectedFrame에서 			
+		*/
+		
+	}
+	printf("Blue	Red	Purple	\r\n");
+
+
+	vector<pair<int, int>> hIslands;
+	int start = 0;
+	for (int i = 0; i < lineAppireCoordinate.size(); i++)
+	{
+		if (lineAppireCoordinate[i] != 0)
+		{
+			if (start == 0)
+				start = i;
+		}
+		else
+		{
+			if (start == 0)
+				;
+			else
+			{
+				hIslands.push_back(make_pair(start, i));
+				start = 0;
+			}
+		}
+		//printf("lineAppireCoordinate_hIslands : %d \r\n", hIslands.size());
+	}
+
+
+	// 길이 20 이하 ㄷ ㅏ짤라 & 
+	for (vector<pair<int, int>>::iterator iter = hIslands.begin(); iter != hIslands.end(); )
+	{
+		if ((iter->second - iter->first) < 20)
+		{
+			printf("erase : %d ~ %d \r\n", iter->first ,iter->second);
+			iter = hIslands.erase(iter);
+			continue;
+		}
+		iter++;
+	}
+
+	cout << "h Islands size : " << hIslands.size() << endl;
+	if (hIslands.size() == 0)
+		return mvInfo;
+
+	//printf("lineAppireCoordinate_hIslands : %d \r\n", hIslands.size());
+	// 라인간 차이가 20이하면 합침
+	sort(hIslands.begin(), hIslands.end(), asc);
+	for (int i = 0; i < hIslands.size()-1; i++)
+	{
+		if (hIslands[i].second + 20 > hIslands[i+1].first)
+		{
+			hIslands[i].second = hIslands[i + 1].second;
+			vector<pair<int, int>>::iterator iter = hIslands.begin();
+			iter += i + 1;
+			hIslands.erase(iter);
+			i--;
+		}
+	}
+	printf("lineAppireCoordinate_hIslands : %d \r\n", hIslands.size());
+	switch (hIslands.size())
+	{
+	case 1:
+		mvInfo.m_TwinLine = false;
+		break;
+	case 2:
+		mvInfo.m_TwinLine = true;
+		break;
+	default:
+		mvInfo.m_TwinLine = false;
+		break;
+	}
+	// 라인 수
+
+	if (type_PrintCount[2] > type_PrintCount[1])	// purple > red
+		mvInfo.m_PrintType = PrintType::PINKnSKYBLUE;
+	else
+		mvInfo.m_PrintType = PrintType::REDnBLUE;
+
+	if (type_unPrintCount[0] > type_unPrintCount[1])	// white > orange
+		mvInfo.m_UnprintType = UnprintType::WHITE;
+	else
+		mvInfo.m_UnprintType = UnprintType::ORANGE;
+
+	mvInfo.m_isinfoCatched = true;
+	return mvInfo;
+}
+
 /// <summary>
 /// 입력 vector의 평균화 한 vector를 반환
 /// ex) effectiveArea가 2라면 x번째의 값은 (x-2 .. + x + .. x+2) 가 됨.
@@ -216,7 +745,7 @@ void analyzer::getJudgedLine()
 	fileManager::writeVector(fileName, peakValues);
 
 	/* peaks -> lines */
-	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);
+	lines = getLinesFromPeak(peakValues, vecWhitePixelCounts);	// peak에서 라인 얻어내는데 시작지점이 이전피크보다 낮지 못하도록 설정되어있음.
 	m_lyric.setLines(lines);
 
 	// lineRejudgeByVerticalHistogramAverage(lines, verticalHistogramAverage);	// 왼쪽의 점 좌표 평균, 오른쪽의 점 좌표평균
@@ -251,19 +780,20 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 	for (int frameNum = 1; frameNum < vecWhitePixelCounts.size(); frameNum++)
 	{
 		bool isZeroZone;
-		if (vecWhitePixelCounts[frameNum] < 100)
+		if (vecWhitePixelCounts[frameNum] < 100)		// 100 이하면 ZeroZone 으로
 		{
 			isZeroZone = true;
 		}
-		else if (vecWhitePixelCounts[frameNum-1] > 1000)	// 90%이상 하락일 시 peak로 판단하기 위한..
+		else if (vecWhitePixelCounts[frameNum-1] > 1000)	// 100 이상이면서, 이전값이 1000이상임 
 		{
-			if (vecWhitePixelCounts[frameNum - 1] / 10 > vecWhitePixelCounts[frameNum])
+			if ((vecWhitePixelCounts[frameNum - 1] / 10)*5 > vecWhitePixelCounts[frameNum])	// 50%이상 급락시 Zero Zone으로 판단
 				isZeroZone = true;
 			else
 				isZeroZone = false;
 		}
 		else
 			isZeroZone = false;
+
 
 		if (zeroZone == true)
 		{
@@ -293,10 +823,9 @@ vector<int> analyzer::getPeakFromWhitePixelCounts(vector<int> vecWhitePixelCount
 				if (noneZeroZonCount < 5)
 					continue;
 
-				if(vecWhitePixelCounts[maxValueFrame]/2 > vecWhitePixelCounts[frameNum-1])
+				peakValues.push_back(maxValueFrame);
+				if(vecWhitePixelCounts[maxValueFrame]/2 > vecWhitePixelCounts[frameNum-1])	// 전프레임의 흰점수 < 최대값/2 인경우 맥스값 넣음
 					peakValues.push_back(maxValueFrame);
-				//if(fadeOutCount>3)
-				//	peakValues.push_back(maxValueFrame);
 				else
 				{
 					peakValues.push_back(frameNum - 1);	
@@ -576,7 +1105,7 @@ bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 	maskImage_back = imageHandler::removeSubLyricLine(maskImage);
 	maskImage = imageHandler::removeNotPrimeryLyricLine(maskImage);	// maskImage 
 
-	int maskImage_pixelCount = imageHandler::getWihtePixelCount(maskImage);
+	int maskImage_pixelCount = imageHandler::getWhitePixelCount(maskImage);
 	// 2. 마스크 유효성 판단 - 흰점 500이하이면 탈락
 	printf("MaskImage Info - left: %d right: %d middle: %d(%d) \r\n", maskImage_leftDot_x, maskImage_rightDot_x, maskImage_middleDot_x, image_center_x);
 	printf("MaskImage Info - whiteCount: %d \r\n", maskImage_pixelCount);
@@ -629,7 +1158,7 @@ bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 		//Mat avgPixelMask = imageHandler::getColumMaskImage(binImage.cols, binImage.rows, 200, expectedAvgPoint);
 		//bitwise_and(image_dilateion.clone(), avgPixelMask, image_dilateion);
 
-		int pixelCount = imageHandler::getWihtePixelCount(binImage);
+		int pixelCount = imageHandler::getWhitePixelCount(binImage);
 		int diffImage_rightistPoint = imageHandler::getRightistWhitePixel_x(image_dilation);//getWhitePixelAverage(image_dilateion);	
 		int diffImage_rightistPoint_Per = (int)((diffImage_rightistPoint - maskImage_leftDot_x) / ( (maskImage_rightDot_x - maskImage_leftDot_x) / 100.0));
 
@@ -680,7 +1209,7 @@ bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 
 
 	// 마지막으로 유효한 라인인지 걸러냄 - pixel Count 대신에 diffImage_avgPoint_Per 의 연속적인 하락의 개수로 판별하는건 어떨까
-	maskImage_pixelCount = imageHandler::getWihtePixelCount(maskImage);
+	maskImage_pixelCount = imageHandler::getWhitePixelCount(maskImage);
 	if (maskImage_pixelCount < 500)	// 마스크 픽셀이 500개 이하
 	{
 		// 시작지점이 화면 전채에 대한 fade-in 인 경우를 방지하는 코드
@@ -696,7 +1225,7 @@ bool analyzer::lineCalibration(Line& line, static int minStartFrame)
 		maskImage = getBinImageByFloodfillAlgorism(maskImage_back, binImage);
 		line.maskImage = maskImage;
 
-		maskImage_pixelCount = imageHandler::getWihtePixelCount(maskImage);
+		maskImage_pixelCount = imageHandler::getWhitePixelCount(maskImage);
 		if (maskImage_pixelCount < 500)	// 마스크 픽셀이 500개 이하
 		{
 			isEffictiveLine = false;
@@ -1140,76 +1669,9 @@ void analyzer::capturedLinesToText()
 		}
 
 		string desName = fileManager::getSavePath() + "Lines/Line" + to_string(i);
-		runOCR(targetPath, desName);
+		OCRHandler ocrHandler;
+		ocrHandler.runOCR(targetPath, desName);
 	}
-}
-
-/// <summary>
-/// OCR 수행함
-///  Command line 예 : tesseract/tesseract_5.0.exe Output/movie.mp4/Captures/Line18_bin.jpg 0 -L tha+eng -c tessedit_char_blacklist=ABCDE--oem 1 --psm 7
-///  Options :
-///  OCR Engine modes(–oem) :
-///  	0 - Legacy engine only.
-///  	1 - Neural nets LSTM engine only.
-///  	2 - Legacy + LSTM engines.
-///  	3 - Default, based on what is available.
-///  Page segmentation modes(–psm) :
-///  	0 - Orientation and script detection(OSD) only.
-///  	1 - Automatic page segmentation with OSD.
-///  	2 - Automatic page segmentation, but no OSD, or OCR.
-///  	3 - Fully automatic page segmentation, but no OSD. (Default)
-///  	4 - Assume a single column of text of variable sizes.
-///  	5 - Assume a single uniform block of vertically aligned text.
-///  	6 - Assume a single uniform block of text.
-///  	7 - Treat the image as a single text line.
-///  	8 - Treat the image as a single word.
-///  	9 - Treat the image as a single word in a circle.
-///  	10 - Treat the image as a single character.
-///  	11 - Sparse text.Find as much text as possible in no particular order.
-///  	12 - Sparse text with OSD.
-///  	13 - Raw line.Treat the image as a single text line, bypassing hacks that are Tesseract - specific.
-/// </summary>
-/// <param name="targetImage">OCR에 입력될 이미지파일 경로.</param>
-/// <param name="outFileName">출력 OCR 파일 경로.</param>
-void analyzer::runOCR(string targetImage, string outFileName)
-{
-	// tesseract_5.0.exe . . 
-	// $tesseract o.jpg o.out -l kor -l tha+eng --oem 1 --psm 7 -c 
-	// 인자 : "인풋이미지" + "아웃.txt경로" + "-l tha+eng"
-	string procName = "tesseract\\tesseract_5.0.exe";		// tesseract 경로
-	string options = " -l tha+eng --oem 1 --psm 7";
-	string tessdataPath = " --tessdata-dir tesseract\\tessdata";
-	string params = " -c tessedit_char_blacklist=\"|:;/\" -c preserve_interword_spaces=1  -c load_system_dawg=0 -c load_freq_dawg=0 -c tosp_min_sane_kn_sp=10";	// 블랙리스트, 띄어쓰기 제거
-	string commandString = procName + " " + targetImage + " " + outFileName + tessdataPath + options + params;
-	// tesseract_5.0.exe "TARGET" "OUTIMAGE -l tha+eng --oem 1 --psm 7 -c tessedit_char_blacklist=\"|:;/\" -c preserve_interword_spaces=1  -c load_system_dawg=0 -c load_freq_dawg=0  -c tosp_min_sane_kn_sp=10" 
-	wstring args = stringToWstring(commandString);
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
-	HANDLE H;
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	ZeroMemory(&pi, sizeof(pi));	// 프로그램 매모리 할당
-
-	printf("runOCR : %s  \r\n", commandString.c_str());
-	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "runOCR() :" << commandString;
-
-	if (!CreateProcess(NULL, (LPWSTR)args.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-	{
-		fprintf(stderr, "Fail. \r\n");
-		return;
-	}
-	H = pi.hProcess;
-	WaitForMultipleObjects(1, &H, true, INFINITE);	// 모든 child가 완료될때까지 대기
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-
-	if (fileManager::isExist(outFileName+".txt") != true)
-	{
-		printf("OCR failed");
-		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "OCR failed : path - " << outFileName;
-
-	}
-	//ExitProcess(0);
 }
 
 void analyzer::readLyricsFromFile()
@@ -1232,23 +1694,6 @@ void analyzer::readLyricsFromFile()
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Read text: " << ocredText;
 		line->text = ocredText;
 	}
-}
-
-/// <summary>
-/// std::string to std::wstring 
-/// </summary>
-/// <param name="s">string.</param>
-/// <returns>wstring</returns>
-wstring analyzer::stringToWstring(const std::string& s)
-{
-	int len;
-	int slength = (int)s.length() + 1;
-	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
-	wchar_t* buf = new wchar_t[len];
-	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-	std::wstring r(buf);
-	delete[] buf;
-	return r;
 }
 
 bool analyzer::setVideo(string videoPath)
@@ -1350,9 +1795,15 @@ void analyzer::wordCalibration()
 	}
 }
 
+/*
+1. 마스크 이미지(흑백)에서 가로축으로 모든 섬들을 구함
+2. OCR 결과를 ' ' 단위로 분리
+3. getPaintedPoint()로 패인팅되는 좌표를 구함 (색깔로 연산하기 때문에 바꿔야함)
+*/
 void analyzer::wordCalibrationByOCRText(Line& line)
 {
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "wordCalibrationByOCRText()";
+	cout << "wordCalibrationByOCRText() : \r\n";
 	// Line space 구함
 	// 결과물 길이로 소팅
 	// line에 ' '의 개수만큼 space기준으로 word화 
@@ -1395,12 +1846,15 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	vector<string> tokens;	// OCR out text에서 ' ' 단위로 분리해낸 string
 	boost::split(tokens, line.text, boost::is_any_of(" ")); 
 	vector<Word> words;		// 워드 text, frame start-end를 가지는 객체
+
+	printf("line.text : %s \r\n", line.text);
 	for (int i = 0; i < tokens.size(); i++)
 	{
 		Word word;
 		//if (tokens[i].find_first_not_of(' ') != std::string::npos)	// ' '가 없다면 npos를 반환함
 		{
 			// There's a non-space.
+			printf("token %d : %s \r\n", i, tokens[i]);
 			word.text = tokens[i];
 			words.push_back(word);
 		}
@@ -1409,9 +1863,12 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	//vector<pair<int, int>> spacesLength_cut;	// <index, length>
 	//spacesLength_cut.assign(spacesLength.begin(), spacesLength.begin() + words.size());
 
-	printf("words.size() : %d", words.size());
+	printf("words.size() : %d\r\n", words.size());
+	printf("spacesLength.size() : %d\r\n", spacesLength.size());
 	for (int i = 0; i < static_cast<int>(words.size()-1); i++)	// token만큼의 스페이스바 - word 수가 더 많으면 에러 발생 YS
 	{
+		if (spacesLength.size() < words.size()-1)
+			break;
 		int startFrame = spaces[spacesLength[i].second].first;  // [index].first
 		int endFrame = spaces[spacesLength[i].second].second;
 
@@ -1420,8 +1877,8 @@ void analyzer::wordCalibrationByOCRText(Line& line)
 	}
 	sort(line.spacingWords.begin(), line.spacingWords.end());
 
-	vector<pair<int, int>> paintedPoint;
-	paintedPoint = getPaintedPoint(line);
+	vector<pair<int, int>> paintedPoint;	// ( pair<frame, xPoint> )
+	paintedPoint = getPaintedPoint(line);	
 
 	words[0].startFrame = line.startFrame;			// 배열 첫번째에 시작점 넣음
 	words[words.size()-1].endFrame = line.endFrame; // 배열에 마지막에 끝점 넣음

@@ -11,6 +11,9 @@
 #include "Line.h"
 #include "lyric.h"
 #include "Json.h"
+#include "MVInformation.h"
+#include "LineInfoFinder.h"
+#include "OCRHandler.h"
 
 using namespace cv;
 using namespace std;
@@ -27,6 +30,9 @@ public:
 
 	bool startVideoAnalization(string videoPath);
 	bool videoAnalization(string videoPath);
+	bool videoAnalization2(string videoPath);
+
+	MVInformation findLineInfo(VideoCapture *videoCapture);
 
 	/* 데이터 분석 함수 */
 	vector<int> vectorToAverageVector(vector<int> vec, int effectiveRange);
@@ -65,9 +71,7 @@ public:
 	Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 	Mat getBinImageByFloodfillAlgorismforNoiseRemove(Mat ATImage, Mat compositeImage, int limitX);
 	void capturedLinesToText();
-	void runOCR(string targetImage, string outFileName);
 	void readLyricsFromFile();
-	wstring stringToWstring(const std::string& s);
 
 	/* Inits */
 	bool setVideo(string videoPath);

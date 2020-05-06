@@ -13,6 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/log/trivial.hpp>
+#include "Json.h"
 
 using namespace std;
 using namespace cv;
@@ -20,6 +21,12 @@ using namespace cv;
 
 int main(int argc, char* argv[])
 {
+	//Json json;
+	//Lyric l;
+	//json.makeJson(l);
+
+//	return 1;
+
 #ifndef _DEBUG
 	if (argc != 2)
 	{
@@ -53,7 +60,20 @@ int main(int argc, char* argv[])
 			ana.startVideoAnalization( path.string()+"\\"+p.filename().string() );
 		}
 	}
+	// @@ 버그 : 파일쓰기 맛탱이감
+	/*	TODO Progress
+		0. 케이스 따내는 루틴 생성 : 
+			0.0. 색칠전색 - 색칠후색  (+Duet일때 2가지 패턴) 
+			0.1. 2라인 or 1라인
+			0.2. 시작 전 카운팅 심볼
 
+		1. 라인 수 만큼 Peak 찾기 
+		
+	*/
+	/* 케이스 따내는 루틴
+	 방법 : 색칠되는 부분을 따냄 ()
+	
+	*/
 #else
 	/*
 	vector<string> fname;
@@ -75,6 +95,7 @@ int main(int argc, char* argv[])
 	*/
 	//system("python deblur.py debug_2_upscale.png");
 	testClass testClass;
+	//testClass.test_Image4();
 	//testClass.test_Video_captureFrame("53772_out.mp4");
 	//testClass.test_Video_captureFrame("47795.mpeg");
 	//testClass.test_Video_captureFrame("42041.mpg");
@@ -96,29 +117,67 @@ int main(int argc, char* argv[])
 	//testClass.test_Video4("movie1_forTest.mp4");
 	//testClass.test_Video4("movie1_forTest2.mp4");
 	//testClass.test_Video4("movie.mp4");
-	//testClass.test_Video4("movie1.mp4");
+	//testClass.test_whiteCountImage("gramy_vol8_4.mp4");
+	//testClass.test_whiteCountImage("movie1.mp4");
+	//testClass.test_whiteCountImage("51781_0~73Lines_Duet_ColorWeired.mp4");	// 하늘색 P
+	//testClass.test_whiteCountImage("52704_0~39Lines_Duet_StartGray.mp4");	
+
+	//testClass.test_getTypeRoutin("51781_0~73Lines_Duet_ColorWeired.mp4");	// 하늘색 P
+	//testClass.test_getTypeRoutin2("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	// 오랜지색 UP
+	//testClass.test_getTypeRoutin2("movie1.mp4");	
+	
+	//testClass.test_getTypeRoutin2("52704_0~39Lines_Duet_StartGray.mp4");
+	//testClass.test_getTypeRoutin2("movie.mp4");
+	//testClass.test_getTypeRoutin2("50123_0~31Lines_TwinLine_BadQuality.mp4");
+	
+	
 
 	analyzer ana;
+	//ana.startVideoAnalization("gramy_vol8_4.mp4");
+
 	//ana.videoAnalization1("movie1.mp4");
 	//ana.videoAnalization1("40009.mp4");
 
-	//ana.startVideoAnalization("40009_forDebug.mp4");
-
-	ana.startVideoAnalization("40009_forDebug.mp4");	// *shortist test movie
+	//ana.startVideoAnalization("40009_forDebug.mp4");	// *shortist test movie
 	//ana.startVideoAnalization("movie1_forTest2.mp4");
 	//ana.startVideoAnalization("movie1_forTest2.mp4");
 	//ana.startVideoAnalization("40011_forTest.mp4");
 	//ana.startVideoAnalization("40011_forTest_upscale.mp4");
 
-	//ana.startVideoAnalization("movie.mp4");
-	//ana.startVideoAnalization("movie1.mp4");
-	//ana.startVideoAnalization("40009.mp4");
-	//ana.startVideoAnalization("40011.mp4");
-	//ana.startVideoAnalization("40006.mp4");
-	//ana.startVideoAnalization("40003.mp4");
+	//ana.startVideoAnalization("50123.mp4");	// 0~31 lines
+
+//	ana.startVideoAnalization("movie.mp4");		// 0~27
+	//ana.startVideoAnalization("movie1.mp4");	// 0~62
+	//ana.startVideoAnalization("40009.mp4");	// 0~66
+	//ana.startVideoAnalization("40011.mp4");		// 0~46
+	//ana.startVideoAnalization("40006.mp4");		// 0~43
+	//ana.startVideoAnalization("40003.mp4");		// 0~60
 	//	  
 	//ana.startVideoAnalization("gramy_vol8_4.mp4");
 	//ana.startVideoAnalization("gramy_vol8_6.mp4");
+
+	//ana.startVideoAnalization("64440_4lines.mp4");	// 0~23 lines	(라인 시작부분에 남,여 표시가 있으며 색칠하는 이벤트 존재)
+	//ana.startVideoAnalization("64439.mp4");	// 0~32 Lines
+	//ana.startVideoAnalization("64321.mp4");	// 0~28 lines
+	//ana.startVideoAnalization("43780.mp4");	// 0~72 lines (most 화질구지)
+
+	//ana.startVideoAnalization("51781_0~73Lines_hardist.mp4");		// 하늘색,분홍색으로 paint 됨..
+	//ana.startVideoAnalization("51815_0~35Lines_Duet.mp4");
+	//ana.startVideoAnalization("53355_0~33Lines_Gradation_시작기호.mp4");
+	//ana.startVideoAnalization("62989_0~32Lines.mp4");
+	//ana.startVideoAnalization("63279_0~44Lines.mp4");
+	//ana.startVideoAnalization("63535_0~46Lines_UnpaintBlur.mp4");
+	//ana.startVideoAnalization("63985_0~37Lines_FontWeired.mp4");
+
+	//ana.startVideoAnalization("51781_0~73Lines_Duet_ColorWeired.mp4");			// 하늘색 P type(0&2, 0) 
+	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	// 오랜지색 UP	type(0, 1, twin)
+	ana.startVideoAnalization("movie1.mp4");	// 0~62
+
+	//ana.startVideoAnalization("40009_forDebug.mp4");		// type(0, 0)
+	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	
+	//ana.startVideoAnalization("50123_0~31Lines_TwinLine_BadQuality.mp4");
+	
+	
 	
 
 	

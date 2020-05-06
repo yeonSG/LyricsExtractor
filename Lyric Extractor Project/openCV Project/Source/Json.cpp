@@ -102,7 +102,7 @@ json Json::getObject_line(Lyric lyric)
         if (i == 0)
         {
             // 첫 시작이 2초 이후라면 count 넣어줌
-            int firstLineStartTime = lyric.getLine(0)->words[0].startFrame_ms;
+            int firstLineStartTime = lyric.getLine(0)->startFrame_ms;
             if(firstLineStartTime>2000)
                 json_lineObject.push_back(getObject_eventCountObject(firstLineStartTime-2000)); //4 * 500
         }
@@ -181,7 +181,7 @@ json Json::getObject_eventLyricObject(Line line)
     objValue["event"]= "lyrics";
     objValue["linepart"] = getObject_linePartArr(line);
     objValue["part"] = "N";
-	objValue["start"] = line.words[0].startFrame_ms;
+	objValue["start"] = line.startFrame_ms;
 
     return objValue;
 }
@@ -189,6 +189,16 @@ json Json::getObject_eventLyricObject(Line line)
 json Json::getObject_linePartArr(Line line)
 {
     json linepartArray = json::array();
+    if (line.words.size() == 0)
+    {
+        json arrObject;
+        arrObject["end"] = line.endFrame_ms;
+        arrObject["start"] = line.startFrame_ms;
+        arrObject["text"] = line.text;
+
+        linepartArray.push_back(arrObject);
+        return linepartArray;
+    }
 
     for (int i = 0; i < line.words.size(); i++)
     {

@@ -1,6 +1,6 @@
 #pragma once
 
-const bool USE_ML = true;
+const bool USE_ML = false;
 
 enum Color	// BGR
 {
