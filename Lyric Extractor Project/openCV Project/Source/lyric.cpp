@@ -28,6 +28,7 @@ void Lyric::init()
 {
 	if(!lines.empty())
 		lines.clear();
+
 }
 
 void Lyric::cleanupInvalidLines()
@@ -128,7 +129,7 @@ void Lyric::writeLyric_withWordFile(VideoCapture* videoCapture)
 
 void Lyric::sortingLine()
 {
-	sort(lines.begin(), lines.end(), Line::desc_Line);
+	sort(lines.begin(), lines.end(), Line::asc_Line);
 }
 
 void Lyric::saveBinaryImage(string videoPath)
@@ -153,4 +154,13 @@ void Lyric::saveBinaryImage(string videoPath)
 
 		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", binImage);
 	}
+}
+
+void Lyric::setUnprintColor(Vec3b upColor)
+{
+	unPrintColor = upColor;
+}
+Vec3b Lyric::getUnprintColor()
+{
+	return unPrintColor;
 }

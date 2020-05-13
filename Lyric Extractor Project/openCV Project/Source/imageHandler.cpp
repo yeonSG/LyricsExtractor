@@ -1,9 +1,36 @@
 #include "imageHandler.h"
 
 
+bool desc(contourInfo a, contourInfo b)
+{
+	return a.coorX_start > b.coorX_start;
+}
+bool asc(contourInfo a, contourInfo b)
+{
+	return a.coorX_start < b.coorX_start;
+}
+
+int getContourLineInfoVolume(contourLineInfo lineInfo)
+{
+	int sum = 0;
+	for (int i = 0; i < lineInfo.contours.size(); i++)
+	{
+		sum += lineInfo.contours[i].pixelCount;
+	}
+	return sum;
+}
+
+bool imageHandler::isRelation(int a_start, int a_end, int b_start, int b_end)
+{
+	if (a_start >= b_end || a_end <= b_start)
+		return false;
+	else
+		return true;
+}
+
 Mat imageHandler::resizeImageToAnalize(Mat& sourceImage)
 {
-	Mat resizedImage; 
+	Mat resizedImage;
 
 	if (sourceImage.rows != 720)
 	{
@@ -156,7 +183,7 @@ Mat imageHandler::getBorderFloodFilledImageForColor(Mat& rgbImage, bool toBlack)
 		color[1] = 0;
 		color[2] = 0;
 	}
-	else 
+	else
 	{
 		color[0] = 255;
 		color[1] = 255;
@@ -241,7 +268,7 @@ Mat imageHandler::removeNotLyricwhiteArea(static Mat& binaryMat)
 				if (isBox != true)
 					break;
 			}
-			if(isBox)	// 
+			if (isBox)	// 
 				floodFill(outImage, Point(x, y), 0); // do floodfill to black
 
 		}
@@ -272,11 +299,11 @@ int imageHandler::getAlinedContoursCount(Mat& binImage)
 	{
 		approxPolyDP(Mat(contours[i]), contours_poly[i], 1, true);	// contour -> contourPolyDP
 		boundRect.push_back(boundingRect(Mat(contours_poly[i])));
-		
+
 		rectangle(image_debug, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0));	// forDebug
 	}
 	boundRect_filtered = getFillteredContours(boundRect);
-	
+
 	//drawContours(orgImage, contours_poly, -1, Scalar(0, 255, 255), 1);
 
 	// => Blue에서 가장 많은 contur가 걸리는 선x를 구한다.
@@ -301,7 +328,7 @@ int imageHandler::getAlinedContoursCount(Mat& binImage)
 		}
 	}
 
-	 return biggestCount;
+	return biggestCount;
 }
 
 /// <summary>
@@ -363,7 +390,7 @@ Mat imageHandler::getNoiseRemovedImage(Mat& binaryMat, bool toBlack)
 		color = 0;
 	else
 		color = 255;
-		
+
 	for (int row = 0; row < nRows; row++) {
 		int count = 0;
 		uchar* rowPtr = binaryMat.ptr<uchar>(row);
@@ -375,7 +402,7 @@ Mat imageHandler::getNoiseRemovedImage(Mat& binaryMat, bool toBlack)
 
 			if (count > 60)	// 60pixel
 			{
-				Mat rowMat = Mat::zeros(1, nCols, CV_8U);	
+				Mat rowMat = Mat::zeros(1, nCols, CV_8U);
 				uchar* rowMatPtr = rowMat.ptr<uchar>(0);	// copy row
 				for (int c = 0; c < nCols; c++) {
 					rowMatPtr[c] = rowPtr[c];
@@ -383,8 +410,8 @@ Mat imageHandler::getNoiseRemovedImage(Mat& binaryMat, bool toBlack)
 				int rowRightistPoint = getRightistWhitePixel_x(rowMat);
 				int rowLeftistPoint = getLeftistWhitePixel_x(rowMat);
 
-				if( (rightistPoint+100 < rowRightistPoint || rowRightistPoint < rightistPoint-100) || 
-					(leftistPoint + 100 < rowLeftistPoint || rowLeftistPoint < leftistPoint - 100) )
+				if ((rightistPoint + 100 < rowRightistPoint || rowRightistPoint < rightistPoint - 100) ||
+					(leftistPoint + 100 < rowLeftistPoint || rowLeftistPoint < leftistPoint - 100))
 					floodFill(binaryMat, Point(i, row), color);
 
 				count = 0;
@@ -423,7 +450,7 @@ Mat imageHandler::getDotRemovedImage(Mat& binaryMat, int dotSize, bool toBlack)
 	for (unsigned int i = 0; i < contours.size(); i++)
 	{
 		std::cout << "# of contour points: " << contours[i].size() << " " << contours[i][0] << std::endl;
-		mu[i] = moments(contours[i]);		
+		mu[i] = moments(contours[i]);
 
 		for (unsigned int j = 0; j < contours[i].size(); j++)
 		{
@@ -442,10 +469,10 @@ Mat imageHandler::getDotRemovedImage(Mat& binaryMat, int dotSize, bool toBlack)
 			floodFill(removedMat, contours[i][0], color);
 		else if (contourArea(contours[i]) < dotSize)
 		{
-			Point middlePoint = Point((int)((mu[i].m10 / mu[i].m00)+0.5), (int)((mu[i].m01 / mu[i].m00)+0.5));
+			Point middlePoint = Point((int)((mu[i].m10 / mu[i].m00) + 0.5), (int)((mu[i].m01 / mu[i].m00) + 0.5));
 			floodFill(removedMat, middlePoint, color);
 		}
-			//floodFill(removedMat, contours[i][0], color);
+		//floodFill(removedMat, contours[i][0], color);
 	}
 
 	return removedMat;
@@ -469,7 +496,7 @@ Mat imageHandler::getDustRemovedImage(Mat& binaryMat, bool toBlack)
 	{
 		if (contours[i].size() <= 2)
 		{
-			for(int j=0; j< contours[i].size(); j++)
+			for (int j = 0; j < contours[i].size(); j++)
 				floodFill(removedMat, contours[i][j], color);
 		}
 		//floodFill(removedMat, contours[i][0], color);
@@ -477,6 +504,211 @@ Mat imageHandler::getDustRemovedImage(Mat& binaryMat, bool toBlack)
 
 	return removedMat;
 }
+
+// 컨투어에 해당하는 영역의 컬러를 해당 컨투어의 평균 값으로 칠하는 함수
+/*
+ 1. 컨투어 영역 mask 땀
+ 2. 평균값을 구한 후 fludfill
+
+ 1. inrange()하여 0 or 255 이진화
+ 2.
+*/
+Mat imageHandler::getMaxColorContoursImage(Mat& binaryMat, vector<contourLineInfo>& expectedLineInfos_curFrame)
+{
+	Mat outImage = Mat::zeros(binaryMat.rows, binaryMat.cols, CV_8U);
+
+	vector<vector<Point>> contours;
+	findContours(binaryMat, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+	vector<contourInfo> contourInfos;
+
+	Mat binImage;
+	inRange(binaryMat, 1, 255, binImage);
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		Mat contourMask = Mat::zeros(binaryMat.rows, binaryMat.cols, CV_8U);;
+		// 컨투어별 마스크
+		vector<vector<Point>> contours_picked;
+		contours_picked.push_back(contours[i]);
+		fillPoly(contourMask, contours_picked, 255);
+		vector<Point> indices;		// 내부의 점들을 얻음
+		findNonZero(contourMask, indices);
+
+		int sum = 0;
+		int max = 0;
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			uchar* yPtr = binaryMat.ptr<uchar>(indices[idx].y);	//in
+			sum += yPtr[indices[idx].x];
+			if (max < yPtr[indices[idx].x])
+				max = yPtr[indices[idx].x];
+		}
+		int avgContourColor = sum / indices.size();
+
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			uchar* yPtr = outImage.ptr<uchar>(indices[idx].y);	//in
+			//yPtr[indices[idx].x] = avgContourColor;
+			yPtr[indices[idx].x] = max;
+		}
+
+		contourInfo conInfo;
+		conInfo.maxValue = max;
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			if (idx == 0)	// 초기화
+			{
+				conInfo.coorX_start = indices[idx].x;
+				conInfo.coorX_end = indices[idx].x;
+				conInfo.coorY_start = indices[idx].y;
+				conInfo.coorY_end = indices[idx].y;
+				conInfo.pixelCount = indices.size();
+			}
+
+			if (indices[idx].x < conInfo.coorX_start)
+				conInfo.coorX_start = indices[idx].x;
+			if (indices[idx].x > conInfo.coorX_end)
+				conInfo.coorX_end = indices[idx].x;
+			if (indices[idx].y < conInfo.coorY_start)
+				conInfo.coorY_start = indices[idx].y;
+			if (indices[idx].y > conInfo.coorY_end)
+				conInfo.coorY_end = indices[idx].y;
+		}
+		contourInfos.push_back(conInfo);
+	}
+
+	// 1. 컨투어인포 x좌표 기준으로 소팅
+	// 2. contourLineInfo 생성 
+	sort(contourInfos.begin(), contourInfos.end(), asc);
+
+	vector<contourLineInfo> conLineInfos;	// Expect contour Line
+	{
+		;	// contourLineInfo 생성 루틴
+			// 2.1 전채순회하여 모든 연결 구함 (모든 컨투어 진행)
+			// 2.2 
+		for (int i = 0; i < contourInfos.size(); i++)
+		{
+			if (contourInfos[i].isRefed == false)
+			{
+				contourInfos[i].isRefed = true;
+				contourLineInfo contourLineInfo;
+				contourLineInfo.contours.push_back(contourInfos[i]);
+				contourLineInfo.coorY_start = contourInfos[i].coorY_start;
+				contourLineInfo.coorY_end = contourInfos[i].coorY_end;
+				for (int j = i + 1; j < contourInfos.size(); j++)	// 남은 컨투어들 확인
+				{
+					// Y start~end 안에 포함된다면 추가
+					if (isRelation(contourLineInfo.coorY_start, contourLineInfo.coorY_end, contourInfos[j].coorY_start, contourInfos[j].coorY_end))
+					{
+						contourLineInfo.contours.push_back(contourInfos[j]);
+						contourInfos[j].isRefed = true;
+					}
+				contourLineInfo.pixelCount = getContourLineInfoVolume(contourLineInfo);
+				}
+				conLineInfos.push_back(contourLineInfo);
+			}
+		}
+	}
+
+	for (int i = 0; i < conLineInfos.size(); i++)	// 1.
+	{
+		for (int j = 0; j < conLineInfos[i].contours.size(); j++)
+		{
+			if (conLineInfos[i].coorY_start > conLineInfos[i].contours[j].coorY_start)
+				conLineInfos[i].coorY_start = conLineInfos[i].contours[j].coorY_start;	//최소값
+
+			if (conLineInfos[i].coorY_end < conLineInfos[i].contours[j].coorY_end)
+				conLineInfos[i].coorY_end = conLineInfos[i].contours[j].coorY_end;	// 최대값
+		}
+	}
+
+	vector<contourLineInfo> conLineInfos_buffer;
+	for (int i = 0; i < conLineInfos.size(); i++)	// 2.
+	{
+		bool isPassOnSize = false;
+		bool isPassOnVolume = false;
+		if (conLineInfos[i].contours.size() >= 5)
+			isPassOnSize = true;
+		if (conLineInfos[i].pixelCount >= 100)
+			isPassOnVolume = true;
+
+		if(isPassOnSize && isPassOnVolume)
+			conLineInfos_buffer.push_back(conLineInfos[i]);
+	}
+	conLineInfos = conLineInfos_buffer;
+	conLineInfos_buffer.clear();
+
+	for (int i = 0; i < conLineInfos.size(); i++)	// 3. 
+	{
+		bool isMerged = false;
+		for (int j = 0; j < conLineInfos_buffer.size(); j++)
+		{
+			if (isRelation(conLineInfos_buffer[j].coorY_start, conLineInfos_buffer[j].coorY_end, conLineInfos[i].coorY_start, conLineInfos[i].coorY_end))
+			{
+				if (conLineInfos_buffer[j].coorY_start > conLineInfos[i].coorY_start)
+					conLineInfos_buffer[j].coorY_start = conLineInfos[i].coorY_start;
+
+				if (conLineInfos_buffer[j].coorY_end < conLineInfos[i].coorY_end)
+					conLineInfos_buffer[j].coorY_end = conLineInfos[i].coorY_end;
+
+				for (int idx = 0; idx < conLineInfos[i].contours.size(); idx++)
+				{
+					conLineInfos_buffer[j].contours.push_back(conLineInfos[i].contours[idx]);
+				}
+				sort(conLineInfos_buffer[j].contours.begin(), conLineInfos_buffer[j].contours.end(), asc);
+
+				isMerged = true;
+				break;
+			}
+		}
+		if (isMerged != true)
+		{
+			conLineInfos_buffer.push_back(conLineInfos[i]);
+		}
+	}
+	conLineInfos = conLineInfos_buffer;
+
+	for (int i = 0; i < conLineInfos.size(); i++)	// 4.
+	{
+		conLineInfos[i].contours.erase(
+			unique(conLineInfos[i].contours.begin(), conLineInfos[i].contours.end(),
+				[](const contourInfo& a, const contourInfo& b) {
+			if (a.maxValue == b.maxValue &&
+				a.coorX_start == b.coorX_start &&
+				a.coorX_end == b.coorX_end &&
+				a.coorY_start == b.coorY_start &&
+				a.coorY_end == b.coorY_end)
+				return true;
+			else
+				return false;
+		}	  // 중복제거	 
+		), conLineInfos[i].contours.end());
+	}
+
+	for (int i = 0; i < conLineInfos.size(); i++)	// 5.
+	{
+		conLineInfos[i].pixelCount = getContourLineInfoVolume(conLineInfos[i]);
+	}
+
+	expectedLineInfos_curFrame = conLineInfos;	// for return
+
+	// 1. contourLineInfo의 coorY_start와 coorY_end를 모든 컨투어에 대한 최대-최소값으로 바꿈
+	// 2. vecContours.Size()가 5 이상인 것만 살림 & 픽셀카운트가 100 이상인것만 살림
+	// 3. contourLineInfo끼리 Y값이 겹치는 부분이 있으면 합치고(merge) vecContours 다시 소팅 -> 클러스터링 된 것만 남음
+	// 4. contours중복 제거
+	// 5. 부피 계산
+	// 6. 해당 값 리턴 ( 필요하다면 조건 추가 및 변경할것!)
+
+	// 0. 밖에서) 해당 값과 이후 프레임에서 얻어지는 값과 비교진행 (Y좌표 기준으로 겹처 존제하던게 사라짐)
+	// 0.1 Y좌표 관련있는것 && 픽셀수 크면 업데이트
+	// 0.2 없어지면 라인으로
+
+	return outImage;
+}
+// 예상라인들 반환 ( List<pair<int start_Y, int end_Y>> detectedLine)
+// 이전 라인들과 비교
+// 만약 예상라인이 없어졌다면 없어진라인 분석 (weight로 분석)
+// (분석 : 이전프레임에 Unprint 색이 있는지에대한.. etc)
+
 
 /// <summary>
 /// 잡영 회피 목적의 흰색 커튼이미지 생성
@@ -489,11 +721,11 @@ Mat imageHandler::getDustRemovedImage(Mat& binaryMat, bool toBlack)
 Mat imageHandler::getColumMaskImage(int cols, int rows, int maskLength, int targetColum)
 {
 	Mat maskImage = Mat::zeros(rows, cols, CV_8UC1);
-	if (maskLength / 2 > targetColum)	
-		targetColum = maskLength / 2;	
-	else if (cols - (maskLength / 2) < targetColum)	
-		targetColum = cols - (maskLength / 2);	
-	
+	if (maskLength / 2 > targetColum)
+		targetColum = maskLength / 2;
+	else if (cols - (maskLength / 2) < targetColum)
+		targetColum = cols - (maskLength / 2);
+
 	for (int r = 0; r < rows; r++)
 	{
 		uchar* yPtr = maskImage.ptr<uchar>(r);
@@ -629,6 +861,9 @@ Mat imageHandler::getBlackToWhiteImage(Mat& beforeImage, Mat& afterImage)
 	return andImage;
 }
 
+/*
+	rgbImage에서 mask에 255인 영역만 살림
+*/
 Mat imageHandler::getMaskedImage(Mat& rgbImage, Mat& mask)
 {
 	int height = rgbImage.rows;
@@ -657,6 +892,30 @@ Mat imageHandler::getMaskedImage(Mat& rgbImage, Mat& mask)
 	return outImage_masked;
 }
 
+// mask의 흰색부분만 살림
+Mat imageHandler::getMaskedImage_binImage(static Mat& binImage, static Mat& mask)
+{
+	int height = binImage.rows;
+	int width = binImage.cols;
+
+	Mat outImage_masked = binImage.clone();
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_mask = mask.ptr<uchar>(y);	//in
+		uchar* yPtr_out = outImage_masked.ptr<uchar>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			if (yPtr_mask[x] != 255)
+			{
+				yPtr_out[x] = 0;
+			}
+		}
+	}
+
+	return outImage_masked;
+}
+
 Mat imageHandler::getColorToBlackImage(static Mat& mask, Scalar removeColor)
 {
 	int height = mask.rows;
@@ -674,7 +933,7 @@ Mat imageHandler::getColorToBlackImage(static Mat& mask, Scalar removeColor)
 			int colorEnd = x;
 			bool isRight = false;	// 조건만족?
 
-			if (yPtr_out[x][0]  == removeColor[0] &&
+			if (yPtr_out[x][0] == removeColor[0] &&
 				yPtr_out[x][1] == removeColor[1] &&
 				yPtr_out[x][2] == removeColor[2])
 			{
@@ -745,7 +1004,7 @@ Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
 				int color_m = -1; // black==2, Blue,Red==1, other==-1
 				int color_p = -1;
 
-				while (whiteEnd < width-1)	// 어디까지 흰색이냐
+				while (whiteEnd < width - 1)	// 어디까지 흰색이냐
 				{
 					Vec3b v3p = yPtr_FCImage[whiteEnd + 1];
 					if (isWhite(v3p))
@@ -803,7 +1062,7 @@ Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
 				{
 					for (int i = whiteStart; i <= whiteEnd; i++)
 					{
-						if( (i+4>whiteEnd) && (i-4<whiteStart) )
+						if ((i + 4 > whiteEnd) && (i - 4 < whiteStart))
 							yPtr[i] = 255;
 					}
 				}
@@ -829,7 +1088,7 @@ Mat imageHandler::getPaintedBinImage(Mat& rgbImage)
 				int color_m = -1; // lack==2, Blue,Red==1, other==-1
 				int color_p = -1;
 
-				while (whiteEnd < height-1)	// 어디까지 흰색이냐
+				while (whiteEnd < height - 1)	// 어디까지 흰색이냐
 				{
 					Vec3b v3p = fullyContrastImage.ptr<Vec3b>(whiteEnd + 1)[x];//yPtr_FCImage[whiteEnd + 1];
 					if (isWhite(v3p))
@@ -927,7 +1186,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage, bool isBluePaint)
 			{
 				int color_m = -1; /// black==2, white==1, other==-1
 				int color_p = -1;
-				while (colorEnd<width-1)
+				while (colorEnd < width - 1)
 				{
 					Vec3b v3p = yPtr_FCImage[colorEnd + 1];
 					if ((isBlue(v3p) && isBluePaint) || (isRed(v3p) && !isBluePaint))
@@ -973,7 +1232,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage, bool isBluePaint)
 			}
 		}
 	}
-	   
+
 	// 열연산
 	for (int x = 0; x < width; x++)
 	{
@@ -983,7 +1242,7 @@ Mat imageHandler::getPaintedBinImage_inner(Mat& rgbImage, bool isBluePaint)
 			//	continue;
 
 			bool isRight = false;	// 조건만족?
-			if((isBlue(fullyContrastImage.ptr<Vec3b>(y)[x]) && isBluePaint) || (isRed(fullyContrastImage.ptr<Vec3b>(y)[x]) && !isBluePaint))
+			if ((isBlue(fullyContrastImage.ptr<Vec3b>(y)[x]) && isBluePaint) || (isRed(fullyContrastImage.ptr<Vec3b>(y)[x]) && !isBluePaint))
 			{
 				int colorStart = y;
 				int colorEnd = y;
@@ -1072,14 +1331,14 @@ Mat imageHandler::getPaintedPattern(Mat& rgbImage, Scalar pattenColor, bool ifBo
 			int colorEnd = x;
 			bool isRight = false;	// 조건만족?
 
-			if ((isSameColor(pattenColor, yPtr_FCImage[x])) )
+			if ((isSameColor(pattenColor, yPtr_FCImage[x])))
 			{
 				int color_m = -1; /// black==2, white==1, other==-1
 				int color_p = -1;
 				while (colorEnd < width - 1)
 				{
 					Vec3b v3p = yPtr_FCImage[colorEnd + 1];
-					if (isSameColor(pattenColor, v3p) )
+					if (isSameColor(pattenColor, v3p))
 						colorEnd++;
 					else
 						break;
@@ -1132,7 +1391,7 @@ Mat imageHandler::getPaintedPattern(Mat& rgbImage, Scalar pattenColor, bool ifBo
 			//	continue;
 
 			bool isRight = false;	// 조건만족?
-			if (isSameColor(pattenColor, fullyContrastImage.ptr<Vec3b>(y)[x]) )
+			if (isSameColor(pattenColor, fullyContrastImage.ptr<Vec3b>(y)[x]))
 			{
 				int colorStart = y;
 				int colorEnd = y;
@@ -1190,7 +1449,7 @@ Mat imageHandler::getPaintedPattern(Mat& rgbImage, Scalar pattenColor, bool ifBo
 		}
 	}
 
-	if(ifBothHV)
+	if (ifBothHV)
 		threshold(outImage_painted, outImage_painted, 200, 255, THRESH_BINARY);
 	else
 		threshold(outImage_painted, outImage_painted, 100, 255, THRESH_BINARY);
@@ -1210,12 +1469,195 @@ Mat imageHandler::getFullyContrastImage(Mat rgbImage)
 	// RGB 합침
 	Mat mergedImage;
 	merge(bgr, 3, mergedImage);
-return mergedImage;
+	return mergedImage;
+}
+//408(163, 104, 140) : (40, 25, 34)	
+/*
+	픽셀의 RGB 비율에 따른 ContrastImage 생성
+	<조건들>
+	검정	: RGB중 가장 큰 값이 50 이하 AND
+	흰색	: RGB값 모두 128 이상
+	나머지 색에서 색 구분 진행
+	파랑(255 0 0)	:
+	빨강(0 0 255)	:
+	초록(0 255 0)	:
+	노랑(0 255 255)	:
+	퍼플(255 0 255)	:
+	하늘(255 255 0)	:
+	3개 색에 대한 비율 구함. ( B/RGB합*100 : G/RGB합*100  : R/RGB합*100 )
+*/	// 패턴 찾아낼 때 사용(색처리에 대해 관대함)
+Mat imageHandler::getPixelContrastImage(Mat rgbImage)
+{
+	int height = rgbImage.rows;
+	int width = rgbImage.cols;
+	Mat outImage = rgbImage.clone();
+
+	Scalar color_white = Scalar(255, 255, 255);
+	Scalar color_black = Scalar(0, 0, 0);
+
+	Scalar color_red = Scalar(0, 0, 255);
+	Scalar color_green = Scalar(0, 255, 0);
+	Scalar color_blue = Scalar(255, 0, 0);
+	Scalar color_purple = Scalar(255, 0, 255);
+	Scalar color_yellow = Scalar(0, 255, 255);
+	Scalar color_sky = Scalar(255, 255, 0);
+
+	vector<Scalar> otherColor;
+	otherColor.push_back(color_red);
+	otherColor.push_back(color_green);
+	otherColor.push_back(color_blue);
+	otherColor.push_back(color_purple);
+	otherColor.push_back(color_yellow);
+	otherColor.push_back(color_sky);
+	//Scalar otherColor[] = { color_red, color_green, color_blue, color_purple, color_yellow, color_sky};
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		//uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = outImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			// white
+			if (yPtr_FCImage[x][0] > 127 &&
+				yPtr_FCImage[x][1] > 127 &&
+				yPtr_FCImage[x][2] > 127)
+			{
+				yPtr_FCImage[x][0] = color_white[0];
+				yPtr_FCImage[x][1] = color_white[1];
+				yPtr_FCImage[x][2] = color_white[2];
+				continue;
+			}
+
+			// black
+			int maxValue = yPtr_FCImage[x][0];
+			for (int i = 0; i < 3; i++)
+				if (yPtr_FCImage[x][i] > maxValue)
+					maxValue = yPtr_FCImage[x][i];
+			if (maxValue < 50)
+			{
+				yPtr_FCImage[x][0] = color_black[0];
+				yPtr_FCImage[x][1] = color_black[1];
+				yPtr_FCImage[x][2] = color_black[2];
+				continue;
+			}
+
+			// other colors
+			Scalar imagePixel = yPtr_FCImage[x];
+			int minValue = 255 * 3; // 최저 값 
+			for (int i = 0; i < otherColor.size(); i++)
+			{
+				int value = abs(otherColor[i][0] - imagePixel[0]) +
+					abs(otherColor[i][1] - imagePixel[1]) +
+					abs(otherColor[i][2] - imagePixel[2]);
+				if (value < minValue)	// 색 업데이트 : 가장 낮은 값을 갖는 Scalar계산이 가장 가까운 색
+				{
+					yPtr_FCImage[x][0] = otherColor[i][0];
+					yPtr_FCImage[x][1] = otherColor[i][1];
+					yPtr_FCImage[x][2] = otherColor[i][2];
+					minValue = value;
+				}
+			}
+
+		}
+	}
+
+	return outImage;
+}
+
+/*
+	위 알고리즘과 비슷하지만 변형버전
+	<조건들>
+	검정	: RGB중 가장 큰 값이 50 이하 AND
+	흰색	: RGB값 모두 128 이상
+	나머지 색에서 색 구분 진행
+	파랑: B값 퍼센테이지 50% 이상
+	빨강: R값 퍼센테이지 50% 이상
+	초록: G값 퍼센테이지 50% 이상
+	노랑: GR값 각 퍼센테이지 35% 이상
+	퍼플: BR값 각 퍼센테이지 35% 이상
+	하늘: BG값 각 퍼센테이지 35% 이상
+*/	// 패턴위치에 flodfill 할때 사용 (컬러)
+Mat imageHandler::getPixelContrastImage_byPercent(Mat rgbImage)
+{
+	int height = rgbImage.rows;
+	int width = rgbImage.cols;
+	Mat outImage = rgbImage.clone();
+
+	Scalar color_white = Scalar(255, 255, 255);
+	Scalar color_black = Scalar(0, 0, 0);
+	Vec3b color_red = Vec3b(0, 0, 255);
+	Vec3b color_green = Vec3b(0, 255, 0);
+	Vec3b color_blue = Vec3b(255, 0, 0);
+	Vec3b color_purple = Vec3b(255, 0, 255);
+	Vec3b color_yellow = Vec3b(0, 255, 255);
+	Vec3b color_sky = Vec3b(255, 255, 0);
+
+	//Scalar otherColor[] = { color_red, color_green, color_blue, color_purple, color_yellow, color_sky};
+
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		//uchar* yPtr = outImage.ptr<uchar>(y);	//in
+		Vec3b* yPtr_FCImage = outImage.ptr<Vec3b>(y); //
+		for (int x = 0; x < width; x++)
+		{
+			// white
+			if (yPtr_FCImage[x][0] > 127 &&
+				yPtr_FCImage[x][1] > 127 &&
+				yPtr_FCImage[x][2] > 127)
+			{
+				yPtr_FCImage[x][0] = color_white[0];
+				yPtr_FCImage[x][1] = color_white[1];
+				yPtr_FCImage[x][2] = color_white[2];
+				continue;
+			}
+
+			// black
+			int maxValue = yPtr_FCImage[x][0];
+			for (int i = 0; i < 3; i++)
+				if (yPtr_FCImage[x][i] > maxValue)
+					maxValue = yPtr_FCImage[x][i];
+			if (maxValue < 50)
+			{
+				yPtr_FCImage[x][0] = color_black[0];
+				yPtr_FCImage[x][1] = color_black[1];
+				yPtr_FCImage[x][2] = color_black[2];
+				continue;
+			}
+
+			// other colors
+			Scalar imagePixel = yPtr_FCImage[x];
+			int SumPixelValue = imagePixel[0] + imagePixel[1] + imagePixel[2];
+			float percentR = imagePixel[2] / (float)SumPixelValue;
+			float percentG = imagePixel[1] / (float)SumPixelValue;
+			float percentB = imagePixel[0] / (float)SumPixelValue;
+
+			if (percentB > 0.5)
+				yPtr_FCImage[x] = color_blue;
+			else if (percentG > 0.5)
+				yPtr_FCImage[x] = color_green;
+			else if (percentR > 0.5)
+				yPtr_FCImage[x] = color_red;
+			else if (percentR > 0.35 && percentB > 0.35)	//purple
+				yPtr_FCImage[x] = color_purple;
+			else if (percentR > 0.35 && percentB > 0.35)	//yellow
+				yPtr_FCImage[x] = color_yellow;
+			else if (percentR > 0.35 && percentB > 0.35)	//sky
+				yPtr_FCImage[x] = color_sky;
+			else // 검정처리
+				yPtr_FCImage[x] = { 0, 0, 0 };
+
+		}
+	}
+
+	return outImage;
 }
 
 Mat imageHandler::getFullyContrast_withDilate(Mat rgbImage, Scalar color)
 {
-	Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
+	//Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
+	Mat fullyContrastImage = imageHandler::getPixelContrastImage(rgbImage);
 
 	Scalar targetColorMin = color;
 	for (int i = 0; i < 3; i++)
@@ -1223,7 +1665,7 @@ Mat imageHandler::getFullyContrast_withDilate(Mat rgbImage, Scalar color)
 		if (targetColorMin[i] != 0)
 			targetColorMin[i] = targetColorMin[i] - 1;
 	}
-	   
+
 	Mat colorMat;
 	//inRange(fullyContrastImage, Scalar(254, 0, 0), Scalar(255, 0, 0), blue);	// binarize by rgb
 	inRange(fullyContrastImage, targetColorMin, color, colorMat);
@@ -1242,7 +1684,7 @@ Mat imageHandler::getFullyContrast_withDilate(Mat rgbImage, Scalar color)
 		{
 			if (yPtr_colorMat[x] == 255)
 			{
-				if ( (!isWhite(yPtr_FC[x])) && (!isBlack(yPtr_FC[x])) )	// 흑 백도 아닌곳만 적용
+				if ((!isWhite(yPtr_FC[x])) && (!isBlack(yPtr_FC[x])))	// 흑 백도 아닌곳만 적용
 				{
 					Vec3b& ptr = fullyContrastImage.at<Vec3b>(y, x);
 					//ptr[0] = 255;	// B
@@ -1325,7 +1767,7 @@ Mat imageHandler::getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage
 
 /*
  1. 원본이미지에서 흰색만 남김
- 2. 
+ 2.
 */
 // orgimage의 흰색영역에 floodfill한 결과
 Mat imageHandler::getFloodfillImage(Mat orgImage, Mat toWhiteTarget)
@@ -1369,7 +1811,7 @@ Mat imageHandler::cutColumByHistorgram(Mat binImage)
 			break;
 		}
 	}
-	for (int i = projection.size()-1; i >= 0; i--)
+	for (int i = projection.size() - 1; i >= 0; i--)
 	{
 		if (projection[i] != 0)
 		{
@@ -1392,7 +1834,7 @@ Mat imageHandler::cutColumByHistorgram(Mat binImage)
 		else
 			lowPoint = binImage.rows;
 
-		Rect subRect(0, highPoint, binImage.cols, lowPoint- highPoint);
+		Rect subRect(0, highPoint, binImage.cols, lowPoint - highPoint);
 		Mat subImage = binImage(subRect);
 		return subImage;
 
@@ -1454,7 +1896,7 @@ Mat imageHandler::removeSubLyricLine(Mat binImage)
 		{
 			int startPoint = islands[islands.size() - 1].first;
 			int finishPoint = islands[islands.size() - 1].second;
-			
+
 			for (int i = startPoint; i <= finishPoint; i++)
 			{
 				for (int c = 0; c < maskingImage.cols; c++)
@@ -1767,7 +2209,7 @@ int imageHandler::getWhitePixelAvgCoordinate(Mat binImage, bool isXcoordinate)
 	if (whitePixels.size() != 0)
 		avg = sum / whitePixels.size();
 	else
-		avg = 0; 
+		avg = 0;
 
 	return avg;
 }
@@ -1863,42 +2305,42 @@ int imageHandler::getRightistWhitePixel_x(Mat binImage, int targetStartX, int ra
 // 편중된 색상에 대한 흑백 이미지를 얻음
 Mat imageHandler::getBiasedColorImage(Mat rgbImage, Color biasedColor)
 {
-		int height = rgbImage.rows;
-		int width = rgbImage.cols;
+	int height = rgbImage.rows;
+	int width = rgbImage.cols;
 
-		Mat outImage_painted;
-		outImage_painted = Mat::zeros(rgbImage.rows, rgbImage.cols, CV_8U);
+	Mat outImage_painted;
+	outImage_painted = Mat::zeros(rgbImage.rows, rgbImage.cols, CV_8U);
 
-		// 행연산
-		for (int y = 0; y < height; y++)
+	// 행연산
+	for (int y = 0; y < height; y++)
+	{
+		Vec3b* yPtr_RGBImage = rgbImage.ptr<Vec3b>(y); //in	BGR [0~2]
+		uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//
+
+		for (int x = 0; x < width; x++)
 		{
-			Vec3b* yPtr_RGBImage = rgbImage.ptr<Vec3b>(y); //in	BGR [0~2]
-			uchar* yPtr_painted = outImage_painted.ptr<uchar>(y);	//
-
-			for (int x = 0; x < width; x++)
+			if (yPtr_RGBImage[x][biasedColor] > 10)
 			{
-				if (yPtr_RGBImage[x][biasedColor] > 10)
+				float ratio = 1;
+				switch (biasedColor)
 				{
-					float ratio = 1;
-					switch (biasedColor)
-					{
-					case Color::BLUE:
-						ratio = (yPtr_RGBImage[x][1] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][0];	// b g r   0에 가까울수록 더 불루;
-						break;
-					case Color::GREEN:
-						ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][1];
-						break;
-					case Color::RED:
-						ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][1]) / yPtr_RGBImage[x][2];
-						break;
-					}
-					if (ratio < 1)	
-						yPtr_painted[x] = 255;
+				case Color::BLUE:
+					ratio = (yPtr_RGBImage[x][1] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][0];	// b g r   0에 가까울수록 더 불루;
+					break;
+				case Color::GREEN:
+					ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][2]) / yPtr_RGBImage[x][1];
+					break;
+				case Color::RED:
+					ratio = (yPtr_RGBImage[x][0] + yPtr_RGBImage[x][1]) / yPtr_RGBImage[x][2];
+					break;
 				}
+				if (ratio < 1)
+					yPtr_painted[x] = 255;
 			}
 		}
-		
-		return outImage_painted;
+	}
+
+	return outImage_painted;
 }
 
 Mat imageHandler::getBWBPatternImage(Mat FCImage)
@@ -2161,32 +2603,25 @@ void imageHandler::stackFCImage_BlackToWhite(Mat subImage, Mat subImage_before, 
 // black(0, 0, 0)을 제외한 가장 많은 컬러 출력
 Vec3b imageHandler::getMostHaveRGB(static Mat rgbImage)
 {
-//	map<Vec3b, int>::iterator iter;
 	vector<pair<Vec3b, int>> vecColorCount;
-
-
-	uint count = 0;
-	uint b= 0;
-	uint g= 0;
-	uint r = 0;
 
 	int height = rgbImage.rows;
 	int width = rgbImage.cols;
 
 	Vec3b blackColor = { 0,0,0 };
 
-	 //행연산
+	//행연산
 	for (int y = 0; y < height; y++)
 	{
 		Vec3b* yPtr = rgbImage.ptr<Vec3b>(y); //
 		for (int x = 0; x < width; x++)
 		{
-			if ( !(isBlack(yPtr[x])) )
+			if (!(isBlack(yPtr[x])))
 			{
 				Vec3b val = yPtr[x];
 
 				bool isFind = false;
-				for (int i=0; i < vecColorCount.size(); i++)
+				for (int i = 0; i < vecColorCount.size(); i++)
 				{
 					if (vecColorCount[i].first[0] == val[0] &&
 						vecColorCount[i].first[1] == val[1] &&
@@ -2212,7 +2647,7 @@ Vec3b imageHandler::getMostHaveRGB(static Mat rgbImage)
 	int maxCount = vecColorCount[0].second;
 	for (int i = 0; i < vecColorCount.size(); i++)
 	{
-		printf("Color %d : (%d %d %d), %d \r\n", i, vecColorCount[i].first[0], vecColorCount[i].first[1], vecColorCount[i].first[2], vecColorCount[i].second);
+		//		printf("Color %d : (%d %d %d), %d \r\n", i, vecColorCount[i].first[0], vecColorCount[i].first[1], vecColorCount[i].first[2], vecColorCount[i].second);
 		if (vecColorCount[i].second > maxCount)
 		{
 			maxCount = vecColorCount[i].second;
@@ -2221,8 +2656,50 @@ Vec3b imageHandler::getMostHaveRGB(static Mat rgbImage)
 	}
 
 	return maxColor;
+}
 
-	//return Vec3b(avgB, avgG, avgR);
+Vec3b imageHandler::getMostHaveRGB(vector<Vec3b> vecColor)
+{
+	Vec3b blackColor = { 0,0,0 };
+
+	vector<pair<Vec3b, int>> vecColorCount;
+
+	for (int i = 0; i < vecColor.size(); i++)
+	{
+		bool isFind = false;
+		for (int i = 0; i < vecColorCount.size(); i++)
+		{
+			if (vecColorCount[i].first[0] == vecColor[i][0] &&
+				vecColorCount[i].first[1] == vecColor[i][1] &&
+				vecColorCount[i].first[2] == vecColor[i][2])
+			{
+				vecColorCount[i].second += 1;
+				isFind = true;
+				break;
+			}
+		}
+		if (isFind != true)
+		{
+			vecColorCount.push_back(make_pair(vecColor[i], 1));
+		}
+	}
+
+	if (vecColorCount.size() < 1)	// 없으면 흰색뱉음
+		return { 255, 255, 255 };
+
+	Vec3b maxColor = vecColorCount[0].first;
+	int maxCount = vecColorCount[0].second;
+	for (int i = 0; i < vecColorCount.size(); i++)
+	{
+		//		printf("Color %d : (%d %d %d), %d \r\n", i, vecColorCount[i].first[0], vecColorCount[i].first[1], vecColorCount[i].first[2], vecColorCount[i].second);
+		if (vecColorCount[i].second > maxCount)
+		{
+			maxCount = vecColorCount[i].second;
+			maxColor = vecColorCount[i].first;
+		}
+	}
+
+	return maxColor;
 }
 
 Mat imageHandler::stackBinImage(Mat stackBinImage, Mat patternImage)
@@ -2268,7 +2745,7 @@ uint imageHandler::getSumOfBinImageValues(Mat stackBinImage)
 		{
 			sum += yPtr_stack[x];
 		}
-	}	
+	}
 
 	return sum;
 }
@@ -2282,7 +2759,7 @@ uint imageHandler::getMaximumValue(Mat binImage)
 
 	for (int y = 0; y < height; y++)
 	{
-		uchar* yPtr= binImage.ptr<uchar>(y);
+		uchar* yPtr = binImage.ptr<uchar>(y);
 
 		for (int x = 0; x < width; x++)
 		{

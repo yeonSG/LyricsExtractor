@@ -41,18 +41,20 @@ public:
 
 };
 
-
 class LineInfoFinder {
 public:
 	bool start();
 	bool start2();
 	vector<PeakInfo> start2_getLinePeak(int PrintTypeNum);
+	vector<PeakInfo> start2_useContour(int PrintTypeNum);
 	bool isPeakFrame(Mat expectedFrame);
 	bool isPeakFrame2(Mat expectedFrame);
 
 	bool isLineFrame(Mat expectedFrame);
 
-	vector<Line> peakToLine(vector<PeakInfo> peaks);
+	Vec3b findUnprintColor(vector<PeakInfo> peaks);
+
+	vector<Line> peakToLine(vector<PeakInfo> peaks, Vec3b unprintColor);
 
 	
 
@@ -74,6 +76,7 @@ private:
 	MVInformation m_mvInformation;
 
 	Mat getPatternFillImage(Mat rgbImage, Scalar targetColor);
+	Mat getPatternFillImage_2(Mat rgbImage, Scalar targetColor);
 	Mat getFillImage(Mat rgbImage, Scalar targetColor);
 
 	/* for */

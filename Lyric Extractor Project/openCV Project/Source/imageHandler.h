@@ -6,9 +6,33 @@
 using namespace cv;
 using namespace std;
 
+class contourInfo
+{
+public:
+	int coorX_start;		//	*x좌표 시작점
+	int coorX_end;			//
+	int coorY_start;		//	*y좌표 시작점
+	int coorY_end;			//	*y좌표 끝점 
+	int maxValue;
+	int pixelCount;
+	bool isRefed = false;	// 참조 되었는지에 대한 여부
+
+};
+
+class contourLineInfo
+{
+public:
+	vector<contourInfo> contours;	// push_back() 으로 순차적으로 넣어 사용할 것
+	int coorY_start;	// 모든 컨투어의 y-start의 최소값
+	int coorY_end;		// 모든 컨투어의 y-end 의 최대값
+	int pixelCount;
+};
+
 class imageHandler
 {
 public:
+	static bool isRelation(int a_start, int a_end, int b_start, int b_end);
+
 	// imageHander & ImageProcesser 
 	static Mat resizeImageToAnalize(static Mat& sourceImage);
 	static Mat getSubtitleImage(static Mat& sourceImage);
@@ -26,6 +50,7 @@ public:
 	static Mat getNoiseRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getDotRemovedImage(static Mat& binaryMat, int dotSize = 10, bool toBlack = true);
 	static Mat getDustRemovedImage(static Mat& binaryMat, bool toBlack = true);
+	static Mat getMaxColorContoursImage(static Mat& binaryMat, vector<contourLineInfo>& expectedLineInfos_curFrame);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
 
 	static Mat getCompositeBinaryImages(static Mat& subImage);
@@ -36,6 +61,7 @@ public:
 	static Mat getWhiteToBlackImage(static Mat& beforeImage, static Mat& afterImage);
 	static Mat getBlackToWhiteImage(static Mat& beforeImage, static Mat& afterImage);
 	static Mat getMaskedImage(static Mat& rgbImage, static Mat& mask);
+	static Mat getMaskedImage_binImage(static Mat& binImage, static Mat& mask);
 	static Mat getColorToBlackImage(static Mat& mask, Scalar removeColor);
 
 	static Mat getBinImageTargetColored(Mat FCImage, Scalar targetColor);
@@ -44,6 +70,8 @@ public:
 	static Mat getPaintedBinImage_inner(static Mat& rgbImage, bool isBluePaint);
 	static Mat getPaintedPattern(static Mat& rgbImage, Scalar pattenColor, bool ifBothHV = true);	//
 	static Mat getFullyContrastImage(Mat rgbImage);
+	static Mat getPixelContrastImage(Mat rgbImage);
+	static Mat getPixelContrastImage_byPercent(Mat rgbImage);
 	static Mat getFullyContrast_withDilate(Mat rgbImage, Scalar color);
 	static Mat getSharpenAndContrastImage(Mat rgbImage);
 	static Mat getSharpenImage(Mat srcImage);
@@ -85,6 +113,7 @@ public:
 	static void stackFCImage_BlackToWhite(Mat subImage, Mat subImage_before, Mat& stackBinImage);
 
 	static Vec3b getMostHaveRGB(static Mat rgbImage);
+	static Vec3b getMostHaveRGB(vector<Vec3b> vecColor);
 
 	static Mat stackBinImage(Mat stackBinImage, Mat patternImage);
 	static uint getSumOfBinImageValues(Mat stackBinImage);

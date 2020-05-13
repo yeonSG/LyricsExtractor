@@ -34,6 +34,7 @@ public:
 	static Word lineToWord(Line line);
 
 	static bool desc_Line(Line a, Line b);
+	static bool asc_Line(Line a, Line b);
 	
 private:
 	;

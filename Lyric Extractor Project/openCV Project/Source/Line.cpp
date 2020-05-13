@@ -80,6 +80,11 @@ Word Line::lineToWord(Line line)
 
 bool Line::desc_Line(Line a, Line b)
 {
-	return false;
+	return a.endFrame > b.endFrame;
+}
+
+bool Line::asc_Line(Line a, Line b)
+{
+	return a.endFrame < b.endFrame;
 }
 

@@ -66,6 +66,9 @@
     <ClCompile Include="Source\OCRHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Source\PeakFinder.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Memo.txt" />
@@ -115,6 +118,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Source\OCRHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\PeakFinder.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

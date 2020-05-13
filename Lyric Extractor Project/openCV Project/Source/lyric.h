@@ -25,8 +25,13 @@ public:
 	void sortingLine();
 
 	void saveBinaryImage(string videoPath);		// catpureBinaryImageOfLinesEnd()
+	
+	void setUnprintColor(Vec3b upColor);
+	Vec3b getUnprintColor();
 
 private:
 	vector<Line> lines;
 	vector<int> vecWhiteCount;
+
+	Vec3b unPrintColor = {255, 255, 255};	// default : white
 };

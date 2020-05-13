@@ -196,10 +196,11 @@ bool analyzer::videoAnalization2(string videoPath)
 	LineInfoFinder lineFinder(videoCapture);
 	m_lyric;
 	// lineFinder.start2();
-	if (0)
+	if (1)
 	{
 		vector<PeakInfo> peaks;
 		vector<int> peaks_int;
+		peaks = lineFinder.start2_useContour(0);// test
 		peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
 		printf(" \r\n	Color_blue \r\n");
 		for (int i = 0; i < peaks.size(); i++)
@@ -208,8 +209,11 @@ bool analyzer::videoAnalization2(string videoPath)
 			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
 			peaks_int.push_back(peaks[i].frameNum);
 		}
+		
+		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+		m_lyric.setUnprintColor(upColor);
 
-		vector<Line> lines = lineFinder.peakToLine(peaks);
+		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
 		for(int i=0; i< lines.size(); i++)
 			m_lyric.addLine(lines[i]);
 
@@ -218,7 +222,7 @@ bool analyzer::videoAnalization2(string videoPath)
 
 		lineFinder.WriteLineInfo_toLog(lines);
 	}
-	if (0)
+	if (1)
 	{
 		vector<PeakInfo> peaks;
 		vector<int> peaks_int;
@@ -230,7 +234,10 @@ bool analyzer::videoAnalization2(string videoPath)
 			peaks_int.push_back(peaks[i].frameNum);
 		}
 
-		vector<Line> lines = lineFinder.peakToLine(peaks);
+		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+		m_lyric.setUnprintColor(upColor);
+
+		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
 		for (int i = 0; i < lines.size(); i++)
 			m_lyric.addLine(lines[i]);
 
@@ -251,7 +258,10 @@ bool analyzer::videoAnalization2(string videoPath)
 			peaks_int.push_back(peaks[i].frameNum);
 		}
 
-		vector<Line> lines = lineFinder.peakToLine(peaks);
+		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+		m_lyric.setUnprintColor(upColor);
+
+		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
 		for (int i = 0; i < lines.size(); i++)
 			m_lyric.addLine(lines[i]);
 

@@ -165,6 +165,7 @@
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\MVInformation.cpp" />
     <ClCompile Include="Source\OCRHandler.cpp" />
+    <ClCompile Include="Source\PeakFinder.cpp" />
     <ClCompile Include="Source\testClass.cpp" />
     <ClCompile Include="Source\videoAnalyzer.cpp" />
     <ClCompile Include="Source\videoHandler.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="Source\Lyric.h" />
     <ClInclude Include="Source\MVInformation.h" />
     <ClInclude Include="Source\OCRHandler.h" />
+    <ClInclude Include="Source\PeakFinder.h" />
     <ClInclude Include="Source\testClass.h" />
     <ClInclude Include="Source\videoAnalyzer.h" />
     <ClInclude Include="Source\videoHandler.h" />
