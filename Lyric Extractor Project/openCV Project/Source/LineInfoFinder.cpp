@@ -1,5 +1,6 @@
 ﻿#include "LineInfoFinder.h"
 #include "loger.h"
+#include "PeakFinder.h"
 
 bool LineInfoFinder::start()
 {
@@ -348,6 +349,16 @@ vector<PeakInfo> LineInfoFinder::start2_getLinePeak(int PrintTypeNum)
 	return linePeaks;
 }
 
+/*
+	클래스 A를 생성하고 A에게 연속된 이미지만 주면
+	내부에서 처리하고 데이터도 갖고 있도록 설계?
+	class PeakFinder
+	{
+
+		void frame_process(Mat image);	// 이것만 실행
+
+	}
+*/
 
 vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 {
@@ -501,6 +512,7 @@ vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 			expectedLineInfos = expectedLineInfos_temp;
 			// expectedLineInfos_withCount  <- 기존에 있던거
 
+			// >> frame 흐름에 있어서 라인으로 판별
 			// 1. 받은라인정보가 기존 라인에 있다면 업데이트 and 없어진 라인 count++
 			// 2. 업데이트 된 라인 중 중복된 라인이 있다면 삭제  (두개의 라인이 진행되다 하나로 합쳐지기도 함.)
 			// 3. 신규 라인 찾아 추가 
@@ -541,6 +553,118 @@ vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 	}
 
 	return linePeaks;
+}
+
+vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
+{
+	vector<LineInfo> lineInfos;
+
+	Mat orgImage;
+	Mat subImage;
+
+#ifndef _DEBUG
+	int curFrame = 0;
+#else
+	int curFrame = 3740;	// movie1.mp4
+#endif
+
+	vector<contourLineInfo> line_PeakInfo;
+	PeakFinder peakFinder;
+	
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+	while (videoCapture->read(orgImage))
+	{
+		cout << endl;
+		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+		printf("frame... %d ", curFrame);
+
+		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+
+		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[PrintTypeNum]);
+		//line_PeakInfo = peakFinder.frameImage_process(subImage, Scalar(255, 255, 255) );
+		
+		if (line_PeakInfo.size() > 0)
+		{
+			for (int i = 0; i < line_PeakInfo.size(); i++)
+			{
+				int maxValue = line_PeakInfo[i].maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", line_PeakInfo[i].coorY_start, line_PeakInfo[i].coorY_end);
+				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
+
+				if (line_PeakInfo[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				{
+					printf(" [IS NOT LINE : maxWeight<5] ");
+					break;
+				}
+				// 왼쪽에서 오른쪽으로 흐르는 패턴이 아님 ( weight 보기? (모든 픽셀 weight값 정렬 -> 중간값 기준으로 ) )
+
+				cout << endl;
+
+#if(0)
+				Mat dbgImg = line_PeakInfo[i].weightMat.binImage;
+				Mat dbgImg_max = line_PeakInfo[i].weightMat_maximum.binImage;
+				Mat dbgImg_b;
+				Mat dbgImg_max_b;
+				inRange(dbgImg, 1, 255, dbgImg_b);
+				inRange(dbgImg_max, 1, 255, dbgImg_max_b);
+#endif
+
+				LineFinder lineFinder(videoCapture);
+				LineInfo lineInfo;
+				lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum, Scalar(255, 255, 255));
+				/* 라인 후보 저장 */
+				/*	// bool getLine(WeightMat, vc)
+					1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
+					2. bitwise_and(a, b) 수행
+					3. 결과를 마스크로 사용
+					4. 정방향 재생을 통하여 타겟컬러 흰색이 없어지는 프래임 흭득 (endFrame)
+					2. 검사
+				*/
+				if (lineInfo.isValid == true)
+					lineInfos.push_back(lineInfo);	
+			}
+		}
+
+#if(0)
+		cout << endl;
+		imshow("stackBinImage", peakFinder.stackBinImage);
+		Mat debugImg;
+		inRange(peakFinder.stackBinImage, 1, 255, debugImg);
+		imshow("debugImg", debugImg);
+		imshow("subImage", subImage);
+
+		{	// for test
+			int key = waitKey(0);
+			if (key == KEY_ESC)
+				break;
+			else if (key == 'a')	// before frame
+				curFrame -= 1;
+			else if (key == 'd')	// next frame
+				curFrame += 1;
+			else if (key == 'w')	// +50th frame
+				curFrame += 50;
+			else if (key == 's')	// -50th frame
+				curFrame -= 50;
+			else if (key == 'r')	// +10th frame
+				curFrame += 10;
+			else if (key == 'f')	// -10th frame
+				curFrame -= 10;
+			else if (key == 'e')	// +500th frame
+				curFrame += 500;
+			else if (key == 'q')	// -500th frame
+				curFrame -= 500;
+			else if (key == '?')
+				videoHandler::printVideoSpec();
+
+			videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+		}
+#else
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+#endif
+	}
+
+
+	return lineInfos;
 }
 
 

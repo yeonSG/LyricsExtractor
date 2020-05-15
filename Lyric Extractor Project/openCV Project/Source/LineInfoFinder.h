@@ -8,6 +8,9 @@
 #include "MVInformation.h"
 #include "Line.h"
 
+#include "PeakFinder.h"
+#include "LineFinder.h"
+
 
 using namespace cv;
 using namespace std;
@@ -32,21 +35,13 @@ public:
 	Mat PeakImage;
 };
 
-class LineInfo
-{
-public:
-	int startFrame;
-	int endFrame;
-	Mat binaryImage;
-
-};
-
 class LineInfoFinder {
 public:
 	bool start();
 	bool start2();
 	vector<PeakInfo> start2_getLinePeak(int PrintTypeNum);
 	vector<PeakInfo> start2_useContour(int PrintTypeNum);
+	vector<LineInfo> start2_useContour2(int PrintTypeNum);
 	bool isPeakFrame(Mat expectedFrame);
 	bool isPeakFrame2(Mat expectedFrame);
 

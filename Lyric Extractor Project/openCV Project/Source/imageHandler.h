@@ -19,18 +19,38 @@ public:
 
 };
 
+class WeightMat
+{
+public:
+	Mat binImage;
+	int frameNum;
+	WeightMat();
+	WeightMat(Mat image, int frameNum);
+};
+
 class contourLineInfo
 {
 public:
 	vector<contourInfo> contours;	// push_back() 으로 순차적으로 넣어 사용할 것
+	int coorX_start;	// 모든 컨투어의 x-start의 최소값	
+	int coorX_end;		// 모든 컨투어의 x-end 의 최대값
 	int coorY_start;	// 모든 컨투어의 y-start의 최소값
 	int coorY_end;		// 모든 컨투어의 y-end 의 최대값
+	int maxValue;		// 모든 컨투어의 maxValue 의 최대값
 	int pixelCount;
+	WeightMat weightMat;		// LineInfo에 대한 bin이미지 
+	WeightMat weightMat_maximum;//(시작 프레임부터 가장 pixel수가 많았던 이미지)
+	contourLineInfo();
 };
 
 class imageHandler
 {
 public:
+	static bool desc_contourInfo(contourInfo a, contourInfo b);
+	static bool asc_contourInfo(contourInfo a, contourInfo b);
+	static bool desc_contourLineInfo(contourLineInfo a, contourLineInfo b);
+	static bool asc_contourLineInfo(contourLineInfo a, contourLineInfo b);
+	static int getContourLineInfoVolume(contourLineInfo lineInfo);
 	static bool isRelation(int a_start, int a_end, int b_start, int b_end);
 
 	// imageHander & ImageProcesser 
@@ -52,6 +72,7 @@ public:
 	static Mat getDustRemovedImage(static Mat& binaryMat, bool toBlack = true);
 	static Mat getMaxColorContoursImage(static Mat& binaryMat, vector<contourLineInfo>& expectedLineInfos_curFrame);
 	static Mat getColumMaskImage(int cols, int rows, int maskLength, int targetColum);
+	static Mat getWhiteMaskImage(Mat mask, int x, int y, int width, int height);
 
 	static Mat getCompositeBinaryImages(static Mat& subImage);
 	static Mat getCompositeBinaryImagesRed(static Mat& subImage);
@@ -76,6 +97,8 @@ public:
 	static Mat getSharpenAndContrastImage(Mat rgbImage);
 	static Mat getSharpenImage(Mat srcImage);
 
+
+
 	static Mat getBinImageByFloodfillAlgorism(Mat ATImage, Mat compositeImage);
 	static Mat getFloodfillImage(Mat target, Mat toWhite);
 
@@ -99,6 +122,7 @@ public:
 
 	static int getWhitePixelCount(Mat binImage);
 	static int getWhitePixelAvgCoordinate(Mat binImage, bool isXcoordinate);
+	static int getWhitePixelAvgValue(Mat binImage);
 
 	static vector<pair<int, int>> getWhitePixels(Mat binImage);
 
@@ -118,8 +142,14 @@ public:
 	static Mat stackBinImage(Mat stackBinImage, Mat patternImage);
 	static uint getSumOfBinImageValues(Mat stackBinImage);
 	static uint getMaximumValue(Mat binImage);
+	static uint getMinimumValue(Mat binImage);
 
 	static vector<int> getValueArrWithSort(Mat binImage);
+
+	// image 처리 - "PeakFinder.h"
+	static Mat getPatternFillImage(Mat rgbImage, Scalar targetColor);	// WBW 패턴
+	static Mat getPatternFillImage_2(Mat rgbImage, Scalar targetColor);// 단일컬러로만
+	static Mat getFillImage(Mat rgbImage, Scalar targetColor);
 
 };
 

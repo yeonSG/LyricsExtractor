@@ -69,6 +69,9 @@
     <ClCompile Include="Source\PeakFinder.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Source\LineFinder.cpp">
+      <Filter>헤더 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Memo.txt" />
@@ -121,6 +124,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Source\PeakFinder.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\LineFinder.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

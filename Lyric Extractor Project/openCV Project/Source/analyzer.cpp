@@ -55,7 +55,8 @@ bool analyzer::startVideoAnalization(string videoPath)
 	try 
 	{
 		// @@@@@@@@@@@ START @@@@@@@@@@@@@@
-		isSuccessed = videoAnalization2(videoPath);	// for noew
+		isSuccessed = videoAnalization3(videoPath);	//	
+		//isSuccessed = videoAnalization2(videoPath);	// for noew
 		//isSuccessed = videoAnalization(videoPath);
 	}
 	catch (exception & e)
@@ -199,11 +200,13 @@ bool analyzer::videoAnalization2(string videoPath)
 	if (1)
 	{
 		vector<PeakInfo> peaks;
+		vector<LineInfo> lineInfo;
 		vector<int> peaks_int;
-		peaks = lineFinder.start2_useContour(0);// test
-		peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
+		//peaks = lineFinder.start2_useContour(0);// test
+		lineInfo = lineFinder.start2_useContour2(0);// test
+		//peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
 		printf(" \r\n	Color_blue \r\n");
-		for (int i = 0; i < peaks.size(); i++)
+		for (int i = 0; i < lineInfo.size(); i++)
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
 			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
@@ -372,6 +375,100 @@ bool analyzer::videoAnalization2(string videoPath)
 	return true;
 }
 
+
+bool analyzer::videoAnalization3(string videoPath)
+{
+	m_lyric;
+
+	videoCapture = videoHandler::getVideoCapture();
+	if (videoCapture == nullptr)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
+		return false;
+	}
+
+	/* 새 알고리즘 */
+	LineInfoFinder lineFinder(videoCapture);
+
+	if (1)	// blue
+	{
+		vector<LineInfo> lineInfo;
+		lineInfo = lineFinder.start2_useContour2(0);
+		printf(" \r\n	Color_blue \r\n");
+		for (int i = 0; i < lineInfo.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+		}
+		
+		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
+		{
+			Line line;
+			line.startFrame = lineInfo[i].frame_start;
+			line.endFrame = lineInfo[i].frame_end;
+			line.text = "BLUELINE";
+			line.maskImage = lineInfo[i].maskImage_withWeight;
+			m_lyric.addLine(line);
+		}
+	}
+	if (1)	// red
+	{
+		vector<LineInfo> lineInfo;
+		lineInfo = lineFinder.start2_useContour2(1);
+		printf(" \r\n	Color_red \r\n");
+		for (int i = 0; i < lineInfo.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+		}
+
+		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
+		{
+			Line line;
+			line.startFrame = lineInfo[i].frame_start;
+			line.endFrame = lineInfo[i].frame_end;
+			line.text = "REDLINE";
+			line.maskImage = lineInfo[i].maskImage_withWeight;
+			m_lyric.addLine(line);
+		}
+	}
+	if (1)	// purple
+	{
+		vector<LineInfo> lineInfo;
+		lineInfo = lineFinder.start2_useContour2(2);
+		printf(" \r\n	Color_purple \r\n");
+		for (int i = 0; i < lineInfo.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+		}
+
+		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
+		{
+			Line line;
+			line.startFrame = lineInfo[i].frame_start;
+			line.endFrame = lineInfo[i].frame_end;
+			line.text = "PURPLELINE";
+			line.maskImage = lineInfo[i].maskImage_withWeight;
+			m_lyric.addLine(line);
+		}
+	}
+
+	/**** TO DO
+	0. unPrint 색정하는것
+	0. binImage 데이터 255 이상까지 저장할 수 있도록 데이터타입 변경
+
+	-> 체크포인트 : 모든 라인들이 다 잡아지는지 확인
+
+	1. 얻은 라인들 병합하기 (R G B 로 찾은것들)
+		- 얻은 라인의 총 픽셀수 or 위엣라인 or 프레임시간? 적절한것으로
+		- 
+	
+	2. 후처리
+		- 파일저장, OCR, json etc..
+
+	*/
+}
 /*
 	1. 백->흑으로 바뀌는 점이 많은 Frame 탐색
 	 - Frame이 2000 이상이면서

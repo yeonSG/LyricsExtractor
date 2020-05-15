@@ -10,7 +10,7 @@ bool asc(contourInfo a, contourInfo b)
 	return a.coorX_start < b.coorX_start;
 }
 
-int getContourLineInfoVolume(contourLineInfo lineInfo)
+int imageHandler::getContourLineInfoVolume(contourLineInfo lineInfo)
 {
 	int sum = 0;
 	for (int i = 0; i < lineInfo.contours.size(); i++)
@@ -18,6 +18,24 @@ int getContourLineInfoVolume(contourLineInfo lineInfo)
 		sum += lineInfo.contours[i].pixelCount;
 	}
 	return sum;
+}
+
+bool imageHandler::desc_contourInfo(contourInfo a, contourInfo b)
+{
+	return a.coorX_start > b.coorX_start;
+}
+bool imageHandler::asc_contourInfo(contourInfo a, contourInfo b)
+{
+	return a.coorX_start < b.coorX_start;
+}
+
+bool imageHandler::desc_contourLineInfo(contourLineInfo a, contourLineInfo b)
+{
+	return a.coorX_start > b.coorX_start;
+}
+bool imageHandler::asc_contourLineInfo(contourLineInfo a, contourLineInfo b)
+{
+	return a.coorX_start < b.coorX_start;
 }
 
 bool imageHandler::isRelation(int a_start, int a_end, int b_start, int b_end)
@@ -531,6 +549,7 @@ Mat imageHandler::getMaxColorContoursImage(Mat& binaryMat, vector<contourLineInf
 		contours_picked.push_back(contours[i]);
 		fillPoly(contourMask, contours_picked, 255);
 		vector<Point> indices;		// 내부의 점들을 얻음
+		bitwise_and(contourMask, binImage, contourMask);
 		findNonZero(contourMask, indices);
 
 		int sum = 0;
@@ -691,6 +710,7 @@ Mat imageHandler::getMaxColorContoursImage(Mat& binaryMat, vector<contourLineInf
 
 	expectedLineInfos_curFrame = conLineInfos;	// for return
 
+	// >> 현제 프래임에서 예상라인을 찾아냄
 	// 1. contourLineInfo의 coorY_start와 coorY_end를 모든 컨투어에 대한 최대-최소값으로 바꿈
 	// 2. vecContours.Size()가 5 이상인 것만 살림 & 픽셀카운트가 100 이상인것만 살림
 	// 3. contourLineInfo끼리 Y값이 겹치는 부분이 있으면 합치고(merge) vecContours 다시 소팅 -> 클러스터링 된 것만 남음
@@ -737,6 +757,20 @@ Mat imageHandler::getColumMaskImage(int cols, int rows, int maskLength, int targ
 	}
 
 	return maskImage;
+}
+
+Mat imageHandler::getWhiteMaskImage(Mat mask, int x, int y, int width, int height)
+{
+	Mat mask_out = mask.clone();
+	for (int row = 0; row < height; row++)
+	{
+		uchar* yPtr = mask_out.ptr<uchar>(row + y);
+		for (int col = 0; col < width; col++)
+		{
+			yPtr[col + x] = 255;
+		}
+	}
+	return mask_out;
 }
 
 
@@ -2214,6 +2248,24 @@ int imageHandler::getWhitePixelAvgCoordinate(Mat binImage, bool isXcoordinate)
 	return avg;
 }
 
+// binImage의 흰점들의 평균 값을 반환
+int imageHandler::getWhitePixelAvgValue(Mat binImage)
+{
+	vector<pair<int, int>> whitePixels;
+	whitePixels = getWhitePixels(binImage);
+	if (whitePixels.size() == 0)
+		return 0;
+
+	int sum = 0;
+	for (int i = 0; i < whitePixels.size(); i++)
+	{
+		uchar* yPtr = binImage.ptr<uchar>(whitePixels[i].second);
+		sum += yPtr[whitePixels[i].first];
+	}
+
+	return sum / whitePixels.size();
+}
+
 // 흰점의 좌표들을 얻어냄
 vector<pair<int, int>> imageHandler::getWhitePixels(Mat binImage)
 {
@@ -2221,7 +2273,6 @@ vector<pair<int, int>> imageHandler::getWhitePixels(Mat binImage)
 
 	int height = binImage.rows;
 	int width = binImage.cols;
-	int whiteCount = 0;
 
 	for (int y = 0; y < height; y++)
 	{
@@ -2771,6 +2822,29 @@ uint imageHandler::getMaximumValue(Mat binImage)
 	return max;
 }
 
+uint imageHandler::getMinimumValue(Mat binImage)
+{
+	uint min = 255;
+
+	int height = binImage.rows;
+	int width = binImage.cols;
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr = binImage.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+			if (yPtr[x] != 0)// 0 제외
+			{
+				if (yPtr[x] < min)
+					min = yPtr[x];
+			}
+		}
+	}
+
+	return min;
+}
 
 vector<int> imageHandler::getValueArrWithSort(Mat binImage)
 {
@@ -2795,4 +2869,68 @@ vector<int> imageHandler::getValueArrWithSort(Mat binImage)
 
 	sort(values.begin(), values.end());
 	return values;
+}
+WeightMat::WeightMat()
+{
+	//this->binImage = image.clone();
+	//this->frameNum = frameNum;
+}
+
+WeightMat::WeightMat(Mat image, int frameNum)
+{
+	this->binImage = image.clone();
+	this->frameNum = frameNum;
+}
+
+contourLineInfo::contourLineInfo()
+{
+	;
+}
+
+
+Mat imageHandler::getPatternFillImage(Mat rgbImage, Scalar targetColor)
+{
+	Mat PatternBin = imageHandler::getPaintedPattern(rgbImage, targetColor, true);	// 내부에서 dilate함
+	//Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
+	Mat fullyContrastImage = imageHandler::getPixelContrastImage(rgbImage);		// YS - 이거랑 비교
+	Mat fullyContrastImage_per = imageHandler::getPixelContrastImage_byPercent(rgbImage);
+
+	Mat FC_Bin = getFillImage(rgbImage, targetColor);
+	Mat PatternFullfill;
+	PatternFullfill = imageHandler::getFloodfillImage(FC_Bin, PatternBin);	// FullCont 이미지에 패턴으로 인식한 좌표로 패인트통연산
+	PatternFullfill = imageHandler::getBorderFloodFilledImage(PatternFullfill);
+	//Mat erodeImage = imageHandler::getMorphImage(PatternFullfill, MORPH_ERODE);	// 침식연산
+	//Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(erodeImage);	// 사각박스있는곳 제거
+	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// 사각박스있는곳 제거
+
+	return erodeImage_Denoise;
+}
+
+Mat imageHandler::getPatternFillImage_2(Mat rgbImage, Scalar targetColor)
+{
+	Mat FC_Bin = getFillImage(rgbImage, targetColor);
+	inRange(FC_Bin, Scalar(254, 254, 254), Scalar(255, 255, 255), FC_Bin);	// to 1 demend
+	Mat PatternFullfill;
+	PatternFullfill = imageHandler::getBorderFloodFilledImage(FC_Bin);
+	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// 사각박스있는곳 제거
+	return erodeImage_Denoise;
+	//return FC_Bin;
+}
+
+Mat imageHandler::getFillImage(Mat rgbImage, Scalar targetColor)
+{
+	//Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
+	//Mat fullyContrastImage_pix = imageHandler::getPixelContrastImage(rgbImage);
+	Mat fullyContrastImage_per = imageHandler::getPixelContrastImage_byPercent(rgbImage);
+
+	Mat FC_Bin;
+	Scalar patternMin = targetColor;
+	for (int i = 0; i < 3; i++)
+		if (patternMin[i] != 0)
+			patternMin[i] = patternMin[i] - 1;
+
+	inRange(fullyContrastImage_per, patternMin, targetColor, FC_Bin);	// 파랑만이미지
+	cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
+
+	return FC_Bin;
 }

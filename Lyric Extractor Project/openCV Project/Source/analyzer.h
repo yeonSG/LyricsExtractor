@@ -31,6 +31,7 @@ public:
 	bool startVideoAnalization(string videoPath);
 	bool videoAnalization(string videoPath);
 	bool videoAnalization2(string videoPath);
+	bool videoAnalization3(string videoPath);
 
 	MVInformation findLineInfo(VideoCapture *videoCapture);
 
