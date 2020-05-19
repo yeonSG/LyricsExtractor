@@ -157,8 +157,9 @@ Mat imageHandler::getCannyImageWithBinaryImage(Mat& binImage)
 /// <returns>테두리에 floodFill 연산의 결과 이미지</returns>
 Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 {
-	int nRows = binaryMat.rows;
-	int nCols = binaryMat.cols;
+	Mat outImage = binaryMat.clone();
+	int nRows = outImage.rows;
+	int nCols = outImage.cols;
 
 	int color;
 	if (toBlack == true)
@@ -168,25 +169,25 @@ Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 
 	// 상측 
 	for (int i = 0; i < nCols; i++)
-		if (binaryMat.at<uchar>(2, i) != color)
-			floodFill(binaryMat, Point(i, 2), color);
+		if (outImage.at<uchar>(2, i) != color)
+			floodFill(outImage, Point(i, 2), color);
 
 	// 좌측
 	for (int i = 0; i < nRows; i++)
-		if (binaryMat.at<uchar>(i, 30) != color)
-			floodFill(binaryMat, Point(30, i), color);
+		if (outImage.at<uchar>(i, 30) != color)
+			floodFill(outImage, Point(30, i), color);
 
 	// 우측
 	for (int i = 0; i < nRows; i++)
-		if (binaryMat.at<uchar>(i, nCols - 30) != color)
-			floodFill(binaryMat, Point(nCols - 30, i), color);
+		if (outImage.at<uchar>(i, nCols - 30) != color)
+			floodFill(outImage, Point(nCols - 30, i), color);
 
 	// 아래측
 	for (int i = 0; i < nCols; i++)
-		if (binaryMat.at<uchar>(nRows - 1, i) != color)
-			floodFill(binaryMat, Point(i, nRows - 1), color);
+		if (outImage.at<uchar>(nRows - 1, i) != color)
+			floodFill(outImage, Point(i, nRows - 1), color);
 
-	return binaryMat;
+	return outImage;
 }
 
 Mat imageHandler::getBorderFloodFilledImageForColor(Mat& rgbImage, bool toBlack)
@@ -1669,10 +1670,10 @@ Mat imageHandler::getPixelContrastImage_byPercent(Mat rgbImage)
 
 			if (percentB > 0.5)
 				yPtr_FCImage[x] = color_blue;
-			else if (percentG > 0.5)
-				yPtr_FCImage[x] = color_green;
 			else if (percentR > 0.5)
 				yPtr_FCImage[x] = color_red;
+			else if (percentG > 0.5)
+				yPtr_FCImage[x] = color_green;
 			else if (percentR > 0.35 && percentB > 0.35)	//purple
 				yPtr_FCImage[x] = color_purple;
 			else if (percentR > 0.35 && percentB > 0.35)	//yellow
@@ -2914,7 +2915,8 @@ Mat imageHandler::getPatternFillImage_2(Mat rgbImage, Scalar targetColor)
 	PatternFullfill = imageHandler::getBorderFloodFilledImage(FC_Bin);
 	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// 사각박스있는곳 제거
 	return erodeImage_Denoise;
-	//return FC_Bin;
+
+//	return FC_Bin;
 }
 
 Mat imageHandler::getFillImage(Mat rgbImage, Scalar targetColor)

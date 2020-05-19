@@ -212,6 +212,15 @@ bool analyzer::videoAnalization2(string videoPath)
 			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
 			peaks_int.push_back(peaks[i].frameNum);
 		}
+
+		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
+		printf(" \r\n	Color_blue(merge_judgeLines \r\n");
+		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
+			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+			peaks_int.push_back(peaks[i].frameNum);
+		}
 		
 		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
 		m_lyric.setUnprintColor(upColor);
@@ -390,6 +399,56 @@ bool analyzer::videoAnalization3(string videoPath)
 	/* 새 알고리즘 */
 	LineInfoFinder lineFinder(videoCapture);
 
+	for(int nColor = 0; nColor < 3; nColor++)	// 0=blue, 1=red, 2=purple
+	{
+		if (nColor == 1)
+			continue;
+		if (nColor == 2)
+			continue;
+
+		vector<LineInfo> lineInfo;
+		lineInfo = lineFinder.start2_useContour2(nColor);
+		printf(" \r\n	Color : %d \r\n", nColor);
+		for (int i = 0; i < lineInfo.size(); i++)
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_d_" + to_string(i) + ".jpg", bin_Debug);
+		}
+
+		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
+		printf(" \r\n	Color(merge_judgeLines \r\n");
+		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+		{
+			if (!mergeJudgeLineInfo[i].isValid)
+			{
+				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "NOT Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
+				printf("NOT Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+				continue;
+			}
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge_d_" + to_string(i) + ".jpg", bin_Debug);
+		}
+
+
+		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
+		{
+			Line line;
+			line.startFrame = lineInfo[i].frame_start;
+			line.endFrame = lineInfo[i].frame_end;
+			line.text = to_string(nColor) + " color";
+			line.maskImage = lineInfo[i].maskImage_withWeight;
+			m_lyric.addLine(line);
+		}
+	}
+	/*
 	if (1)	// blue
 	{
 		vector<LineInfo> lineInfo;
@@ -399,7 +458,30 @@ bool analyzer::videoAnalization3(string videoPath)
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
 			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/Blue_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/Blue_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
+
+		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
+		printf(" \r\n	Color_blue(merge_judgeLines \r\n");
+		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+		{
+			if (!mergeJudgeLineInfo[i].isValid)
+			{
+				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "NOT Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
+				printf("NOT Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+				continue;
+			}
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
+			printf("Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/Blue_m" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/Blue_m_d_" + to_string(i) + ".jpg", bin_Debug);
+		}
+
 		
 		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
 		{
@@ -411,7 +493,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			m_lyric.addLine(line);
 		}
 	}
-	if (1)	// red
+	if (0)	// red
 	{
 		vector<LineInfo> lineInfo;
 		lineInfo = lineFinder.start2_useContour2(1);
@@ -420,6 +502,10 @@ bool analyzer::videoAnalization3(string videoPath)
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
 			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/Red_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/Red_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
 		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
@@ -432,7 +518,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			m_lyric.addLine(line);
 		}
 	}
-	if (1)	// purple
+	if (0)	// purple
 	{
 		vector<LineInfo> lineInfo;
 		lineInfo = lineFinder.start2_useContour2(2);
@@ -441,6 +527,10 @@ bool analyzer::videoAnalization3(string videoPath)
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
 			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
+			Mat bin_Debug;
+			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/Purple_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/Purple_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
 		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
@@ -453,6 +543,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			m_lyric.addLine(line);
 		}
 	}
+	*/
 
 	/**** TO DO
 	0. unPrint 색정하는것

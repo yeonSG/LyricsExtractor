@@ -1,6 +1,7 @@
 ﻿#include "LineInfoFinder.h"
 #include "loger.h"
 #include "PeakFinder.h"
+#include "UnprintImage.h"
 
 bool LineInfoFinder::start()
 {
@@ -381,7 +382,7 @@ vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 2583;	// movie1.mp4
+	int curFrame = 0;	// movie1.mp4
 #endif
 
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
@@ -565,11 +566,12 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 3740;	// movie1.mp4
+	int curFrame = 0;	// movie1.mp4
 #endif
 
 	vector<contourLineInfo> line_PeakInfo;
 	PeakFinder peakFinder;
+	UnprintImage unprintImage;
 	
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
 	while (videoCapture->read(orgImage))
@@ -580,8 +582,9 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
-		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[PrintTypeNum]);
-		//line_PeakInfo = peakFinder.frameImage_process(subImage, Scalar(255, 255, 255) );
+		Mat refUnprintImage = unprintImage.unprintImage_process(subImage, Scalar(255, 255, 255));
+
+		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[PrintTypeNum], refUnprintImage);
 		
 		if (line_PeakInfo.size() > 0)
 		{
@@ -594,13 +597,18 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 				if (line_PeakInfo[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 				{
 					printf(" [IS NOT LINE : maxWeight<5] ");
-					break;
+					continue;
+				}
+				if (line_PeakInfo[i].pixelCount <= 100)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				{
+					printf(" [IS NOT LINE : pixelCount<100] ");
+					continue;
 				}
 				// 왼쪽에서 오른쪽으로 흐르는 패턴이 아님 ( weight 보기? (모든 픽셀 weight값 정렬 -> 중간값 기준으로 ) )
 
 				cout << endl;
 
-#if(0)
+#if(1)
 				Mat dbgImg = line_PeakInfo[i].weightMat.binImage;
 				Mat dbgImg_max = line_PeakInfo[i].weightMat_maximum.binImage;
 				Mat dbgImg_b;
@@ -611,7 +619,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 
 				LineFinder lineFinder(videoCapture);
 				LineInfo lineInfo;
-				lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum, Scalar(255, 255, 255));
+				lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum, Scalar(255, 255, 255));		// 
 				/* 라인 후보 저장 */
 				/*	// bool getLine(WeightMat, vc)
 					1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
@@ -621,15 +629,21 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 					2. 검사
 				*/
 				if (lineInfo.isValid == true)
-					lineInfos.push_back(lineInfo);	
+				{
+					lineInfos.push_back(lineInfo);
+					peakFinder.stackBinImageCorrect(line_PeakInfo[i].weightMat.binImage);
+					// peakFinder.m_stackBinImage 보정
+					//if (lineInfos.size() > 3)
+					//	return lineInfos;
+				}
 			}
 		}
 
 #if(0)
 		cout << endl;
-		imshow("stackBinImage", peakFinder.stackBinImage);
+		imshow("stackBinImage", peakFinder.m_stackBinImage);
 		Mat debugImg;
-		inRange(peakFinder.stackBinImage, 1, 255, debugImg);
+		inRange(peakFinder.m_stackBinImage, 1, 255, debugImg);
 		imshow("debugImg", debugImg);
 		imshow("subImage", subImage);
 
@@ -662,7 +676,6 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
 #endif
 	}
-
 
 	return lineInfos;
 }
@@ -1236,6 +1249,81 @@ void LineInfoFinder::WriteLineInfo_toLog(vector<Line> lines)
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line : " << lines[i].startFrame << " - " << lines[i].endFrame;
 	}
 }
+
+vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfos)
+{
+	vector<LineInfo> lineInfo_temp;
+
+	lineInfo_temp = mergeLineInfo(lineInfos);
+
+	for (int i = 0; i < lineInfo_temp.size(); i++)
+	{
+		Mat floodfill = imageHandler::getBorderFloodFilledImage(lineInfo_temp[i].maskImage_withWeight);
+		Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(floodfill);
+
+		bool isVaild = LineFinder::checkValidMask(erodeImage_Denoise);
+		if (isVaild)
+		{
+			lineInfo_temp[i].maskImage_withWeight = erodeImage_Denoise.clone();
+			lineInfo_temp[i].isValid = true;
+		}
+		else
+			lineInfo_temp[i].isValid = false;
+	}
+
+	/*라인들 머지 실행 (isRelation)*/
+	// 관련된 라인 합체(start-end, Mat(bitwise_or)-> 결과에서 다시 후처리(네모칸지우기 등등), 결과 픽셀 확인)
+	return lineInfo_temp;
+}
+
+vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
+{
+	int relationCount = 0;
+	vector<LineInfo> lineInfo_temp;
+
+	for (int i = 0; i < lineInfos.size(); i++)
+	{
+		if (i == 0)
+		{
+			lineInfo_temp.push_back(lineInfos[i]);
+		}
+		else
+		{
+			bool isRelation = imageHandler::isRelation(lineInfo_temp.back().frame_start, lineInfo_temp.back().frame_end, lineInfos[i].frame_start, lineInfos[i].frame_end);
+			if (isRelation)	// 겹친다면 병합 수행
+			{
+				int temp_coorX_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
+				int other_coorX_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+				if (abs(temp_coorX_avg - other_coorX_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
+				{
+					lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면 다른 라인으로 봄.
+					continue;
+				}
+				else // 같은 라인
+				{
+					relationCount++;
+					if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
+						lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
+					if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
+						lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
+					Mat orImg;
+					bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
+					lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+				}
+			}
+			else
+			{
+				lineInfo_temp.push_back(lineInfos[i]);
+			}
+		}
+	}
+
+	if (relationCount == 0)
+		return lineInfo_temp;
+	else
+		return mergeLineInfo(lineInfo_temp);
+}
+
 
 // WBW 패턴으로 이미지 구함
 Mat LineInfoFinder::getPatternFillImage(Mat rgbImage, Scalar targetColor)	// YS

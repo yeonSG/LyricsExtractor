@@ -66,6 +66,9 @@ public:
 	vector<vector<int>> vecPrintTypes_PatternPixelCount;
 
 	void WriteLineInfo_toLog(vector<Line> lineInfos);
+
+	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
+	vector<LineInfo> mergeLineInfo(vector<LineInfo> lineInfos);
 	
 private:
 	MVInformation m_mvInformation;

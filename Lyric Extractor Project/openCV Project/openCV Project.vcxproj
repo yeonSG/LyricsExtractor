@@ -168,6 +168,7 @@
     <ClCompile Include="Source\OCRHandler.cpp" />
     <ClCompile Include="Source\PeakFinder.cpp" />
     <ClCompile Include="Source\testClass.cpp" />
+    <ClCompile Include="Source\UnprintImage.cpp" />
     <ClCompile Include="Source\videoAnalyzer.cpp" />
     <ClCompile Include="Source\videoHandler.cpp" />
     <ClCompile Include="Source\Word.cpp" />
@@ -191,6 +192,7 @@
     <ClInclude Include="Source\OCRHandler.h" />
     <ClInclude Include="Source\PeakFinder.h" />
     <ClInclude Include="Source\testClass.h" />
+    <ClInclude Include="Source\UnprintImage.h" />
     <ClInclude Include="Source\videoAnalyzer.h" />
     <ClInclude Include="Source\videoHandler.h" />
     <ClInclude Include="Source\Word.h" />

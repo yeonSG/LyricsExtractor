@@ -29,7 +29,16 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 
 	// endFrame 구하는 루틴  int getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor)
 	lineInfo.frame_end = getEndFrameNum(lineInfo.frame_start, lineInfo.maskImage_withWeight, unPrintColor);
-	
+	if (lineInfo.frame_end == 0)	// 찾은 끝점이 maxWeight값보다 아래에 있을 때 
+	{
+		lineInfo.isValid = false;
+		return lineInfo;
+	}
+	if (lineInfo.frame_end - lineInfo.frame_start <= 5)	// 라인의 길이가 5미만일 때
+	{
+		lineInfo.isValid = false;
+		return lineInfo;
+	}
 /*	
 	1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
 	2. bitwise_and(a, b) 수행
@@ -77,7 +86,24 @@ bool LineFinder::checkValidMask(Mat maskImage)
 	}
 
 	int maxWeight = imageHandler::getMaximumValue(maskImage);
-	int minWeight = imageHandler::getMinimumValue(maskImage);
+	int minWeight = imageHandler::getMinimumValue(maskImage);	// minValue를 최소값을 제외한 값을 가저오자 or 얼마나 다양하게 있느지 확인 후 ...
+
+	vector<int>	items = imageHandler::getValueArrWithSort(maskImage); // .size() == 총 점의 개수, [i].value == 해당점의 weight
+	items.erase(
+		unique(items.begin(), items.end(),
+			[](const int& a, const int& b) {
+		if (a == b)
+			return true;
+		else
+			return false;
+	}	  // 중복제거	 
+	), items.end());
+
+	if (items.size() < 5)	// 조건 : 기록된 프레임 개수가 5개 이상
+	{
+		return false;
+	}
+
 	if (maxWeight - minWeight < 5) 	// 조건 : weight최대값 - weight최소값 = 5 이상
 	{
 		return false;
@@ -111,7 +137,7 @@ bool LineFinder::checkValidMask(Mat maskImage)
 	}
 	
 	// 조건 : 가장 오른쪽 점과 가장 왼쪽 점(라인의 길이)까지 거리가 100pix이상
-	if (leftistCoorX - rightistCoorX < 100)
+	if (rightistCoorX - leftistCoorX < 100)
 	{
 		return false;
 	}

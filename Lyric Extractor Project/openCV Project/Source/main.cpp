@@ -109,8 +109,8 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	//testClass.test_Video("Input\\51781_0~73Lines_Duet_ColorWeired.mp4");
-	testClass.test_Video("movie1.mp4");
+	testClass.test_Video("Input\\51847_0~35Lines.mp4");
+	//testClass.test_Video("movie1.mp4");
 
 	//testClass.test_Video4("40009.mp4");
 	//testClass.test_Video4("40011_forTest.mp4");
@@ -175,8 +175,8 @@ int main(int argc, char* argv[])
 	//ana.startVideoAnalization("movie1.mp4");	// 0~62
 
 	//ana.startVideoAnalization("Input\\51781_0~73Lines_Duet_ColorWeired.mp4");	
-	ana.startVideoAnalization("movie1.mp4");
-	//ana.startVideoAnalization("Input\\52284_0~74Lines.mp4");	// twinLine
+	//ana.startVideoAnalization("movie1.mp4");
+	ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	// twinLine
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint»ö´Ù¸§.mp4");
 	
 

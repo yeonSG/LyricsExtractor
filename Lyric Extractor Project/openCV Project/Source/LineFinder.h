@@ -27,10 +27,11 @@ public:
 
 	LineInfo getLine(WeightMat weightPrintImage, Scalar unPrintColor);
 
+	static bool checkValidMask(Mat maskImage);
+
 private:
 	int calculateStartTime(WeightMat weightMat);
 	Mat getLineMask(Mat weightPrintImage, int startFrame, Scalar unPrintColor);
-	bool checkValidMask(Mat maskImage);
 	int getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor);
 
 

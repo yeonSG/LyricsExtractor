@@ -40,6 +40,7 @@ public:
 	int pixelCount;
 	WeightMat weightMat;		// LineInfo에 대한 bin이미지 
 	WeightMat weightMat_maximum;//(시작 프레임부터 가장 pixel수가 많았던 이미지)
+	WeightMat weightMat_Unprint;// UnprintMat;
 	contourLineInfo();
 };
 
