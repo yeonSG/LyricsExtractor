@@ -151,6 +151,6 @@ public:
 	static Mat getPatternFillImage(Mat rgbImage, Scalar targetColor);	// WBW 패턴
 	static Mat getPatternFillImage_2(Mat rgbImage, Scalar targetColor);// 단일컬러로만
 	static Mat getFillImage(Mat rgbImage, Scalar targetColor);
-
+	static Mat getFillImage_unPrint(Mat rgbImage, Scalar targetColor);
 };
 

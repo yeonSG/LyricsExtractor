@@ -32,6 +32,7 @@ public:
 	bool videoAnalization(string videoPath);
 	bool videoAnalization2(string videoPath);
 	bool videoAnalization3(string videoPath);
+	Scalar getUnprintColorRutin();
 
 	MVInformation findLineInfo(VideoCapture *videoCapture);
 
@@ -66,6 +67,7 @@ public:
 
 	void captureLines();
 	void catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string videoPath);
+	void captureBinaryImage(string videoPath, int index, Mat image);
 	void catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoPath);
 
 	Mat imageToSubBinImage(Mat targetImage);

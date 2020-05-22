@@ -12,9 +12,13 @@ class UnprintImage
 {
 public:
 	Mat m_UnprintImage;				// 패턴 누적 이미지
+	bool m_isFindUnprintColor = false;
+	Scalar m_unPrintColor = Scalar(0, 0, 0);
 	
 public:
-	Mat unprintImage_process(Mat frameImage, Scalar targetColor);
+	Mat unprintImage_process(Mat frameImage);
+
+	Scalar getUnprintColor(Mat fImage);
 	
 private:
 	void tick();

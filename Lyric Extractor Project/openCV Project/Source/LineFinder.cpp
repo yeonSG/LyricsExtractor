@@ -6,6 +6,27 @@ LineFinder::LineFinder(VideoCapture* vc)
 	videoCapture = vc;
 }
 
+LineInfo LineFinder::getLine(WeightMat weightPrintImage)
+{
+	LineInfo lineInfo;
+	lineInfo.isValid = true;
+
+	lineInfo.maskImage_withWeight = weightPrintImage.binImage.clone();
+
+	Mat mat_bin;	// mask
+	inRange(lineInfo.maskImage_withWeight, 1, 255, mat_bin);	// 확인용
+
+
+	bool isValidMask = checkValidMask(lineInfo.maskImage_withWeight);
+	if (isValidMask == false)//(isValid)
+	{
+		lineInfo.isValid = false;
+		return lineInfo;
+	}
+
+	return lineInfo;
+}
+
 LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 {
 	LineInfo lineInfo;
@@ -66,7 +87,7 @@ Mat LineFinder::getLineMask(Mat weightPrintImage, int startFrame, Scalar unPrint
 	videoCapture->read(orgImage);
 	subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
-	Mat unPrintPatternFill = imageHandler::getFillImage(subImage, unPrintColor);
+	Mat unPrintPatternFill = imageHandler::getFillImage_unPrint(subImage, unPrintColor);
 	inRange(unPrintPatternFill, Scalar(254, 254, 254), Scalar(255, 255, 255), unPrintPatternFill);
 
 	Mat weightMat_and;	// mask
@@ -80,7 +101,7 @@ bool LineFinder::checkValidMask(Mat maskImage)
 	//bool isVaild = true;
 
 	int pixelCount = imageHandler::getWhitePixelCount(maskImage);
-	if (pixelCount < 300)
+	if (pixelCount < 200)
 	{
 		return false;
 	}
@@ -99,7 +120,7 @@ bool LineFinder::checkValidMask(Mat maskImage)
 	}	  // 중복제거	 
 	), items.end());
 
-	if (items.size() < 5)	// 조건 : 기록된 프레임 개수가 5개 이상
+	if (items.size() < 5)	// 조건 : 기록된 프레임 개수가 5개 이상 (연속될 수 있는 라인)
 	{
 		return false;
 	}
@@ -111,36 +132,76 @@ bool LineFinder::checkValidMask(Mat maskImage)
 
 	Mat testMat;
 	inRange(maskImage, 1, 255, testMat);
+	
 
-	// 조건 : 흰점시작점과 흰점끝점 중간 기준으로 왼쪽점들이 오른쪽점들보다 높은 weight를 가짐
+	//// 조건 : 흰점시작점과 흰점끝점 중간 기준으로 왼쪽점들이 오른쪽점들보다 높은 weight를 가짐
 	int leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage);
 	int rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage);
-	int midCoorX = (leftistCoorX + rightistCoorX) / 2;
-	// 가운데 기준 왼쪽, 오른쪽 마스킹한 이미지와 bitwise_and , 
-	Mat areaMask = Mat::zeros(maskImage.rows, maskImage.cols, CV_8U);	
-	areaMask = imageHandler::getWhiteMaskImage(areaMask, leftistCoorX,0, midCoorX-leftistCoorX, maskImage.rows);
-	bitwise_and(areaMask, maskImage, areaMask);
-	int leftWeightAvg = imageHandler::getWhitePixelAvgValue(areaMask);	
+	//int midCoorX = (leftistCoorX + rightistCoorX) / 2;
+	//// 가운데 기준 왼쪽, 오른쪽 마스킹한 이미지와 bitwise_and , 
+	//Mat areaMask = Mat::zeros(maskImage.rows, maskImage.cols, CV_8U);	
+	//areaMask = imageHandler::getWhiteMaskImage(areaMask, leftistCoorX,0, midCoorX-leftistCoorX, maskImage.rows);
+	//bitwise_and(areaMask, maskImage, areaMask);
+	//int leftWeightAvg = imageHandler::getWhitePixelAvgValue(areaMask);	
 
-	areaMask = Mat::zeros(maskImage.rows, maskImage.cols, CV_8U);
-	areaMask = imageHandler::getWhiteMaskImage(areaMask, midCoorX, 0, rightistCoorX-midCoorX, maskImage.rows);
-	bitwise_and(areaMask, maskImage, areaMask);
-	int rightWeightAvg = imageHandler::getWhitePixelAvgValue(areaMask);
+	//areaMask = Mat::zeros(maskImage.rows, maskImage.cols, CV_8U);
+	//areaMask = imageHandler::getWhiteMaskImage(areaMask, midCoorX, 0, rightistCoorX-midCoorX, maskImage.rows);
+	//bitwise_and(areaMask, maskImage, areaMask);
+	//int rightWeightAvg = imageHandler::getWhitePixelAvgValue(areaMask);
 
-	if (leftWeightAvg == 0 || rightWeightAvg == 0)
+	//if (leftWeightAvg == 0 || rightWeightAvg == 0)
+	//{
+	//	return false;
+	//}
+	//if (leftWeightAvg <= rightWeightAvg)
+	//{
+	//	return false;
+	//}
+
+
+	//start	 -> 
+	int totalRange = rightistCoorX- leftistCoorX;
+	int sepaRange = totalRange / 3;
+	vector<int> weightAvg;
+	Mat maskImage_rmNoise = maskImage.clone();
+	inRange(maskImage_rmNoise, 4, 255, maskImage_rmNoise);	// 3프레임까지 버림
+	bitwise_and(maskImage_rmNoise, maskImage, maskImage_rmNoise);
+
+	for (int i = 0; i < 3; i++)	// 3등분해서 확인
 	{
-		return false;
+		Mat areaMask = Mat::zeros(maskImage.rows, maskImage.cols, CV_8U);
+		int coorX = leftistCoorX + sepaRange * i;
+		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, maskImage.rows);
+		bitwise_and(areaMask, maskImage_rmNoise, areaMask);
+		weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
+		if (weightAvg.back() == 0)
+		{
+			return false;
+		}
 	}
-	if (leftWeightAvg <= rightWeightAvg)
+	// 
+	int minVal = 255;
+	for (int i = 0; i < weightAvg.size(); i++)
 	{
-		return false;
+		if (weightAvg[i] <= minVal)
+		{
+			minVal = weightAvg[i];
+		}
+		else
+		{
+			return false;
+		}
 	}
+	
+
+	//end
 	
 	// 조건 : 가장 오른쪽 점과 가장 왼쪽 점(라인의 길이)까지 거리가 100pix이상
 	if (rightistCoorX - leftistCoorX < 100)
 	{
 		return false;
 	}
+
 
 	/* 필터	*/
 	// 1. pixel 총 갯수
@@ -166,7 +227,7 @@ int LineFinder::getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor)
 		Mat tempMat;
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
-		Mat unPrintPatternFill = imageHandler::getFillImage(subImage, unPrintColor);
+		Mat unPrintPatternFill = imageHandler::getFillImage_unPrint(subImage, unPrintColor);
 		inRange(unPrintPatternFill, Scalar(254, 254, 254), Scalar(255, 255, 255), unPrintPatternFill);
 		bitwise_and(mask_bin, unPrintPatternFill, tempMat);
 
@@ -185,4 +246,14 @@ int LineFinder::getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor)
 	}
 
 	return 0;
+}
+
+bool LineInfo::desc(LineInfo a, LineInfo b)
+{
+	return a.frame_start > b.frame_start;
+}
+
+bool LineInfo::asc(LineInfo a, LineInfo b)
+{
+	return a.frame_start < b.frame_start;
 }

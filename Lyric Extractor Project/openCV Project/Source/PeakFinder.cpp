@@ -91,13 +91,13 @@ Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprin
 			{
 				yPtr_stack[x] = 0;
 			}
-			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// 패턴이면서 흰색이었던곳
-			{
-				yPtr_stack[x] = 1;
-			}
-			else if(yPtr_pattern[x]!=0 && yPtr_stack[x]!=0)
+			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// 패턴이면서,
 			{
 				yPtr_stack[x] += 1;
+			}
+			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// 패턴이면서 흰색이었던곳 (시작조건)
+			{
+				yPtr_stack[x] = 1;
 			}
 
 		}

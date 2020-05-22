@@ -1953,6 +1953,7 @@ Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 
 	vector<pair<int, int>> islands;
 	vector<int> islandsVolum;
+	vector<int> islandsHeight;
 
 	// 섬의 갯수 구함, 
 	// 섬이 2개 이상이면서, 가장 아래섬이 흰점수 2등 이면
@@ -1981,6 +1982,7 @@ Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 			{	// save island
 				islands.push_back(make_pair(startPoint, i));
 				islandsVolum.push_back(volume);
+				islandsHeight.push_back(i- startPoint);
 				volume = 0;
 			}
 			//
@@ -1992,6 +1994,7 @@ Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 
 	if (islands.size() > 1)
 	{
+		/*
 		int biggistIsland = 0;
 		int biggistIslandVolume = 0;
 		for (int i = 0; i < islandsVolum.size(); i++)
@@ -2001,11 +2004,22 @@ Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 				biggistIsland = i;
 				biggistIslandVolume = islandsVolum[i];
 			}
+		}		
+		*/
+
+		int biggistIsland = 0;
+		int biggistIslandHeight = 0;
+		for (int i = 0; i < islandsHeight.size(); i++)
+		{
+			if (biggistIslandHeight < islandsHeight[i])
+			{
+				biggistIsland = i;
+				biggistIslandHeight = islandsHeight[i];
+			}
 		}
 
 		int primaryLyricStartPoint = islands[biggistIsland].first;
 		int primaryLyricEndPoint = islands[biggistIsland].second;
-
 		for (int i = 0; i < projection.size(); i++)
 		{
 			if (i<primaryLyricStartPoint || i> primaryLyricEndPoint)
@@ -2719,13 +2733,13 @@ Vec3b imageHandler::getMostHaveRGB(vector<Vec3b> vecColor)
 	for (int i = 0; i < vecColor.size(); i++)
 	{
 		bool isFind = false;
-		for (int i = 0; i < vecColorCount.size(); i++)
+		for (int j = 0; j < vecColorCount.size(); j++)
 		{
-			if (vecColorCount[i].first[0] == vecColor[i][0] &&
-				vecColorCount[i].first[1] == vecColor[i][1] &&
-				vecColorCount[i].first[2] == vecColor[i][2])
+			if (vecColorCount[j].first[0] == vecColor[i][0] &&
+				vecColorCount[j].first[1] == vecColor[i][1] &&
+				vecColorCount[j].first[2] == vecColor[i][2])
 			{
-				vecColorCount[i].second += 1;
+				vecColorCount[j].second += 1;
 				isFind = true;
 				break;
 			}
@@ -2924,7 +2938,9 @@ Mat imageHandler::getFillImage(Mat rgbImage, Scalar targetColor)
 	//Mat fullyContrastImage = imageHandler::getFullyContrastImage(rgbImage);
 	//Mat fullyContrastImage_pix = imageHandler::getPixelContrastImage(rgbImage);
 	Mat fullyContrastImage_per = imageHandler::getPixelContrastImage_byPercent(rgbImage);
-
+	//Mat fullyContrastImage = imageHandler::getPixelContrastImage(rgbImage);
+	//imshow("fullyContrastImage_per", fullyContrastImage_per);
+	//imshow("fullyContrastImage", fullyContrastImage);
 	Mat FC_Bin;
 	Scalar patternMin = targetColor;
 	for (int i = 0; i < 3; i++)
@@ -2932,6 +2948,24 @@ Mat imageHandler::getFillImage(Mat rgbImage, Scalar targetColor)
 			patternMin[i] = patternMin[i] - 1;
 
 	inRange(fullyContrastImage_per, patternMin, targetColor, FC_Bin);	// 파랑만이미지
+	cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
+
+	return FC_Bin;
+}
+
+
+Mat imageHandler::getFillImage_unPrint(Mat rgbImage, Scalar targetColor)
+{
+	Mat fullyContrastImage = imageHandler::getPixelContrastImage(rgbImage);
+	//imshow("fullyContrastImage_per", fullyContrastImage_per);
+	//imshow("fullyContrastImage", fullyContrastImage);
+	Mat FC_Bin;
+	Scalar patternMin = targetColor;
+	for (int i = 0; i < 3; i++)
+		if (patternMin[i] != 0)
+			patternMin[i] = patternMin[i] - 1;
+
+	inRange(fullyContrastImage, patternMin, targetColor, FC_Bin);	// 파랑만이미지
 	cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
 
 	return FC_Bin;

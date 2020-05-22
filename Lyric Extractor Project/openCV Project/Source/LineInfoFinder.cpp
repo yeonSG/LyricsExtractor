@@ -231,7 +231,7 @@ vector<PeakInfo> LineInfoFinder::start2_getLinePeak(int PrintTypeNum)
 
 	uint expectedWeight = 0;		// 
 
-	int curFrame = 1030;	// movie1.mp4
+	int curFrame = 1000;	// movie1.mp4
 	//int curFrame = 3810;
 
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
@@ -297,8 +297,8 @@ vector<PeakInfo> LineInfoFinder::start2_getLinePeak(int PrintTypeNum)
 
 						linePeaks.push_back(peakInfo);
 						printf("$(Save.. %d)", maximumStat_frameNum);
-						//if (curFrame > 1140)
-						return linePeaks; //return linePeaks;	// for test
+						if (linePeaks.size() >= 10)
+							return linePeaks; //return linePeaks;	// for test
 
 					}
 
@@ -556,7 +556,7 @@ vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 	return linePeaks;
 }
 
-vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
+vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar UnprintColor)
 {
 	vector<LineInfo> lineInfos;
 
@@ -566,12 +566,14 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 0;	// movie1.mp4
+	int curFrame = 3445;	// movie1.mp4
 #endif
 
 	vector<contourLineInfo> line_PeakInfo;
 	PeakFinder peakFinder;
 	UnprintImage unprintImage;
+	unprintImage.m_isFindUnprintColor = true;
+	unprintImage.m_unPrintColor = UnprintColor;	
 	
 	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
 	while (videoCapture->read(orgImage))
@@ -582,59 +584,49 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
 
-		Mat refUnprintImage = unprintImage.unprintImage_process(subImage, Scalar(255, 255, 255));
+		Mat refUnprintImage = unprintImage.unprintImage_process(subImage);
 
 		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[PrintTypeNum], refUnprintImage);
 		
 		if (line_PeakInfo.size() > 0)
 		{
-			for (int i = 0; i < line_PeakInfo.size(); i++)
+			vector<contourLineInfo> filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo);	// 라인 걸러냄
+
+			cout << endl;
+			for (int i = 0; i < filltered_line_PeakInfo.size(); i++)
 			{
-				int maxValue = line_PeakInfo[i].maxValue;
-				printf("* Line found [Coor_y(%d ~ %d)] ", line_PeakInfo[i].coorY_start, line_PeakInfo[i].coorY_end);
+				int maxValue = filltered_line_PeakInfo[i].maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].coorY_start, filltered_line_PeakInfo[i].coorY_end);
 				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
 
-				if (line_PeakInfo[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
-				{
-					printf(" [IS NOT LINE : maxWeight<5] ");
-					continue;
-				}
-				if (line_PeakInfo[i].pixelCount <= 100)	// maxValue(Weight)가 5미만이면 라인으로 안봄
-				{
-					printf(" [IS NOT LINE : pixelCount<100] ");
-					continue;
-				}
-				// 왼쪽에서 오른쪽으로 흐르는 패턴이 아님 ( weight 보기? (모든 픽셀 weight값 정렬 -> 중간값 기준으로 ) )
-
-				cout << endl;
-
 #if(1)
-				Mat dbgImg = line_PeakInfo[i].weightMat.binImage;
-				Mat dbgImg_max = line_PeakInfo[i].weightMat_maximum.binImage;
+				Mat dbgImg = filltered_line_PeakInfo[i].weightMat.binImage;
+				Mat dbgImg_max = filltered_line_PeakInfo[i].weightMat_maximum.binImage;
 				Mat dbgImg_b;
 				Mat dbgImg_max_b;
 				inRange(dbgImg, 1, 255, dbgImg_b);
 				inRange(dbgImg_max, 1, 255, dbgImg_max_b);
 #endif
-
-				LineFinder lineFinder(videoCapture);
-				LineInfo lineInfo;
-				lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum, Scalar(255, 255, 255));		// 
-				/* 라인 후보 저장 */
-				/*	// bool getLine(WeightMat, vc)
-					1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
-					2. bitwise_and(a, b) 수행
-					3. 결과를 마스크로 사용
-					4. 정방향 재생을 통하여 타겟컬러 흰색이 없어지는 프래임 흭득 (endFrame)
-					2. 검사
-				*/
-				if (lineInfo.isValid == true)
 				{
-					lineInfos.push_back(lineInfo);
-					peakFinder.stackBinImageCorrect(line_PeakInfo[i].weightMat.binImage);
-					// peakFinder.m_stackBinImage 보정
-					//if (lineInfos.size() > 3)
-					//	return lineInfos;
+					LineFinder lineFinder(videoCapture);
+					LineInfo lineInfo;
+					lineInfo = lineFinder.getLine(filltered_line_PeakInfo[i].weightMat_maximum, UnprintColor);		// 
+					/* 라인 후보 저장 */
+					/*	// bool getLine(WeightMat, vc)
+						1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
+						2. bitwise_and(a, b) 수행
+						3. 결과를 마스크로 사용
+						4. 정방향 재생을 통하여 타겟컬러 흰색이 없어지는 프래임 흭득 (endFrame)
+						2. 검사
+					*/
+					if (lineInfo.isValid == true)
+					{
+						lineInfos.push_back(lineInfo);
+						peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i].weightMat.binImage);
+						// peakFinder.m_stackBinImage 보정
+						//if (lineInfos.size() > 3)	// 
+						//	return lineInfos;
+					}
 				}
 			}
 		}
@@ -678,6 +670,151 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum)
 	}
 
 	return lineInfos;
+}
+
+Scalar LineInfoFinder::findUnprintColor(int PrintTypeNum)
+{
+
+	Mat orgImage;
+	Mat subImage;
+	
+#ifndef _DEBUG
+	int curFrame = 1000;
+	if(videoHandler::getVideoFrameCount() < 1000)
+		curFrame = 0;
+#else
+	int curFrame = 1000;	// movie1.mp4
+#endif
+
+	vector<contourLineInfo> line_PeakInfo;
+	PeakFinder peakFinder;
+	UnprintImage unprintImage;
+
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+	while (videoCapture->read(orgImage))
+	{
+		cout << endl;
+		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+		printf("frame... %d ", curFrame);
+
+		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+
+		Mat refUnprintImage = unprintImage.unprintImage_process(subImage);
+
+		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[PrintTypeNum], refUnprintImage);
+
+		if (line_PeakInfo.size() > 0)
+		{
+			for (int i = 0; i < line_PeakInfo.size(); i++)
+			{
+				int maxValue = line_PeakInfo[i].maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", line_PeakInfo[i].coorY_start, line_PeakInfo[i].coorY_end);
+				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
+
+				if (line_PeakInfo[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				{
+					printf(" [IS NOT LINE : maxWeight<5] ");
+					continue;
+				}
+				if (line_PeakInfo[i].pixelCount <= 500)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				{
+					printf(" [IS NOT LINE : pixelCount<500] ");
+					continue;
+				}
+				if (line_PeakInfo[i].coorY_end - line_PeakInfo[i].coorY_start < 30) // y축 길이가 100이하
+				{
+					printf(" [IS NOT LINE : y_length<10] ");
+					continue;
+				}
+				// 왼쪽에서 오른쪽으로 흐르는 패턴이 아님 ( weight 보기? (모든 픽셀 weight값 정렬 -> 중간값 기준으로 ) )
+
+				cout << endl;
+
+#if(0)
+				Mat dbgImg = line_PeakInfo[i].weightMat.binImage;
+				Mat dbgImg_max = line_PeakInfo[i].weightMat_maximum.binImage;
+				Mat dbgImg_b;
+				Mat dbgImg_max_b;
+				inRange(dbgImg, 1, 255, dbgImg_b);
+				inRange(dbgImg_max, 1, 255, dbgImg_max_b);
+#endif
+				{
+					// Unprint 색 찾는 루틴
+					LineFinder lineFinder(videoCapture);
+					LineInfo lineInfo;
+					lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum);
+					if (lineInfo.isValid == true)
+					{
+						unprintImage.m_isFindUnprintColor = true;
+						// 색 찾기
+						// lineInfo.frame_start 의 이미지 가저옴, 마스크 이미지에서 점 수집 -> 가장 많은 점 (255,255,255 또는 0,255,255 일 것)
+						int checkFrame = imageHandler::getWhitePixelAvgValue(line_PeakInfo[i].weightMat_maximum.binImage);// line_PeakInfo[i].maxValue / 2;
+						Mat checkImage;
+						inRange(lineInfo.maskImage_withWeight, 5, checkFrame, checkImage);	// mask
+						cvtColor(checkImage, checkImage, COLOR_GRAY2BGR);
+						//inRange(checkImage, Scalar(1, 1, 1), Scalar(255, 255, 255), checkImage);
+
+						int unPrintFrame = line_PeakInfo[i].weightMat_Unprint.frameNum - line_PeakInfo[i].maxValue;
+						videoCapture->set(CAP_PROP_POS_FRAMES, (double)unPrintFrame);
+						videoCapture->read(orgImage);
+						subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+						Mat fillImage = imageHandler::getPixelContrastImage(subImage);
+						Mat fillImage_erode = imageHandler::getMorphImage(fillImage, MORPH_ERODE);
+
+						bitwise_and(fillImage_erode, checkImage, fillImage_erode);	// mask 처리
+						
+						Scalar unprintColor = unprintImage.getUnprintColor(fillImage_erode);
+						// 
+
+						imwrite(fileManager::getSavePath()+"UnprintImage.jpg", fillImage_erode);
+						unprintImage.m_unPrintColor = unprintColor; // 색 세팅
+						
+						BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : " << (int)unprintImage.m_unPrintColor[0] << " " << (int)unprintImage.m_unPrintColor[1] << " " << (int)unprintImage.m_unPrintColor[2];
+						printf("Unprint Color : %d %d %d", unprintImage.m_unPrintColor[0], unprintImage.m_unPrintColor[1], unprintImage.m_unPrintColor[2]);
+						return unprintColor;
+					}
+				}
+			}
+
+#if(0)
+			cout << endl;
+			imshow("stackBinImage", peakFinder.m_stackBinImage);
+			Mat debugImg;
+			inRange(peakFinder.m_stackBinImage, 1, 255, debugImg);
+			imshow("debugImg", debugImg);
+			imshow("subImage", subImage);
+
+			{	// for test
+				int key = waitKey(0);
+				if (key == KEY_ESC)
+					break;
+				else if (key == 'a')	// before frame
+					curFrame -= 1;
+				else if (key == 'd')	// next frame
+					curFrame += 1;
+				else if (key == 'w')	// +50th frame
+					curFrame += 50;
+				else if (key == 's')	// -50th frame
+					curFrame -= 50;
+				else if (key == 'r')	// +10th frame
+					curFrame += 10;
+				else if (key == 'f')	// -10th frame
+					curFrame -= 10;
+				else if (key == 'e')	// +500th frame
+					curFrame += 500;
+				else if (key == 'q')	// -500th frame
+					curFrame -= 500;
+				else if (key == '?')
+					videoHandler::printVideoSpec();
+
+				videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame - 1);
+			}
+#else
+			videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);
+#endif
+		}
+	}
+	return Scalar(255, 255, 255);
 }
 
 
@@ -929,26 +1066,26 @@ bool LineInfoFinder::isPeakFrame2(Mat expectedFrame)
 
 
 	/*for debug*/
-	{
-		int value = 0;
-		Mat debugImage;
-		while (true)
-		{
-			cout << "value : " << value << " ~ " << value+1 << endl;
-			inRange(expectedFrame, value, value, debugImage);
-			imshow("debugImage", debugImage);
+	//{
+	//	int value = 0;
+	//	Mat debugImage;
+	//	while (true)
+	//	{
+	//		cout << "value : " << value << " ~ " << value+1 << endl;
+	//		inRange(expectedFrame, value, value, debugImage);
+	//		imshow("debugImage", debugImage);
 
-			int key = waitKey(0);
-			if (key == KEY_ESC)
-				break;
-			else if (key == 'a')	// before frame
-				value -= 1;
-			else if (key == 'd')	// next frame
-				value += 1;
-			else if (key == 'q')
-				break;
-		}
-	}
+	//		int key = waitKey(0);
+	//		if (key == KEY_ESC)
+	//			break;
+	//		else if (key == 'a')	// before frame
+	//			value -= 1;
+	//		else if (key == 'd')	// next frame
+	//			value += 1;
+	//		else if (key == 'q')
+	//			break;
+	//	}
+	//}
 
 	return isPeak;	// isPeakFrame2 End
 }
@@ -1090,12 +1227,15 @@ Vec3b LineInfoFinder::findUnprintColor(vector<PeakInfo> peaks)
 		videoCapture->read(orgImage);	// 확인바람
 
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
-		Mat fullyContrastImage_per = imageHandler::getPixelContrastImage_byPercent(subImage);
+		//Mat fullyContrastImage_per = imageHandler::getPixelContrastImage_byPercent(subImage);
+		Mat fullyContrastImage = imageHandler::getPixelContrastImage(subImage);
 
-		Mat maskedImage = imageHandler::getMaskedImage(fullyContrastImage_per, printedArea);
+		Mat maskedImage = imageHandler::getMaskedImage(fullyContrastImage, printedArea);
 		Vec3b mostColor = imageHandler::getMostHaveRGB(maskedImage);
 
 		unprintColor.push_back(mostColor);
+
+		imwrite(fileManager::getSavePath() + "/Captures/peak_" + to_string(i) + ".jpg", maskedImage);
 	}
 
 	Vec3b result = imageHandler::getMostHaveRGB(unprintColor);
@@ -1250,6 +1390,98 @@ void LineInfoFinder::WriteLineInfo_toLog(vector<Line> lines)
 	}
 }
 
+vector<contourLineInfo> LineInfoFinder::line_PeakInfoFilter(vector<contourLineInfo> lineInfos)
+{
+	
+	vector<contourLineInfo> filltered_line_PeakInfo;
+
+	for (int i = 0; i < lineInfos.size(); i++)
+	{
+		int maxValue = lineInfos[i].maxValue;
+
+		if (lineInfos[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		{
+			printf(" [IS NOT LINE : maxWeight<5] ");
+			continue;
+		}
+		if (lineInfos[i].pixelCount <= 200)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		{
+			printf(" [IS NOT LINE : pixelCount<200] ");
+			continue;
+		}
+		if (lineInfos[i].coorY_end - lineInfos[i].coorY_start < 10) // y축 길이가 10 이하
+		{
+			printf(" [IS NOT LINE : y_length<10] ");
+			continue;
+		}
+		if (lineInfos[i].coorX_end - lineInfos[i].coorX_start < 100) // y축 길이가 10 이하
+		{
+			printf(" [IS NOT LINE : x_length<100] ");
+			continue;
+		}
+		int continueCount = getSequentialIncreasedContoursCount(lineInfos[i].contours);
+		if (continueCount < 5)
+		{
+			printf(" [IS NOT LINE : no have continuity] ");
+			continue;
+		}
+		filltered_line_PeakInfo.push_back(lineInfos[i]);
+	}
+	return filltered_line_PeakInfo;
+}
+
+int LineInfoFinder::getSequentialIncreasedContoursCount(vector<contourInfo> contours)
+{
+	//for (int i = 0; i < contours.size(); i++)
+	//{
+	//	printf(" %d ", contours[i].maxValue);
+	//}
+
+	int count = 0;
+	int bigist_length = 0;
+
+	for(int j = 0; j< contours.size(); j++)
+	{
+		vector<contourInfo> seqContours;
+		for (int i = j; i < contours.size(); i++)
+		{
+			if (i == j)
+				seqContours.push_back(contours[i]);
+			else // 
+			{
+				if (seqContours.back().maxValue > contours[i].maxValue)
+				{
+					seqContours.push_back(contours[i]);
+				}
+				else
+				{
+					if (seqContours.size() >= 2
+						&& seqContours[seqContours.size() - 1].maxValue > contours[i].maxValue)
+					{
+						seqContours.back() = contours[i];	// 저장된값의 마지막 값보다 크면서 그 이전값보다 작으면 업데이트
+					}
+				}
+			}
+		}
+		if (bigist_length < seqContours.size())
+		{
+			bigist_length = seqContours.size();
+			//printf("\r\n Length = %d", seqContours.size());
+			for (int x = 0; x < seqContours.size(); x++)
+			{
+				//printf(" %d ", seqContours[x].maxValue);
+			}
+		}
+	}
+
+	return bigist_length;
+	/* 연속되는 값 중 값이 더 작아지는 배열 중 가장 많은 수를 갖는 것을 구하는 것.
+	ex) arr{81  1  1  81  81  81  80  81  1  1  60  1  80  80  47  78  78  78  2  78  78  1  78  1  78  78  1  78  1  78  1  1  1  78  78  15  18  1  1  1  28  47  78}
+	일때 답은 : {81 80 78 15 1} = 5가 되어야 함.
+	but 알고리즘 손대야 함..
+	*/
+}
+
 vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfos)
 {
 	vector<LineInfo> lineInfo_temp;
@@ -1292,14 +1524,43 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 			bool isRelation = imageHandler::isRelation(lineInfo_temp.back().frame_start, lineInfo_temp.back().frame_end, lineInfos[i].frame_start, lineInfos[i].frame_end);
 			if (isRelation)	// 겹친다면 병합 수행
 			{
-				int temp_coorX_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
-				int other_coorX_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
-				if (abs(temp_coorX_avg - other_coorX_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
+				bool isOtherLine_byYcoor = false;;
+				bool isOtherLine_byframe = false;;	// 둘다 만족해야 다른 라인으로 봄
+
+				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
+				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+				if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
 				{
-					lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면 다른 라인으로 봄.
+					isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
+				}
+
+				int allLength_start = min(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
+				int allLength_end = max(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
+
+				int dupLength_start = max(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
+				int dupLength_end = min(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
+				int dupLength = dupLength_end - dupLength_start;	//
+
+				if (dupLength <= 0)	// 라인 안겹침
+				{
+					isOtherLine_byframe = true;
+				}
+				else
+				{
+					int allLength = allLength_end - allLength_start;	
+					if (allLength == 0)	// error 방지
+						;
+					else if ((dupLength / (float)allLength) < 0.7)	// 60프로도 겹치지 않음
+						isOtherLine_byframe = true;
+				}
+					
+
+				if(isOtherLine_byYcoor && isOtherLine_byframe)
+				{
+					lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.
 					continue;
 				}
-				else // 같은 라인
+				else // 같은 라인 (머지)
 				{
 					relationCount++;
 					if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
@@ -1309,6 +1570,9 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 					Mat orImg;
 					bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
 					lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+
+					if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
+						lineInfo_temp.back().printColor = 3;	// 컬러코드 (3==듀엣)
 				}
 			}
 			else

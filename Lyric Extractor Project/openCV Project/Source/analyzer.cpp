@@ -203,7 +203,7 @@ bool analyzer::videoAnalization2(string videoPath)
 		vector<LineInfo> lineInfo;
 		vector<int> peaks_int;
 		//peaks = lineFinder.start2_useContour(0);// test
-		lineInfo = lineFinder.start2_useContour2(0);// test
+		lineInfo = lineFinder.start2_useContour2(0, Scalar(255, 255, 255));// test
 		//peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
 		printf(" \r\n	Color_blue \r\n");
 		for (int i = 0; i < lineInfo.size(); i++)
@@ -388,6 +388,7 @@ bool analyzer::videoAnalization2(string videoPath)
 bool analyzer::videoAnalization3(string videoPath)
 {
 	m_lyric;
+	vector<LineInfo> lineInfo_all;
 
 	videoCapture = videoHandler::getVideoCapture();
 	if (videoCapture == nullptr)
@@ -396,18 +397,25 @@ bool analyzer::videoAnalization3(string videoPath)
 		return false;
 	}
 
+	//Scalar unPrintColor = Scalar( 255, 255, 255 );//getUnprintColorRutin();	// YSYSYS
+	Scalar unPrintColor = getUnprintColorRutin();	
+	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
+
 	/* 새 알고리즘 */
 	LineInfoFinder lineFinder(videoCapture);
+	//Scalar unPrintColor = lineFinder.findUnprintColor(0);	// 파랑으로 UnprintColor 찾음
+	//return false;	// fortest
 
 	for(int nColor = 0; nColor < 3; nColor++)	// 0=blue, 1=red, 2=purple
 	{
-		if (nColor == 1)
-			continue;
-		if (nColor == 2)
-			continue;
+		//if (nColor == 0)		// YSYSYS - debug
+		//	continue;
+		//if (nColor == 1)
+		//	continue;
 
 		vector<LineInfo> lineInfo;
-		lineInfo = lineFinder.start2_useContour2(nColor);
+		lineInfo = lineFinder.start2_useContour2(nColor, unPrintColor);
 		printf(" \r\n	Color : %d \r\n", nColor);
 		for (int i = 0; i < lineInfo.size(); i++)
 		{
@@ -430,123 +438,58 @@ bool analyzer::videoAnalization3(string videoPath)
 				continue;
 			}
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
-			printf("Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+			printf("Line %2d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
 			Mat bin_Debug;
 			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
 			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
 			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
-
-		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
-		{
-			Line line;
-			line.startFrame = lineInfo[i].frame_start;
-			line.endFrame = lineInfo[i].frame_end;
-			line.text = to_string(nColor) + " color";
-			line.maskImage = lineInfo[i].maskImage_withWeight;
-			m_lyric.addLine(line);
-		}
-	}
-	/*
-	if (1)	// blue
-	{
-		vector<LineInfo> lineInfo;
-		lineInfo = lineFinder.start2_useContour2(0);
-		printf(" \r\n	Color_blue \r\n");
 		for (int i = 0; i < lineInfo.size(); i++)
 		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
-			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
-			Mat bin_Debug;
-			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/Blue_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
-			imwrite(fileManager::getSavePath() + "/Captures/Blue_d_" + to_string(i) + ".jpg", bin_Debug);
-		}
-
-		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
-		printf(" \r\n	Color_blue(merge_judgeLines \r\n");
-		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
-		{
-			if (!mergeJudgeLineInfo[i].isValid)
-			{
-				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "NOT Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
-				printf("NOT Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
-				continue;
-			}
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
-			printf("Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
-			Mat bin_Debug;
-			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/Blue_m" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
-			imwrite(fileManager::getSavePath() + "/Captures/Blue_m_d_" + to_string(i) + ".jpg", bin_Debug);
-		}
-
-		
-		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
-		{
-			Line line;
-			line.startFrame = lineInfo[i].frame_start;
-			line.endFrame = lineInfo[i].frame_end;
-			line.text = "BLUELINE";
-			line.maskImage = lineInfo[i].maskImage_withWeight;
-			m_lyric.addLine(line);
+			lineInfo[i].printColor = nColor;	// 컬러코드 정의필요()
+			lineInfo_all.push_back(lineInfo[i]);
 		}
 	}
-	if (0)	// red
-	{
-		vector<LineInfo> lineInfo;
-		lineInfo = lineFinder.start2_useContour2(1);
-		printf(" \r\n	Color_red \r\n");
-		for (int i = 0; i < lineInfo.size(); i++)
-		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
-			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
-			Mat bin_Debug;
-			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/Red_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
-			imwrite(fileManager::getSavePath() + "/Captures/Red_d_" + to_string(i) + ".jpg", bin_Debug);
-		}
+	
+	sort(lineInfo_all.begin(), lineInfo_all.end(), LineInfo::asc);	// 소팅
+	vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeLineInfo(lineInfo_all);	//전체 라인 머지	
 
-		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
+	// lineInfo_all Sorting
+	// lineFinder.mergeAndJudgeLineInfo() 수행
+	// 0. 라인정보 이미지 저장
+	// 1. OCR 수행
+
+		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)	// LineInfo -> Line 변환
 		{
 			Line line;
-			line.startFrame = lineInfo[i].frame_start;
-			line.endFrame = lineInfo[i].frame_end;
-			line.text = "REDLINE";
-			line.maskImage = lineInfo[i].maskImage_withWeight;
+			Mat saveImage;
+			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, saveImage);
+			//catpureBinaryImageForOCR(saveImage, i, fileManager::getSavePath()); // 이미지 저장
+
+			line.maskImage = saveImage; //mergeJudgeLineInfo[i].maskImage_withWeight;
+			line.startFrame = mergeJudgeLineInfo[i].frame_start;
+			line.endFrame = mergeJudgeLineInfo[i].frame_end;
+			line.text = "OCR TEXT";
 			m_lyric.addLine(line);
 		}
-	}
-	if (0)	// purple
-	{
-		vector<LineInfo> lineInfo;
-		lineInfo = lineFinder.start2_useContour2(2);
-		printf(" \r\n	Color_purple \r\n");
-		for (int i = 0; i < lineInfo.size(); i++)
-		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
-			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
-			Mat bin_Debug;
-			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/Purple_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
-			imwrite(fileManager::getSavePath() + "/Captures/Purple_d_" + to_string(i) + ".jpg", bin_Debug);
-		}
+		captureLines();
+		capturedLinesToText();
 
-		for (int i = 0; i < lineInfo.size(); i++)	// LineInfo -> Line 변환
-		{
-			Line line;
-			line.startFrame = lineInfo[i].frame_start;
-			line.endFrame = lineInfo[i].frame_end;
-			line.text = "PURPLELINE";
-			line.maskImage = lineInfo[i].maskImage_withWeight;
-			m_lyric.addLine(line);
-		}
-	}
-	*/
+		readLyricsFromFile();
+		m_lyric.writeLyricFile(videoCapture);
 
-	/**** TO DO
+		m_lyric.getTimeDataFromframeNum(videoCapture);
+		Json json;
+		json.makeJson(m_lyric);
+
+	// 2. json 파일 생성
+
+	/**** TO DO **** 
 	0. unPrint 색정하는것
+	0. B, R, P 라인 머지
+	0. OCR 처리
+	0. "Lyric.json" 생성
 	0. binImage 데이터 255 이상까지 저장할 수 있도록 데이터타입 변경
 
 	-> 체크포인트 : 모든 라인들이 다 잡아지는지 확인
@@ -559,6 +502,35 @@ bool analyzer::videoAnalization3(string videoPath)
 		- 파일저장, OCR, json etc..
 
 	*/
+}
+Scalar analyzer::getUnprintColorRutin()
+{
+	videoCapture = videoHandler::getVideoCapture();
+	if (videoCapture == nullptr)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
+		return false;
+	}
+	LineInfoFinder lineFinder(videoCapture);
+
+	vector<PeakInfo> peaks;
+	peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
+	// y-start, y-end 를 구해 
+	// y-length가 100 pixel 이상이면 
+	// 절반 중 아래는 지움 ( 자막으로 판단..)
+	for (int i = 0; i < peaks.size(); i++)
+	{
+		Mat binPeakImage;
+		inRange(peaks[i].PeakImage, Scalar(1, 1, 1), Scalar(255, 255, 255), binPeakImage);
+		Mat peakMask = imageHandler::removeNotPrimeryLyricLine(binPeakImage);
+		//cvtColor(peakMask, peakMask, COLOR_GRAY2BGR);
+		bitwise_and(peakMask, peaks[i].PeakImage, peaks[i].PeakImage);
+	}
+
+	Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+
+	Scalar UnprintColor = { (double)upColor[0], (double)upColor[1], (double)upColor[2] };
+	return UnprintColor;
 }
 /*
 	1. 백->흑으로 바뀌는 점이 많은 Frame 탐색
@@ -1690,8 +1662,14 @@ void analyzer::catpureBinaryImageOfLinesEnd(vector<pair<int, int>> lines, string
 		// make sub bin Image 
 		Mat subBinImage = imageToSubBinImage(endImage);
 		bitwise_not(subBinImage, subBinImage);
-		imwrite(videoPath + "/Captures/Line" + to_string(i) + "_Bin.jpg", subBinImage);
+		captureBinaryImage(videoPath, i, subBinImage);
 	}
+}
+
+void analyzer::captureBinaryImage(string videoPath, int index, Mat image)
+{
+
+	imwrite(videoPath + "/Captures/Line" + to_string(index) + "_Bin.jpg", image);
 }
 
 void analyzer::catpureBinaryImageForOCR(Mat binImage, int lineNum, string videoPath)

@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\51847_0~35Lines.mp4");
+	testClass.test_Video("Input\\Movie.mp4");
 	//testClass.test_Video("movie1.mp4");
 
 	//testClass.test_Video4("40009.mp4");
@@ -174,9 +174,9 @@ int main(int argc, char* argv[])
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	// 오랜지색 UP	type(0, 1, twin)
 	//ana.startVideoAnalization("movie1.mp4");	// 0~62
 
-	//ana.startVideoAnalization("Input\\51781_0~73Lines_Duet_ColorWeired.mp4");	
-	//ana.startVideoAnalization("movie1.mp4");
-	ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	// twinLine
+	//ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	
+	ana.startVideoAnalization("Input\\Movie.mp4");
+	//ana.startVideoAnalization("Input\\54395_0~32Lines_TwinLine_Unprint색다름.mp4");	// twinLine
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");
 	
 
@@ -197,3 +197,5 @@ int main(int argc, char* argv[])
 	return 1;
 }
 
+// 머지 알고리즘 손볼것 (51781_0~73Lines_Duet_ColorWeire)
+// 퍼플 노이즈 처리 알고리즘 추가 (53337_0~29Lines.mp4)

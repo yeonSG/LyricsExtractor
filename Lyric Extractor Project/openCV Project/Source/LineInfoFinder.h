@@ -41,7 +41,8 @@ public:
 	bool start2();
 	vector<PeakInfo> start2_getLinePeak(int PrintTypeNum);
 	vector<PeakInfo> start2_useContour(int PrintTypeNum);
-	vector<LineInfo> start2_useContour2(int PrintTypeNum);
+	vector<LineInfo> start2_useContour2(int PrintTypeNum, Scalar UnprintColor);
+	Scalar findUnprintColor(int PrintTypeNum);
 	bool isPeakFrame(Mat expectedFrame);
 	bool isPeakFrame2(Mat expectedFrame);
 
@@ -66,6 +67,9 @@ public:
 	vector<vector<int>> vecPrintTypes_PatternPixelCount;
 
 	void WriteLineInfo_toLog(vector<Line> lineInfos);
+
+	vector<contourLineInfo> line_PeakInfoFilter(vector<contourLineInfo> lineInfos);
+	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
 
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
 	vector<LineInfo> mergeLineInfo(vector<LineInfo> lineInfos);

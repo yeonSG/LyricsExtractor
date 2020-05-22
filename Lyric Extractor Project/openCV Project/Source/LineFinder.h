@@ -15,6 +15,10 @@ public:
 	int frame_end;
 	Mat maskImage_withWeight;
 	bool isValid = false;
+	int printColor;
+	
+	static bool desc(LineInfo a, LineInfo b);
+	static bool asc(LineInfo a, LineInfo b);
 };
 
 class LineFinder
@@ -25,6 +29,7 @@ public:
 public:
 	LineFinder(VideoCapture* vc);
 
+	LineInfo getLine(WeightMat weightPrintImage);
 	LineInfo getLine(WeightMat weightPrintImage, Scalar unPrintColor);
 
 	static bool checkValidMask(Mat maskImage);
