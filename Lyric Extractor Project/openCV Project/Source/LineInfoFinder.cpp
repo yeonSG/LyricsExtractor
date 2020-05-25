@@ -566,7 +566,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 3445;	// movie1.mp4
+	int curFrame = 1500;	// debug
 #endif
 
 	vector<contourLineInfo> line_PeakInfo;
@@ -599,7 +599,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].coorY_start, filltered_line_PeakInfo[i].coorY_end);
 				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
 
-#if(1)
+#if(0)
 				Mat dbgImg = filltered_line_PeakInfo[i].weightMat.binImage;
 				Mat dbgImg_max = filltered_line_PeakInfo[i].weightMat_maximum.binImage;
 				Mat dbgImg_b;
@@ -1512,6 +1512,8 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 {
 	int relationCount = 0;
 	vector<LineInfo> lineInfo_temp;
+
+	sort(lineInfos.begin(), lineInfos.end(), LineInfo::asc);	// 소팅
 
 	for (int i = 0; i < lineInfos.size(); i++)
 	{

@@ -15,3 +15,19 @@ const int DEFAULT_FPS = 25;
 
 const int SUBTITLEAREA_Y = 475;
 const int SUBTITLEAREA_LENGTH =  135+20;
+
+//
+//enum LyricPrintColor	
+//{
+//	BLUE,
+//	RED,
+//	PURPLE,
+//	PRINTCOLOR_COUNT
+//} typedef LyricPrintColor;
+//
+//enum LyricUnprintColor	
+//{
+//	WHITE,
+//	YELLOW,
+//	UNPRINTCOLOR_COUNT
+//} typedef LyricUnprintColor;

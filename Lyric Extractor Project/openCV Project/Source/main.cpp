@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\Movie.mp4");
+	testClass.test_Video("Input\\47809_0~15Lines_twinLine_BadQuality.mp4");
 	//testClass.test_Video("movie1.mp4");
 
 	//testClass.test_Video4("40009.mp4");
@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
 	//ana.startVideoAnalization("movie1.mp4");	// 0~62
 
 	//ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	
-	ana.startVideoAnalization("Input\\Movie.mp4");
+	ana.startVideoAnalization("Input\\47809_0~15Lines_twinLine_BadQuality.mp4");
 	//ana.startVideoAnalization("Input\\54395_0~32Lines_TwinLine_Unprint색다름.mp4");	// twinLine
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");
 	

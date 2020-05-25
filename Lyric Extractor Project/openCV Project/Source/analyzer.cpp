@@ -452,7 +452,6 @@ bool analyzer::videoAnalization3(string videoPath)
 		}
 	}
 	
-	sort(lineInfo_all.begin(), lineInfo_all.end(), LineInfo::asc);	// 소팅
 	vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeLineInfo(lineInfo_all);	//전체 라인 머지	
 
 	// lineInfo_all Sorting

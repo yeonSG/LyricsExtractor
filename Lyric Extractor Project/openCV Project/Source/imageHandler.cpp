@@ -167,6 +167,7 @@ Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 	else
 		color = 255;
 
+
 	// »óÃø 
 	for (int i = 0; i < nCols; i++)
 		if (outImage.at<uchar>(2, i) != color)
