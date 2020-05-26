@@ -411,7 +411,7 @@ bool analyzer::videoAnalization3(string videoPath)
 	{
 		//if (nColor == 0)		// YSYSYS - debug
 		//	continue;
-		//if (nColor == 1)
+		//if (nColor == 1)	// RED
 		//	continue;
 
 		vector<LineInfo> lineInfo;

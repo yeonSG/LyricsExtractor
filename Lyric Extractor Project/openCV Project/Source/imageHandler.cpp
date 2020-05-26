@@ -29,13 +29,13 @@ bool imageHandler::asc_contourInfo(contourInfo a, contourInfo b)
 	return a.coorX_start < b.coorX_start;
 }
 
-bool imageHandler::desc_contourLineInfo(contourLineInfo a, contourLineInfo b)
+bool imageHandler::desc_contourLineInfo(contourLineInfoSet a, contourLineInfoSet b)
 {
-	return a.coorX_start > b.coorX_start;
+	return a.progress.coorX_start > b.progress.coorX_start;
 }
-bool imageHandler::asc_contourLineInfo(contourLineInfo a, contourLineInfo b)
+bool imageHandler::asc_contourLineInfo(contourLineInfoSet a, contourLineInfoSet b)
 {
-	return a.coorX_start < b.coorX_start;
+	return a.progress.coorX_start < b.progress.coorX_start;
 }
 
 bool imageHandler::isRelation(int a_start, int a_end, int b_start, int b_end)
@@ -2903,6 +2903,11 @@ contourLineInfo::contourLineInfo()
 	;
 }
 
+contourLineInfo contourLineInfo::getLineinfoFrombinMat(Mat binWeightMat)
+{
+	return contourLineInfo();
+}
+
 
 Mat imageHandler::getPatternFillImage(Mat rgbImage, Scalar targetColor)
 {
@@ -2970,4 +2975,91 @@ Mat imageHandler::getFillImage_unPrint(Mat rgbImage, Scalar targetColor)
 	cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
 
 	return FC_Bin;
+}
+
+vector<contourInfo> contourInfo::getContourInfosFromBinImage(Mat binImage, Mat &outImage)	// m_unPrintWeight 이미지도 사용해서 뽑자..
+{
+	outImage = Mat::zeros(binImage.rows, binImage.cols, CV_8U);
+	vector<contourInfo> outInfos;
+	Mat binTempImage;
+	inRange(binImage, 1, 255, binTempImage);
+	binTempImage = imageHandler::getDustRemovedImage(binTempImage);	// 부피가 3보다 작은것 삭제함
+
+	/*
+		unp이미지 사용
+		unp
+	*/
+
+	vector<vector<Point>> contours;
+	findContours(binTempImage, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		Mat contourMask = Mat::zeros(binImage.rows, binImage.cols, CV_8U);;
+		// 컨투어별 마스크
+		vector<vector<Point>> contours_picked;
+		contours_picked.push_back(contours[i]);
+		fillPoly(contourMask, contours_picked, 255);
+		vector<Point> indices;		// 내부의 점들을 얻음
+		bitwise_and(contourMask, binTempImage, contourMask);
+		findNonZero(contourMask, indices);
+
+		//int sum = 0;
+		int max = 0;
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			uchar* yPtr = binImage.ptr<uchar>(indices[idx].y);	//in
+			//sum += yPtr[indices[idx].x];
+			if (max < yPtr[indices[idx].x])
+				max = yPtr[indices[idx].x];
+		}
+		//int avgContourColor = sum / indices.size();
+
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			uchar* yPtr = outImage.ptr<uchar>(indices[idx].y);	//in
+			//yPtr[indices[idx].x] = avgContourColor;
+			yPtr[indices[idx].x] = max;
+		}
+
+		contourInfo conInfo = contourInfo:: getContourInfoFromPixels(indices);
+		conInfo.maxValue = max;
+		outInfos.push_back(conInfo);
+	}
+	sort(outInfos.begin(), outInfos.end(), imageHandler::asc_contourInfo);
+
+	return outInfos;
+}
+
+contourInfo contourInfo::getContourInfoFromPixels(vector<Point> pixels)
+{
+	contourInfo conInfo;
+	conInfo.maxValue = 0;
+	for (int idx = 0; idx < pixels.size(); idx++)
+	{
+		if (idx == 0)	// 초기화
+		{
+			conInfo.coorX_start = pixels[idx].x;
+			conInfo.coorX_end = pixels[idx].x;
+			conInfo.coorY_start = pixels[idx].y;
+			conInfo.coorY_end = pixels[idx].y;
+			conInfo.pixelCount = pixels.size();
+		}
+
+		if (pixels[idx].x < conInfo.coorX_start)
+			conInfo.coorX_start = pixels[idx].x;
+		if (pixels[idx].x > conInfo.coorX_end)
+			conInfo.coorX_end = pixels[idx].x;
+		if (pixels[idx].y < conInfo.coorY_start)
+			conInfo.coorY_start = pixels[idx].y;
+		if (pixels[idx].y > conInfo.coorY_end)
+			conInfo.coorY_end = pixels[idx].y;
+	}
+	return conInfo;
+}
+
+contourLineInfoSet::contourLineInfoSet(contourLineInfo InitLineInfo)
+{
+	this->progress = InitLineInfo;
+	this->maximum = InitLineInfo;
 }

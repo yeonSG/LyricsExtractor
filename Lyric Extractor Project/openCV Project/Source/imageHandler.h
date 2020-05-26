@@ -17,6 +17,8 @@ public:
 	int pixelCount;
 	bool isRefed = false;	// 참조 되었는지에 대한 여부
 
+	static vector<contourInfo> getContourInfosFromBinImage(Mat binImage, Mat &outImage);	
+	static contourInfo getContourInfoFromPixels(vector<Point> pixels);
 };
 
 class WeightMat
@@ -39,18 +41,28 @@ public:
 	int maxValue;		// 모든 컨투어의 maxValue 의 최대값
 	int pixelCount;
 	WeightMat weightMat;		// LineInfo에 대한 bin이미지 
-	WeightMat weightMat_maximum;//(시작 프레임부터 가장 pixel수가 많았던 이미지)
-	WeightMat weightMat_Unprint;// UnprintMat;
+	WeightMat weightMat_Unprint;// 해당 시점의 unprint Weight Image
 	contourLineInfo();
+
+	static contourLineInfo getLineinfoFrombinMat(Mat binWeightMat);
 };
+
+class contourLineInfoSet
+{
+public:
+	contourLineInfo progress;
+	contourLineInfo maximum;
+	contourLineInfoSet(contourLineInfo InitLineInfo);
+};
+
 
 class imageHandler
 {
 public:
 	static bool desc_contourInfo(contourInfo a, contourInfo b);
 	static bool asc_contourInfo(contourInfo a, contourInfo b);
-	static bool desc_contourLineInfo(contourLineInfo a, contourLineInfo b);
-	static bool asc_contourLineInfo(contourLineInfo a, contourLineInfo b);
+	static bool desc_contourLineInfo(contourLineInfoSet a, contourLineInfoSet b);
+	static bool asc_contourLineInfo(contourLineInfoSet a, contourLineInfoSet b);
 	static int getContourLineInfoVolume(contourLineInfo lineInfo);
 	static bool isRelation(int a_start, int a_end, int b_start, int b_end);
 

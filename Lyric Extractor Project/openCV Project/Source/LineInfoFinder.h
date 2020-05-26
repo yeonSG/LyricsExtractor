@@ -50,6 +50,8 @@ public:
 
 	Vec3b findUnprintColor(vector<PeakInfo> peaks);
 
+	Mat getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpaint);
+
 	vector<Line> peakToLine(vector<PeakInfo> peaks, Vec3b unprintColor);
 
 	
@@ -68,7 +70,7 @@ public:
 
 	void WriteLineInfo_toLog(vector<Line> lineInfos);
 
-	vector<contourLineInfo> line_PeakInfoFilter(vector<contourLineInfo> lineInfos);
+	vector<contourLineInfoSet> line_PeakInfoFilter(vector<contourLineInfoSet> lineInfos);
 	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
 
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
@@ -80,6 +82,8 @@ private:
 	Mat getPatternFillImage(Mat rgbImage, Scalar targetColor);
 	Mat getPatternFillImage_2(Mat rgbImage, Scalar targetColor);
 	Mat getFillImage(Mat rgbImage, Scalar targetColor);
+
+	Mat getWeightCompareImage(Mat weightUnpaint, Mat weightPaint);
 
 	/* for */
 	vector<int> getPeak(vector<int> vecPixelCounts);

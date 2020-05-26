@@ -55,7 +55,7 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 		lineInfo.isValid = false;
 		return lineInfo;
 	}
-	if (lineInfo.frame_end - lineInfo.frame_start <= 5)	// 라인의 길이가 5미만일 때
+	if (lineInfo.frame_end - lineInfo.frame_start <= 10)	// 라인의 길이가 10미만일 때
 	{
 		lineInfo.isValid = false;
 		return lineInfo;

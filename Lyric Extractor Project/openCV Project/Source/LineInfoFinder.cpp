@@ -566,10 +566,11 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 1500;	// debug
+	int curFrame = 4700;	// debug	 // YSYSYS
+	
 #endif
 
-	vector<contourLineInfo> line_PeakInfo;
+	vector<contourLineInfoSet> line_PeakInfo;
 	PeakFinder peakFinder;
 	UnprintImage unprintImage;
 	unprintImage.m_isFindUnprintColor = true;
@@ -590,18 +591,18 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 		
 		if (line_PeakInfo.size() > 0)
 		{
-			vector<contourLineInfo> filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo);	// 라인 걸러냄
+			vector<contourLineInfoSet> filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo);	// 라인 걸러냄
 
 			cout << endl;
 			for (int i = 0; i < filltered_line_PeakInfo.size(); i++)
 			{
-				int maxValue = filltered_line_PeakInfo[i].maxValue;
-				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].coorY_start, filltered_line_PeakInfo[i].coorY_end);
+				int maxValue = filltered_line_PeakInfo[i].maximum.maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].maximum.coorY_start, filltered_line_PeakInfo[i].maximum.coorY_end);
 				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
 
 #if(0)
-				Mat dbgImg = filltered_line_PeakInfo[i].weightMat.binImage;
-				Mat dbgImg_max = filltered_line_PeakInfo[i].weightMat_maximum.binImage;
+				Mat dbgImg = filltered_line_PeakInfo[i].maximum.weightMat.binImage;
+				Mat dbgImg_max = filltered_line_PeakInfo[i].maximum.weightMat_maximum.binImage;
 				Mat dbgImg_b;
 				Mat dbgImg_max_b;
 				inRange(dbgImg, 1, 255, dbgImg_b);
@@ -610,7 +611,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 				{
 					LineFinder lineFinder(videoCapture);
 					LineInfo lineInfo;
-					lineInfo = lineFinder.getLine(filltered_line_PeakInfo[i].weightMat_maximum, UnprintColor);		// 
+					lineInfo = lineFinder.getLine(filltered_line_PeakInfo[i].maximum.weightMat, UnprintColor);		// 
 					/* 라인 후보 저장 */
 					/*	// bool getLine(WeightMat, vc)
 						1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
@@ -622,9 +623,9 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 					if (lineInfo.isValid == true)
 					{
 						lineInfos.push_back(lineInfo);
-						peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i].weightMat.binImage);
+						peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);	// YS - 이거 입력값 확인바람
 						// peakFinder.m_stackBinImage 보정
-						//if (lineInfos.size() > 3)	// 
+						//if (lineInfos.size() == 1)	// 
 						//	return lineInfos;
 					}
 				}
@@ -686,7 +687,7 @@ Scalar LineInfoFinder::findUnprintColor(int PrintTypeNum)
 	int curFrame = 1000;	// movie1.mp4
 #endif
 
-	vector<contourLineInfo> line_PeakInfo;
+	vector<contourLineInfoSet> line_PeakInfo;
 	PeakFinder peakFinder;
 	UnprintImage unprintImage;
 
@@ -707,21 +708,21 @@ Scalar LineInfoFinder::findUnprintColor(int PrintTypeNum)
 		{
 			for (int i = 0; i < line_PeakInfo.size(); i++)
 			{
-				int maxValue = line_PeakInfo[i].maxValue;
-				printf("* Line found [Coor_y(%d ~ %d)] ", line_PeakInfo[i].coorY_start, line_PeakInfo[i].coorY_end);
+				int maxValue = line_PeakInfo[i].maximum.maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", line_PeakInfo[i].maximum.coorY_start, line_PeakInfo[i].maximum.coorY_end);
 				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
 
-				if (line_PeakInfo[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				if (line_PeakInfo[i].maximum.maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 				{
 					printf(" [IS NOT LINE : maxWeight<5] ");
 					continue;
 				}
-				if (line_PeakInfo[i].pixelCount <= 500)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+				if (line_PeakInfo[i].maximum.pixelCount <= 500)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 				{
 					printf(" [IS NOT LINE : pixelCount<500] ");
 					continue;
 				}
-				if (line_PeakInfo[i].coorY_end - line_PeakInfo[i].coorY_start < 30) // y축 길이가 100이하
+				if (line_PeakInfo[i].maximum.coorY_end - line_PeakInfo[i].maximum.coorY_start < 30) // y축 길이가 100이하
 				{
 					printf(" [IS NOT LINE : y_length<10] ");
 					continue;
@@ -742,19 +743,19 @@ Scalar LineInfoFinder::findUnprintColor(int PrintTypeNum)
 					// Unprint 색 찾는 루틴
 					LineFinder lineFinder(videoCapture);
 					LineInfo lineInfo;
-					lineInfo = lineFinder.getLine(line_PeakInfo[i].weightMat_maximum);
+					lineInfo = lineFinder.getLine(line_PeakInfo[i].maximum.weightMat);
 					if (lineInfo.isValid == true)
 					{
 						unprintImage.m_isFindUnprintColor = true;
 						// 색 찾기
 						// lineInfo.frame_start 의 이미지 가저옴, 마스크 이미지에서 점 수집 -> 가장 많은 점 (255,255,255 또는 0,255,255 일 것)
-						int checkFrame = imageHandler::getWhitePixelAvgValue(line_PeakInfo[i].weightMat_maximum.binImage);// line_PeakInfo[i].maxValue / 2;
+						int checkFrame = imageHandler::getWhitePixelAvgValue(line_PeakInfo[i].maximum.weightMat.binImage);// line_PeakInfo[i].maxValue / 2;
 						Mat checkImage;
 						inRange(lineInfo.maskImage_withWeight, 5, checkFrame, checkImage);	// mask
 						cvtColor(checkImage, checkImage, COLOR_GRAY2BGR);
 						//inRange(checkImage, Scalar(1, 1, 1), Scalar(255, 255, 255), checkImage);
 
-						int unPrintFrame = line_PeakInfo[i].weightMat_Unprint.frameNum - line_PeakInfo[i].maxValue;
+						int unPrintFrame = line_PeakInfo[i].maximum.weightMat_Unprint.frameNum - line_PeakInfo[i].maximum.maxValue;
 						videoCapture->set(CAP_PROP_POS_FRAMES, (double)unPrintFrame);
 						videoCapture->read(orgImage);
 						subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
@@ -1246,6 +1247,37 @@ Vec3b LineInfoFinder::findUnprintColor(vector<PeakInfo> peaks)
 	return result;
 }
 
+Mat LineInfoFinder::getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpaint)
+{
+	// m_refUnprintColorWeight;
+	// m_stackBinImage;
+	Mat outImage = Mat::zeros(weightPaint.rows, weightPaint.cols, CV_8U);
+
+	int height = weightPaint.rows;
+	int width = weightPaint.cols;
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_p = weightPaint.ptr<uchar>(y);
+		uchar* yPtr_unp = weightUnpaint.ptr<uchar>(y);
+		uchar* yPtr_out = outImage.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+			int diff = yPtr_p[x] - yPtr_unp[x];
+			if (diff <= 10)	// p가 np보다 크거나 같은값일 때
+			{
+				yPtr_out[x] = yPtr_p[x];
+			}
+		}
+	}
+
+	Mat test_outImage;
+	Mat test_printImage;
+	inRange(weightPaint, 1, 255, test_printImage);
+	inRange(outImage, 1, 255, test_outImage);
+	return outImage;
+}
 
 // peak를 받아서 라인으로 필터링하고 만들어냄
 vector<Line> LineInfoFinder::peakToLine(vector<PeakInfo> peaks, Vec3b unprintColor)
@@ -1390,41 +1422,55 @@ void LineInfoFinder::WriteLineInfo_toLog(vector<Line> lines)
 	}
 }
 
-vector<contourLineInfo> LineInfoFinder::line_PeakInfoFilter(vector<contourLineInfo> lineInfos)
+vector<contourLineInfoSet> LineInfoFinder::line_PeakInfoFilter(vector<contourLineInfoSet> lineInfos)
 {
 	
-	vector<contourLineInfo> filltered_line_PeakInfo;
+	vector<contourLineInfoSet> filltered_line_PeakInfo;
 
 	for (int i = 0; i < lineInfos.size(); i++)
 	{
-		int maxValue = lineInfos[i].maxValue;
 
-		if (lineInfos[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		if (lineInfos[i].maximum.maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 		{
 			printf(" [IS NOT LINE : maxWeight<5] ");
 			continue;
 		}
-		if (lineInfos[i].pixelCount <= 200)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		if (lineInfos[i].maximum.pixelCount <= 500)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 		{
 			printf(" [IS NOT LINE : pixelCount<200] ");
 			continue;
 		}
-		if (lineInfos[i].coorY_end - lineInfos[i].coorY_start < 10) // y축 길이가 10 이하
+		if (lineInfos[i].maximum.coorY_end - lineInfos[i].maximum.coorY_start < 10) // y축 길이가 10 이하
 		{
 			printf(" [IS NOT LINE : y_length<10] ");
 			continue;
 		}
-		if (lineInfos[i].coorX_end - lineInfos[i].coorX_start < 100) // y축 길이가 10 이하
+		if (lineInfos[i].maximum.coorX_end - lineInfos[i].maximum.coorX_start < 100) // y축 길이가 10 이하
 		{
 			printf(" [IS NOT LINE : x_length<100] ");
 			continue;
 		}
-		int continueCount = getSequentialIncreasedContoursCount(lineInfos[i].contours);
-		if (continueCount < 5)
-		{
-			printf(" [IS NOT LINE : no have continuity] ");
-			continue;
-		}
+		//int continueCount = getSequentialIncreasedContoursCount(lineInfos[i].maximum.contours);
+		//if (continueCount < 5)
+		//{
+		//	printf(" [IS NOT LINE : no have continuity] ");
+		//	continue;
+		//}
+
+		// print와 unprint 10이상 차이나는 부분 제거
+		Mat unPrintFillteredImage = getUnprintFillteredstackBinImage(lineInfos[i].maximum.weightMat.binImage, lineInfos[i].maximum.weightMat_Unprint.binImage);
+		Mat unPrintFillteredBinImage;
+		inRange(unPrintFillteredImage, 1, 255, unPrintFillteredBinImage); //  weightMat.binImage 쓰지말도록..
+		bitwise_and(unPrintFillteredBinImage, lineInfos[i].maximum.weightMat.binImage, lineInfos[i].maximum.weightMat.binImage);
+		//bitwise_and(unPrintFillteredBinImage, lineInfos[i].weightMat_maximum.binImage, lineInfos[i].weightMat_maximum.binImage);	
+
+		// 시작 frame 정보를 이용한 필터  (p이미지의 값이 up이미지의 값보다 크거나 같은 점만 납둠)
+//		Mat filteredImage = getWeightCompareImage(lineInfos[i].weightMat_Unprint.binImage, lineInfos[i].weightMat.binImage);
+
+
+
+
+
 		filltered_line_PeakInfo.push_back(lineInfos[i]);
 	}
 	return filltered_line_PeakInfo;
@@ -1638,6 +1684,39 @@ Mat LineInfoFinder::getFillImage(Mat rgbImage, Scalar targetColor)
 	cvtColor(FC_Bin, FC_Bin, COLOR_GRAY2BGR);
 
 	return FC_Bin;
+}
+
+// 시작 frame 정보를 이용한 필터  (p이미지의 값이 up이미지의 값보다 크거나 같은 점만 납둠)
+// 
+Mat LineInfoFinder::getWeightCompareImage(Mat weightUnpaint, Mat weightPaint)
+{
+	Mat outImage = Mat::zeros(weightPaint.rows, weightPaint.cols, CV_8U);
+
+	int height = weightPaint.rows;
+	int width = weightPaint.cols;
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_p = weightPaint.ptr<uchar>(y);
+		uchar* yPtr_unp = weightUnpaint.ptr<uchar>(y);
+		uchar* yPtr_out = outImage.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+			int diff = yPtr_p[x] - yPtr_unp[x];
+			if (diff <= 5)	// p가 np보다 크거나 같은값일 때
+			{
+				yPtr_out[x] = yPtr_p[x];
+			}
+		}
+	}
+
+	Mat test_outImage;
+	Mat test_printImage;
+	inRange(weightPaint, 1, 255, test_printImage);
+	inRange(outImage, 1, 255, test_outImage);
+
+	return outImage;
 }
 
 
