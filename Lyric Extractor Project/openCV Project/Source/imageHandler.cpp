@@ -2934,9 +2934,10 @@ Mat imageHandler::getPatternFillImage_2(Mat rgbImage, Scalar targetColor)
 	Mat PatternFullfill;
 	PatternFullfill = imageHandler::getBorderFloodFilledImage(FC_Bin);
 	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// 사각박스있는곳 제거
+	//erodeImage_Denoise = imageHandler::getMorphImage(erodeImage_Denoise, MORPH_ERODE);	// 침식연산
 	return erodeImage_Denoise;
 
-//	return FC_Bin;
+	// return FC_Bin;
 }
 
 Mat imageHandler::getFillImage(Mat rgbImage, Scalar targetColor)
@@ -3062,4 +3063,62 @@ contourLineInfoSet::contourLineInfoSet(contourLineInfo InitLineInfo)
 {
 	this->progress = InitLineInfo;
 	this->maximum = InitLineInfo;
+}
+
+// patternFill 에서 뎁스가 1이상인 곳 삭제 (O 안에 노이즈가 있을 때 문제 발생가능.. )
+Mat imageHandler::getDepthContourRemovedMat(Mat binImage)
+{
+	Mat removedMat = binImage.clone();
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;	// [Next, Privious, First Child, Parent] -> Parent있는에들 삭제하면됨
+
+	findContours(binImage, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
+	// 뎁스가 0이 아닌 에들은 floodfill 해버림
+
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		if (hierarchy[i][3] != -1) // 부모가 있는 애들
+		{
+			Mat contourMask = Mat::zeros(binImage.rows, binImage.cols, CV_8U);;
+			vector<vector<Point>> contours_picked;
+			contours_picked.push_back(contours[i]);
+			fillPoly(contourMask, contours_picked, 255);
+
+			bitwise_not(contourMask, contourMask);
+			bitwise_and(contourMask, removedMat, removedMat);
+		}
+	}
+	return removedMat;
+}
+
+int imageHandler::getAvgContourVolume(Mat binMImage)
+{
+	inRange(binMImage, 1, 255, binMImage);	// binarize 
+	binMImage = imageHandler::getDustRemovedImage(binMImage);
+
+	vector<vector<Point>> contours;
+	vector<int> contoursSize;
+	vector<Vec4i> hierarchy;
+	findContours(binMImage, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
+
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		if (hierarchy[i][3] == -1) // 부모가 없는 에들 (첫 계층애들)
+		{
+			contoursSize.push_back(contours[i].size());
+		}
+	}
+	sort(contoursSize.begin(), contoursSize.end(), greater<int>());
+
+	if (contoursSize.size() < 2)	// for error: divide zero
+		return 0;
+
+	int sum = 0;
+	for (int i = 0; i < contoursSize.size() / 2; i++) // 상위 절반만 측정함
+	{
+		sum += contoursSize[i];
+	}
+
+	int avg = sum / (contoursSize.size() / 2);
+	return avg;
 }

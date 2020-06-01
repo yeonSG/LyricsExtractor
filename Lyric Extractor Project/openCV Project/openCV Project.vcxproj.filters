@@ -75,6 +75,9 @@
     <ClCompile Include="Source\UnprintImage.cpp">
       <Filter>헤더 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Source\AccumulateMat.cpp">
+      <Filter>헤더 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Memo.txt" />
@@ -133,6 +136,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Source\UnprintImage.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\AccumulateMat.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

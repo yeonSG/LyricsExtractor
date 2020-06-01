@@ -109,8 +109,8 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\40011.mp4");
-	//testClass.test_Video("movie1.mp4");
+	//testClass.test_Video("Input\\40003.mp4");
+	testClass.test_Video("40003.mp4");
 
 	//testClass.test_Video4("40009.mp4");
 	//testClass.test_Video4("40011_forTest.mp4");
@@ -172,10 +172,10 @@ int main(int argc, char* argv[])
 
 	//ana.startVideoAnalization("51781_0~73Lines_Duet_ColorWeired.mp4");			// 하늘색 P type(0&2, 0) 
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	// 오랜지색 UP	type(0, 1, twin)
-	//ana.startVideoAnalization("movie1.mp4");	// 0~62
+	ana.startVideoAnalization("Input\\43780_0~72Lines_BadQuarity.mp4");		// 0~62
 
 	//ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	
-	ana.startVideoAnalization("Input\\40011.mp4");
+	//ana.startVideoAnalization("Input\\40011.mp4");
 	//ana.startVideoAnalization("Input\\54395_0~32Lines_TwinLine_Unprint색다름.mp4");	// twinLine
 	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");
 	

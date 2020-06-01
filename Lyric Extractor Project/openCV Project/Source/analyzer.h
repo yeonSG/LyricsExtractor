@@ -30,9 +30,9 @@ public:
 
 	bool startVideoAnalization(string videoPath);
 	bool videoAnalization(string videoPath);
-	bool videoAnalization2(string videoPath);
+	//bool videoAnalization2(string videoPath);
 	bool videoAnalization3(string videoPath);
-	Scalar getUnprintColorRutin();
+	bool getUnprintColorRutin(Scalar& color);
 
 	MVInformation findLineInfo(VideoCapture *videoCapture);
 
@@ -92,6 +92,8 @@ public:
 	vector<pair<int, int>> getPaintedPoint(Line line);
 
 	Mat getDeblurImage(Mat sourceImage, int frameNum);
+
+	void findErrorFromLyrics();
 
 public:
 	VideoCapture *videoCapture = nullptr;		

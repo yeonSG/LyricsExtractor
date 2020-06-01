@@ -154,6 +154,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\AccumulateMat.cpp" />
     <ClCompile Include="Source\analyzer.cpp" />
     <ClCompile Include="Source\fileManager.cpp" />
     <ClCompile Include="Source\imageHandler.cpp" />
@@ -178,6 +179,7 @@
     <Text Include="Memo.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\AccumulateMat.h" />
     <ClInclude Include="Source\analyzer.h" />
     <ClInclude Include="Source\defines.h" />
     <ClInclude Include="Source\fileManager.h" />

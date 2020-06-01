@@ -42,13 +42,13 @@ public:
 	vector<PeakInfo> start2_getLinePeak(int PrintTypeNum);
 	vector<PeakInfo> start2_useContour(int PrintTypeNum);
 	vector<LineInfo> start2_useContour2(int PrintTypeNum, Scalar UnprintColor);
-	Scalar findUnprintColor(int PrintTypeNum);
+	//Scalar findUnprintColor(int PrintTypeNum);
 	bool isPeakFrame(Mat expectedFrame);
 	bool isPeakFrame2(Mat expectedFrame);
 
 	bool isLineFrame(Mat expectedFrame);
 
-	Vec3b findUnprintColor(vector<PeakInfo> peaks);
+	bool findUnprintColor(vector<PeakInfo> peaks, Vec3b& findColor);
 
 	Mat getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpaint);
 
@@ -66,11 +66,13 @@ public:
 	vector<Scalar> vecPrintTypes;
 	vector<Scalar> vecUnPrintTypes;
 
+	int m_PrintTypeNumType;
+
 	vector<vector<int>> vecPrintTypes_PatternPixelCount;
 
 	void WriteLineInfo_toLog(vector<Line> lineInfos);
 
-	vector<contourLineInfoSet> line_PeakInfoFilter(vector<contourLineInfoSet> lineInfos);
+	vector<contourLineInfoSet> line_PeakInfoFilter(vector<contourLineInfoSet> lineInfosSet, vector<LineInfo>& errorLineInfos);
 	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
 
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);

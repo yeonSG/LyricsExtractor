@@ -5,7 +5,13 @@ const int PeakFinder::JUDGE_TIMEOUT = 5;
 
 vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int frameNumber, Scalar targetColor, Mat refUnprintImage)
 {	
-	Mat patternFill = imageHandler::getPatternFillImage_2(frameImage, targetColor);
+	Mat patternFill = imageHandler::getPatternFillImage_2(frameImage, targetColor);		// 노이즈 제거한거
+	Mat patternFill_RemoveDepthContour = imageHandler::getDepthContourRemovedMat(patternFill); // patternFill 에서 뎁스가 1이상인 곳 삭제 (O 안에 노이즈가 있을 때 문제 발생가능.. )
+
+	Mat FC_Bin = imageHandler::getFillImage(frameImage, targetColor);
+	inRange(FC_Bin, Scalar(254, 254, 254), Scalar(255, 255, 255), FC_Bin);	// to 1 demend
+	Mat refPatternStack = accMat.accumulateProcess(FC_Bin);	// 노이즈 제거안한거
+
 	this->m_frameNumber = frameNumber;
 	this->m_refUnprintColorWeight = refUnprintImage;
 
@@ -16,16 +22,26 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	{	// get dummy
 		//stackBinImages = Mat::zeros(patternFill.rows, patternFill.cols, CV_16U);
 		m_stackBinImage = Mat::zeros(patternFill.rows, patternFill.cols, CV_8U);
-	}
+			}
 	else
 	{
+		// 원래
+		
 		Mat bin_refUnprintImage;
 		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
+		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
+		// 이 이미지를 통하여 컨투어 판단을 하고 라인으로 처리함
 
-		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill, bin_refUnprintImage);
+		//m_stackBinImage = stackBinImage2(m_stackBinImage, patternStack, refUnprintImage);
+		//m_stackBinImage = stackBinImage_noiseRemove(m_stackBinImage, patternFill);
+		
+		// m_stackBinImage , patternFill에다가 노이즈제거 하고 0인것을 m_stackBinImage에다가 적용 
+		// 조건 : m_stackBinImage[x]가 10 이상, patternFill[x]가 0
 
-		m_weightSumAtBinImage = imageHandler::getSumOfBinImageValues(m_stackBinImage);
-		m_colorPixelSumAtBinImage = imageHandler::getWhitePixelCount(m_stackBinImage);
+		//m_stackBinImage = imageHandler::getBorderFloodFilledImage(m_stackBinImage);
+
+		//m_weightSumAtBinImage = imageHandler::getSumOfBinImageValues(m_stackBinImage);
+		//m_colorPixelSumAtBinImage = imageHandler::getWhitePixelCount(m_stackBinImage);
 
 		makeContourMaxBinImageAndContourInfos();
 		makeExpectedLineInfos();
@@ -33,18 +49,23 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
 	}
+	Mat m_stackBinImage_debug;
+	inRange(m_stackBinImage, 1, 255, m_stackBinImage_debug);
 
 	return foundExpectedLines;
 }
 
+
 // x라인이 확정되면 확정된 이미지보다 여전히 큰 값을 가지는 점을 보정해주어 
 // 라인이 확정되면 해당하는 y축의 binImage를 0으로 만듦.
 // 이 후 라인 판별될 때 앞에 라인까지 잡아먹는 현상을 제거하기 위함
-void PeakFinder::stackBinImageCorrect(Mat validImage)
+void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImage)
 {
 	Mat corrImage = m_stackBinImage.clone();
 	int height = corrImage.rows;
 	int width = corrImage.cols;
+
+	Mat validImage = lineSet.progress.weightMat.binImage;
 
 	for (int y = 0; y < height; y++)
 	{
@@ -66,10 +87,95 @@ void PeakFinder::stackBinImageCorrect(Mat validImage)
 		}
 	}
 
+	// 해당 Y 축에 5 이상인 값들 전부 삭제.
+	int removeY_start = lineSet.maximum.coorY_start;
+	int removeY_end = lineSet.maximum.coorY_end;
+
+	for (int y = removeY_start; y < removeY_end; y++)
+	{
+		uchar* yPtr_corr = corrImage.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+			if(yPtr_corr[x]> JUDGE_TIMEOUT)
+				yPtr_corr[x] = 0;
+		}
+	}
+
 	m_stackBinImage = corrImage.clone();
 }
 
-Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage)
+// patternImage에 대하여 추가 연산 필요 ()
+Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage, Mat refPatternStack)
+{
+	int height = stackBinImage.rows;
+	int width = stackBinImage.cols;
+
+	Mat bin_refUnprintImage;
+	inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
+
+	// refUnprintImage 와 refPatternStack의 값이 같은 곳 (0, 255 제외)
+	Mat test_sameArea= Mat::zeros(height, width, CV_8U);
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_unp= refUnprintImage.ptr<uchar>(y);
+		uchar* yPtr_p= refPatternStack.ptr<uchar>(y);
+		uchar* yPtr_out = test_sameArea.ptr<uchar>(y);
+		for (int x = 0; x < width; x++)
+		{
+			if (yPtr_unp[x] == yPtr_p[x])
+			{
+				if (yPtr_unp[x] != 255)
+				{
+					yPtr_out[x] = yPtr_p[x];
+				}
+			}
+		}
+	}
+	Mat test_sameArea_bin;
+	inRange(test_sameArea, 1, 255, test_sameArea_bin);
+
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_stack = stackBinImage.ptr<uchar>(y);
+		uchar* yPtr_pattern = patternImage.ptr<uchar>(y);
+		uchar* yPtr_refUnprint = bin_refUnprintImage.ptr<uchar>(y);
+
+		uchar* yPtr_unp = refUnprintImage.ptr<uchar>(y);
+		uchar* yPtr_p = refPatternStack.ptr<uchar>(y);
+		uchar* yPtr_refsum = test_sameArea_bin.ptr<uchar>(y);
+
+		for (int x = 0; x < width; x++)
+		{
+			// 누적법
+			// 패턴이 검정 -> 0처리
+			// 패턴이 흰색 and Unprint가 흰색이었던곳 -> 1처리 (시작)
+			// 스택이미지가 이미 칠해져 있으면서 패턴인곳
+
+			if (yPtr_pattern[x] == 0)	// 0인곳  On 조건
+			{
+				//if (yPtr_refsum[x]==0)
+					yPtr_stack[x] = 0;
+			}
+			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// 패턴이면서,
+			{
+				yPtr_stack[x] += 1;
+			}
+			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// 패턴이면서 흰색이었던곳 (시작조건)
+			{
+				yPtr_stack[x] = 1;	// 시작조건
+			}
+
+		}
+	}
+	return stackBinImage;
+}
+
+// refUnprintImage가 [0,255] 가 아닌 unPaint weight 를 받음
+// patternImage[x]와 refUnpaintImage[x]의 차이가 +-2 일 경우 웨이트 값 부여
+// stack 이미지에 웨이트값 누적,
+Mat PeakFinder::stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnprintImage)
 {
 	int height = stackBinImage.rows;
 	int width = stackBinImage.cols;
@@ -83,26 +189,67 @@ Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprin
 		for (int x = 0; x < width; x++)
 		{
 			// 누적법
-			// 패턴이 검정 -> 0처리
+			// 패턴값과 Unpaint 값의 차이가 +-2임
 			// 패턴이 흰색 and Unprint가 흰색이었던곳 -> 1처리 (시작)
 			// 스택이미지가 이미 칠해져 있으면서 패턴인곳
 
-			if (yPtr_pattern[x] == 0)	// 0인곳  On 조건
+			bool isPatternDot;
+
+			//if (abs(yPtr_pattern[x] - yPtr_refUnprint[x]) < 3	// +- 2 인 곳
+			//	&& (abs(yPtr_stack[x] - yPtr_pattern[x]) < 10)// stackImage 와 비교했을 때 차이가 크지 않은 것 	
+			//	)
+			if(yPtr_refUnprint[x] == yPtr_pattern[x]
+//				&& (yPtr_refUnprint[x] - yPtr_pattern[x] < 5)//  	
+				)
+			{
+				isPatternDot = true;
+			}
+			else
+			{
+				isPatternDot = false;
+			}
+
+			if (yPtr_pattern[x] == 255 && yPtr_refUnprint[x] == 255)
+				yPtr_stack[x] == yPtr_stack[x];	// 둘다 255 이면 255프래임동안 색칠된게 유지되었거나, 초기화된 상황임(에러 처리 필요!)
+			else if (isPatternDot == true && yPtr_stack[x] != 255)
+				yPtr_stack[x]++;
+			else
+				yPtr_stack[x] = 0;
+
+			//
+
+		}
+	}	// ysys
+	return stackBinImage;
+}
+
+Mat PeakFinder::stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage)
+{
+	Mat PatternFullfill;
+	PatternFullfill = imageHandler::getBorderFloodFilledImage(fillImage);
+	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// 사각박스있는곳 제거
+
+	Mat outImage = stackBinImage.clone();
+
+	int height = stackBinImage.rows;
+	int width = stackBinImage.cols;
+
+	for (int y = 0; y < height; y++)
+	{
+		uchar* yPtr_stack = outImage.ptr<uchar>(y);
+		uchar* yPtr_noiseRemoved = erodeImage_Denoise.ptr<uchar>(y);	// 0 이면 노이즈 제거된 곳임
+
+		for (int x = 0; x < width; x++)
+		{
+			if (yPtr_stack[x] >= 10 && yPtr_noiseRemoved[x] == 0)	// stackbin[x]가 10이상이면서 노이즈 제거된 부분 제거
 			{
 				yPtr_stack[x] = 0;
 			}
-			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// 패턴이면서,
-			{
-				yPtr_stack[x] += 1;
-			}
-			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// 패턴이면서 흰색이었던곳 (시작조건)
-			{
-				yPtr_stack[x] = 1;
-			}
-
 		}
 	}
-	return stackBinImage;
+
+	return outImage;
+
 }
 
 // 컨투어 맥스 이미지 생성과 컨투어 정보 생성
@@ -313,7 +460,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
 		bool isPassOnMaxWeight = false;
-		if (conLineInfos[i].contours.size() >= 5)
+		if (conLineInfos[i].contours.size() >= 2)
 			isPassOnSize = true;
 		if (conLineInfos[i].pixelCount >= 100)
 			isPassOnVolume = true;

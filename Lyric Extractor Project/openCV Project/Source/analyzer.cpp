@@ -184,205 +184,206 @@ bool analyzer::videoAnalization(string videoPath)
 	return true;
 }
 
-bool analyzer::videoAnalization2(string videoPath)
-{
-	videoCapture = videoHandler::getVideoCapture();
-	if (videoCapture == nullptr)
-	{
-		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
-		return false;
-	}
-
-	/* 새 알고리즘 */
-	LineInfoFinder lineFinder(videoCapture);
-	m_lyric;
-	// lineFinder.start2();
-	if (1)
-	{
-		vector<PeakInfo> peaks;
-		vector<LineInfo> lineInfo;
-		vector<int> peaks_int;
-		//peaks = lineFinder.start2_useContour(0);// test
-		lineInfo = lineFinder.start2_useContour2(0, Scalar(255, 255, 255));// test
-		//peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
-		printf(" \r\n	Color_blue \r\n");
-		for (int i = 0; i < lineInfo.size(); i++)
-		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
-			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
-			peaks_int.push_back(peaks[i].frameNum);
-		}
-
-		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
-		printf(" \r\n	Color_blue(merge_judgeLines \r\n");
-		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
-		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
-			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
-			peaks_int.push_back(peaks[i].frameNum);
-		}
-		
-		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
-		m_lyric.setUnprintColor(upColor);
-
-		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
-		for(int i=0; i< lines.size(); i++)
-			m_lyric.addLine(lines[i]);
-
-		string fileName = "getPeak_0(Blue).txt";
-		fileManager::writeVector(fileName, peaks_int);
-
-		lineFinder.WriteLineInfo_toLog(lines);
-	}
-	if (1)
-	{
-		vector<PeakInfo> peaks;
-		vector<int> peaks_int;
-		peaks = lineFinder.start2_getLinePeak(1);	// redColoer
-		printf(" \r\n	Color_red \r\n");
-		for (int i = 0; i < peaks.size(); i++)
-		{
-			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
-			peaks_int.push_back(peaks[i].frameNum);
-		}
-
-		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
-		m_lyric.setUnprintColor(upColor);
-
-		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
-		for (int i = 0; i < lines.size(); i++)
-			m_lyric.addLine(lines[i]);
-
-		string fileName = "getPeak_1(Red).txt";
-		fileManager::writeVector(fileName, peaks_int);
-
-		lineFinder.WriteLineInfo_toLog(lines);
-	}
-	if (1)
-	{
-		vector<PeakInfo> peaks;
-		vector<int> peaks_int;
-		peaks = lineFinder.start2_getLinePeak(2);	// purpleColoer
-		printf(" \r\n	Color_purple \r\n");
-		for (int i = 0; i < peaks.size(); i++)
-		{
-			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
-			peaks_int.push_back(peaks[i].frameNum);
-		}
-
-		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
-		m_lyric.setUnprintColor(upColor);
-
-		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
-		for (int i = 0; i < lines.size(); i++)
-			m_lyric.addLine(lines[i]);
-
-		string fileName = "getPeak_2(Purple).txt";
-		fileManager::writeVector(fileName, peaks_int);
-
-		lineFinder.WriteLineInfo_toLog(lines);
-	}
-
-	m_lyric.sortingLine();
-
-	m_lyric.saveBinaryImage(fileManager::getSavePath());		// catpureBinaryImageOfLinesEnd()
-	capturedLinesToText();
-
-	readLyricsFromFile();
-	m_lyric.writeLyricFile(videoCapture);
-
-	// wordCalibration();	 << 재구현 해야함
-	//m_lyric.writeLyric_withWordFile(videoCapture);	// WordCal 완료시 수행할 것
-
-	m_lyric.getTimeDataFromframeNum(videoCapture);
-
-	Json json;
-	json.makeJson(m_lyric);
-
-	return 0;		// END,
-
-	
-	Mat orgImage;
-	Mat subImage;
-	Mat binImage;
-	Mat beforeBinImage;	// 이전 바이너리 이미지
-
-	Mat stackBinImage;
-	Mat FCImage_before;
-	Mat BWBPatternImage_before;
-
-	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
-	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
-
-	int curFrame = 0;
-
-	/* 이미지 분석 */
-	while (videoCapture->read(orgImage))
-	{
-		videoHandler::printCurrentFrameSpec(*videoCapture);
-		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);	// curFrame 을 얻어서 다시 세팅해 주는 이유는 순차적으로 읽다가 frame이 높은 프레임에 도달했을 때 읽힌 image가 실재 frame의 image+-1의 이미지가 읽히는 등의 현상이 생김.
-
-		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
-		//Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
-		Mat fullyContrastImage = imageHandler::getFullyContrast_withDilate(subImage, Scalar(255, 0, 0));
-		Mat BWBPatternImage = imageHandler::getBWBPatternImage(fullyContrastImage.clone());
-
-		Mat printImage_blue = imageHandler::getPaintedBinImage_inner(fullyContrastImage, true);
-		Mat printImage_red = imageHandler::getPaintedBinImage_inner(fullyContrastImage, false);
-		Mat printImage;
-		bitwise_or(printImage_blue, printImage_red, printImage);
-
-		Mat mergedImage;
-		//binImage = imageHandler::getPaintedBinImage(subImage);
-
-		if (stackBinImage.empty() == true)
-			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
-		if (FCImage_before.empty() != true && BWBPatternImage_before.empty() != true)
-		{
-			imageHandler::stackFCImage(fullyContrastImage, FCImage_before, stackBinImage, BWBPatternImage_before);
-			//imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
-			bitwise_and(printImage, stackBinImage, mergedImage);
-		}
-
-		//White dot Count
-		//vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(binImage));
-		vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(mergedImage));
-	
-		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
-
-		FCImage_before = fullyContrastImage.clone();
-		BWBPatternImage_before = BWBPatternImage.clone();
-	}	// end while
-
-	string fileName = "WhitePixelCount.txt";
-	fileManager::writeVector(fileName, vecWhitePixelCounts);
-
-	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
-	getJudgedLine();
-
-	//return true;		// debug
-	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
-	calibrateLines();
-
-	/* Save pictures */
-	captureLines();
-	capturedLinesToText();
-
-	readLyricsFromFile();
-	m_lyric.writeLyricFile(videoCapture);
-
-	//wordCalibration();
-
-	//m_lyric.writeLyric_withWordFile(videoCapture);
-
-	//m_lyric.getTimeDataFromframeNum(videoCapture);
-	//Json json;
-	//json.makeJson(m_lyric);
-
-	closeVideo();
-	return true;
-}
+//
+//bool analyzer::videoAnalization2(string videoPath)
+//{
+//	videoCapture = videoHandler::getVideoCapture();
+//	if (videoCapture == nullptr)
+//	{
+//		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail to getVideoCapture";
+//		return false;
+//	}
+//
+//	/* 새 알고리즘 */
+//	LineInfoFinder lineFinder(videoCapture);
+//	m_lyric;
+//	// lineFinder.start2();
+//	if (1)
+//	{
+//		vector<PeakInfo> peaks;
+//		vector<LineInfo> lineInfo;
+//		vector<int> peaks_int;
+//		//peaks = lineFinder.start2_useContour(0);// test
+//		lineInfo = lineFinder.start2_useContour2(0, Scalar(255, 255, 255));// test
+//		//peaks = lineFinder.start2_getLinePeak(0);	// blueColoer
+//		printf(" \r\n	Color_blue \r\n");
+//		for (int i = 0; i < lineInfo.size(); i++)
+//		{
+//			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
+//			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+//			peaks_int.push_back(peaks[i].frameNum);
+//		}
+//
+//		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
+//		printf(" \r\n	Color_blue(merge_judgeLines \r\n");
+//		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+//		{
+//			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Peak " << i << " : " << peaks[i].frameNum;
+//			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+//			peaks_int.push_back(peaks[i].frameNum);
+//		}
+//		
+//		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+//		m_lyric.setUnprintColor(upColor);
+//
+//		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
+//		for(int i=0; i< lines.size(); i++)
+//			m_lyric.addLine(lines[i]);
+//
+//		string fileName = "getPeak_0(Blue).txt";
+//		fileManager::writeVector(fileName, peaks_int);
+//
+//		lineFinder.WriteLineInfo_toLog(lines);
+//	}
+//	if (1)
+//	{
+//		vector<PeakInfo> peaks;
+//		vector<int> peaks_int;
+//		peaks = lineFinder.start2_getLinePeak(1);	// redColoer
+//		printf(" \r\n	Color_red \r\n");
+//		for (int i = 0; i < peaks.size(); i++)
+//		{
+//			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+//			peaks_int.push_back(peaks[i].frameNum);
+//		}
+//
+//		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+//		m_lyric.setUnprintColor(upColor);
+//
+//		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
+//		for (int i = 0; i < lines.size(); i++)
+//			m_lyric.addLine(lines[i]);
+//
+//		string fileName = "getPeak_1(Red).txt";
+//		fileManager::writeVector(fileName, peaks_int);
+//
+//		lineFinder.WriteLineInfo_toLog(lines);
+//	}
+//	if (1)
+//	{
+//		vector<PeakInfo> peaks;
+//		vector<int> peaks_int;
+//		peaks = lineFinder.start2_getLinePeak(2);	// purpleColoer
+//		printf(" \r\n	Color_purple \r\n");
+//		for (int i = 0; i < peaks.size(); i++)
+//		{
+//			printf("peak %d : %d \r\n", i, peaks[i].frameNum);
+//			peaks_int.push_back(peaks[i].frameNum);
+//		}
+//
+//		Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+//		m_lyric.setUnprintColor(upColor);
+//
+//		vector<Line> lines = lineFinder.peakToLine(peaks, m_lyric.getUnprintColor());
+//		for (int i = 0; i < lines.size(); i++)
+//			m_lyric.addLine(lines[i]);
+//
+//		string fileName = "getPeak_2(Purple).txt";
+//		fileManager::writeVector(fileName, peaks_int);
+//
+//		lineFinder.WriteLineInfo_toLog(lines);
+//	}
+//
+//	m_lyric.sortingLine();
+//
+//	m_lyric.saveBinaryImage(fileManager::getSavePath());		// catpureBinaryImageOfLinesEnd()
+//	capturedLinesToText();
+//
+//	readLyricsFromFile();
+//	m_lyric.writeLyricFile(videoCapture);
+//
+//	// wordCalibration();	 << 재구현 해야함
+//	//m_lyric.writeLyric_withWordFile(videoCapture);	// WordCal 완료시 수행할 것
+//
+//	m_lyric.getTimeDataFromframeNum(videoCapture);
+//
+//	Json json;
+//	json.makeJson(m_lyric);
+//
+//	return 0;		// END,
+//
+//	
+//	Mat orgImage;
+//	Mat subImage;
+//	Mat binImage;
+//	Mat beforeBinImage;	// 이전 바이너리 이미지
+//
+//	Mat stackBinImage;
+//	Mat FCImage_before;
+//	Mat BWBPatternImage_before;
+//
+//	vecWhitePixelCounts.push_back(0);				// 프래임과 동기화 위해 배열 0번은 더미
+//	vecWhitePixelChangedCounts.push_back(0);		// 프래임과 동기화 위해 배열 0번은 더미
+//
+//	int curFrame = 0;
+//
+//	/* 이미지 분석 */
+//	while (videoCapture->read(orgImage))
+//	{
+//		videoHandler::printCurrentFrameSpec(*videoCapture);
+//		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+//		videoCapture->set(CAP_PROP_POS_FRAMES, (double)curFrame);	// curFrame 을 얻어서 다시 세팅해 주는 이유는 순차적으로 읽다가 frame이 높은 프레임에 도달했을 때 읽힌 image가 실재 frame의 image+-1의 이미지가 읽히는 등의 현상이 생김.
+//
+//		Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+//		//Mat fullyContrastImage = imageHandler::getFullyContrastImage(subImage);
+//		Mat fullyContrastImage = imageHandler::getFullyContrast_withDilate(subImage, Scalar(255, 0, 0));
+//		Mat BWBPatternImage = imageHandler::getBWBPatternImage(fullyContrastImage.clone());
+//
+//		Mat printImage_blue = imageHandler::getPaintedBinImage_inner(fullyContrastImage, true);
+//		Mat printImage_red = imageHandler::getPaintedBinImage_inner(fullyContrastImage, false);
+//		Mat printImage;
+//		bitwise_or(printImage_blue, printImage_red, printImage);
+//
+//		Mat mergedImage;
+//		//binImage = imageHandler::getPaintedBinImage(subImage);
+//
+//		if (stackBinImage.empty() == true)
+//			stackBinImage = Mat::zeros(subImage.rows, subImage.cols, CV_8U);	//dummy
+//		if (FCImage_before.empty() != true && BWBPatternImage_before.empty() != true)
+//		{
+//			imageHandler::stackFCImage(fullyContrastImage, FCImage_before, stackBinImage, BWBPatternImage_before);
+//			//imshow("stackBinImage", stackBinImage);	// stackBinImage 이거의 화이트카운트
+//			bitwise_and(printImage, stackBinImage, mergedImage);
+//		}
+//
+//		//White dot Count
+//		//vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(binImage));
+//		vecWhitePixelCounts.push_back(imageHandler::getWhitePixelCount(mergedImage));
+//	
+//		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Frame : " << curFrame << " pixelCount : " << vecWhitePixelCounts.back();
+//
+//		FCImage_before = fullyContrastImage.clone();
+//		BWBPatternImage_before = BWBPatternImage.clone();
+//	}	// end while
+//
+//	string fileName = "WhitePixelCount.txt";
+//	fileManager::writeVector(fileName, vecWhitePixelCounts);
+//
+//	/* 1. 라인 확정 */	// 여기서는 유효한 라인만 걸러냄 (start-end frame은 대략적인부분으로)
+//	getJudgedLine();
+//
+//	//return true;		// debug
+//	/* 2. 라인 보정 */ // 라인의 정확한 시작-끝 시간을 맞춤
+//	calibrateLines();
+//
+//	/* Save pictures */
+//	captureLines();
+//	capturedLinesToText();
+//
+//	readLyricsFromFile();
+//	m_lyric.writeLyricFile(videoCapture);
+//
+//	//wordCalibration();
+//
+//	//m_lyric.writeLyric_withWordFile(videoCapture);
+//
+//	//m_lyric.getTimeDataFromframeNum(videoCapture);
+//	//Json json;
+//	//json.makeJson(m_lyric);
+//
+//	closeVideo();
+//	return true;
+//}
 
 
 bool analyzer::videoAnalization3(string videoPath)
@@ -397,8 +398,9 @@ bool analyzer::videoAnalization3(string videoPath)
 		return false;
 	}
 
-	//Scalar unPrintColor = Scalar( 255, 255, 255 );//getUnprintColorRutin();	// YSYSYS
-	Scalar unPrintColor = getUnprintColorRutin();	
+	Scalar unPrintColor;
+	bool isFoundColor = getUnprintColorRutin(unPrintColor);
+	//Scalar unPrintColor = Scalar( 255, 255, 255 );	// YSYSYS - for debug
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
 
@@ -406,19 +408,35 @@ bool analyzer::videoAnalization3(string videoPath)
 	LineInfoFinder lineFinder(videoCapture);
 	//Scalar unPrintColor = lineFinder.findUnprintColor(0);	// 파랑으로 UnprintColor 찾음
 	//return false;	// fortest
+	int lineFoundProcess_Lines[3] = { 0, };
+	int lineFoundProcess_Lines_error[3] = { 0, };
+
+	int mergeProcess_Lines[3] = { 0, };
+	int mergeProcess_Lines_error[3] = { 0, };
 
 	for(int nColor = 0; nColor < 3; nColor++)	// 0=blue, 1=red, 2=purple
 	{
+		
 		//if (nColor == 0)		// YSYSYS - debug
 		//	continue;
-		//if (nColor == 1)	// RED
+		//if (nColor == 2)	// RED
 		//	continue;
 
 		vector<LineInfo> lineInfo;
+		vector<LineInfo> notErrorLineInfo;
 		lineInfo = lineFinder.start2_useContour2(nColor, unPrintColor);
 		printf(" \r\n	Color : %d \r\n", nColor);
 		for (int i = 0; i < lineInfo.size(); i++)
 		{
+			lineFoundProcess_Lines[nColor]++;
+			if (lineInfo[i].isValid != true)
+			{
+				lineFoundProcess_Lines_error[nColor]++;	// 라인 중 에러였던 것.
+				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : ERROR:"<< lineInfo[i].errorNumber << "(" << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end << ")";
+				continue;
+			}
+
+			notErrorLineInfo.push_back(lineInfo[i]);
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
 			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
 			Mat bin_Debug;
@@ -427,30 +445,41 @@ bool analyzer::videoAnalization3(string videoPath)
 			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
-		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(lineInfo);	//
+		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(notErrorLineInfo);	//
+		vector<LineInfo> noErrorMergeJudgeLineInfo;
+
 		printf(" \r\n	Color(merge_judgeLines \r\n");
 		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
 		{
-			if (!mergeJudgeLineInfo[i].isValid)
+			mergeProcess_Lines[nColor]++;
+			if (!mergeJudgeLineInfo[i].isValid != true)
 			{
-				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "NOT Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
-				printf("NOT Line %d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
+				mergeProcess_Lines_error[nColor]++;	// 라인 중 에러였던 것.
+				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : ERROR:" << mergeJudgeLineInfo[i].errorNumber;
 				continue;
 			}
+			noErrorMergeJudgeLineInfo.push_back(mergeJudgeLineInfo[i]);
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
 			printf("Line %2d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
 			Mat bin_Debug;
 			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", mergeJudgeLineInfo[i].maskImage_withWeight);
 			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge_d_" + to_string(i) + ".jpg", bin_Debug);
+
+			mergeJudgeLineInfo[i].printColor = nColor;	// 컬러코드 정의필요()
+			lineInfo_all.push_back(mergeJudgeLineInfo[i]);	// 통합라인에 추가
 		}
 
-		for (int i = 0; i < lineInfo.size(); i++)
-		{
-			lineInfo[i].printColor = nColor;	// 컬러코드 정의필요()
-			lineInfo_all.push_back(lineInfo[i]);
-		}
 	}
+	
+	// 라인, 에러 통계 출력
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "FOUND-LINE, ERROR-LINE";
+	for (int i = 0; i < 3; i++)	// color Types
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << lineFoundProcess_Lines[i] << "	" << lineFoundProcess_Lines_error[i];
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << mergeProcess_Lines[i] << "	" << mergeProcess_Lines_error[i];
+	}
+
 	
 	vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeLineInfo(lineInfo_all);	//전체 라인 머지	
 
@@ -476,6 +505,7 @@ bool analyzer::videoAnalization3(string videoPath)
 		capturedLinesToText();
 
 		readLyricsFromFile();
+		findErrorFromLyrics();
 		m_lyric.writeLyricFile(videoCapture);
 
 		m_lyric.getTimeDataFromframeNum(videoCapture);
@@ -502,7 +532,31 @@ bool analyzer::videoAnalization3(string videoPath)
 
 	*/
 }
-Scalar analyzer::getUnprintColorRutin()
+void analyzer::findErrorFromLyrics()
+{
+	int errorCount = 0;
+	for (int i = 0; i < m_lyric.getLinesSize(); i++)
+	{
+		Line* line = m_lyric.getLine(i);
+		if (line->text.size() < 5)	// 글자수가 5이하일때
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text <<" (size under 5)" ;
+			line->text = line->text + " (ERROR:size under 5)";
+			errorCount++;
+		}
+		else if (line->text.find("  ") != std::string::npos)	 // 글자에 띄어쓰기가 연속으로 들어갈 떄
+		{
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text << " (have continity space word)";
+			line->text = line->text + " (ERROR:have continity space word 5)";
+			errorCount++;
+		}
+		
+	}
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "lyric Error : "<< errorCount <<"/" << m_lyric.getLinesSize();
+	return;
+}
+
+bool analyzer::getUnprintColorRutin(Scalar& color)
 {
 	videoCapture = videoHandler::getVideoCapture();
 	if (videoCapture == nullptr)
@@ -526,10 +580,12 @@ Scalar analyzer::getUnprintColorRutin()
 		bitwise_and(peakMask, peaks[i].PeakImage, peaks[i].PeakImage);
 	}
 
-	Vec3b upColor = lineFinder.findUnprintColor(peaks);	// Unprint 컬러 파악 루틴
+	Vec3b upColor;
+	bool isFound = lineFinder.findUnprintColor(peaks, upColor);	// Unprint 컬러 파악 루틴
 
 	Scalar UnprintColor = { (double)upColor[0], (double)upColor[1], (double)upColor[2] };
-	return UnprintColor;
+	color = UnprintColor;
+	return isFound;
 }
 /*
 	1. 백->흑으로 바뀌는 점이 많은 Frame 탐색

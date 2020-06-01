@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 #include "imageHandler.h"
+#include "AccumulateMat.h"
 
 using namespace cv;
 using namespace std;
@@ -11,6 +12,8 @@ using namespace std;
 class PeakFinder
 {
 public:
+	AccumulateMat accMat; 		// 입력 색상(B,R,P)에 대한누적이미지
+
 	Mat m_stackBinImage;				// 패턴 누적 이미지
 	Mat m_contourMaxBinImage;			// stackBinImage에서 컨투어들의 max값으로 치환한 이미지
 	vector<contourInfo> m_contourMaxBinImage_contourInfos;		// contourMaxBinImage의 컨투어 정보
@@ -33,10 +36,12 @@ public:
 public:
 	vector<contourLineInfoSet> frameImage_process(Mat frameImage, int frameNumber, Scalar targetColor, Mat refUnprintImage);
 
-	void stackBinImageCorrect(Mat validImage);
+	void stackBinImageCorrect(contourLineInfoSet lineSet);//Mat validImage)
 	
 private:
-	Mat stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage);;
+	Mat stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage, Mat refPatternStack);
+	Mat stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnprintImage);
+	Mat stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage);
 
 	void makeContourMaxBinImageAndContourInfos();
 	Mat getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpaint);

@@ -16,7 +16,7 @@ Mat UnprintImage::unprintImage_process(Mat frameImage)
 
 	if (m_UnprintImage.empty())
 	{	// get dummy
-		m_UnprintImage = Mat::ones(targetColorImage.rows, targetColorImage.cols, CV_8U)*255;
+		m_UnprintImage = Mat::ones(targetColorImage.rows, targetColorImage.cols, CV_8U)*253;
 	}
 	else
 	{

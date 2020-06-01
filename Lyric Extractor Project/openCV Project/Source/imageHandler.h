@@ -164,5 +164,9 @@ public:
 	static Mat getPatternFillImage_2(Mat rgbImage, Scalar targetColor);// 단일컬러로만
 	static Mat getFillImage(Mat rgbImage, Scalar targetColor);
 	static Mat getFillImage_unPrint(Mat rgbImage, Scalar targetColor);
+
+	static Mat getDepthContourRemovedMat(Mat binImage);
+
+	static int getAvgContourVolume(Mat binMImage);
 };
 
