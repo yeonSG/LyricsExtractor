@@ -26,13 +26,15 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	else
 	{
 		// 원래
+		Mat test_refUnprintImage = refUnprintImage;
+		Mat test_m_stackBinImage = m_stackBinImage;
 		
 		Mat bin_refUnprintImage;
-		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
-		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
+		//inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
+		//m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
 		// 이 이미지를 통하여 컨투어 판단을 하고 라인으로 처리함
 
-		//m_stackBinImage = stackBinImage2(m_stackBinImage, patternStack, refUnprintImage);
+		m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
 		//m_stackBinImage = stackBinImage_noiseRemove(m_stackBinImage, patternFill);
 		
 		// m_stackBinImage , patternFill에다가 노이즈제거 하고 0인것을 m_stackBinImage에다가 적용 
@@ -46,7 +48,7 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		makeContourMaxBinImageAndContourInfos();
 		makeExpectedLineInfos();
 		printf("[found CLine %d]", m_contourMaxBinImage_expectedLineInfo.size());
-
+		
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
 	}
 	Mat m_stackBinImage_debug;
@@ -195,12 +197,13 @@ Mat PeakFinder::stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnpri
 
 			bool isPatternDot;
 
-			//if (abs(yPtr_pattern[x] - yPtr_refUnprint[x]) < 3	// +- 2 인 곳
+			int dif = yPtr_refUnprint[x] - yPtr_pattern[x];
+			if (dif < 3 && dif > 0)	// +- 2 인 곳				
 			//	&& (abs(yPtr_stack[x] - yPtr_pattern[x]) < 10)// stackImage 와 비교했을 때 차이가 크지 않은 것 	
 			//	)
-			if(yPtr_refUnprint[x] == yPtr_pattern[x]
+//			if(yPtr_refUnprint[x] == yPtr_pattern[x]
 //				&& (yPtr_refUnprint[x] - yPtr_pattern[x] < 5)//  	
-				)
+//				)
 			{
 				isPatternDot = true;
 			}
@@ -295,11 +298,11 @@ void PeakFinder::makeContourMaxBinImageAndContourInfos()
 		}
 		//int avgContourColor = sum / indices.size();
 
-		for (int idx = 0; idx < indices.size(); idx++)
+		for (int idx = 0; idx < indices.size(); idx++)	// 해당 컨투어에 맥스값을 칠함
 		{
 			uchar* yPtr = outImage.ptr<uchar>(indices[idx].y);	//in
 			//yPtr[indices[idx].x] = avgContourColor;
-			yPtr[indices[idx].x] = max;
+			yPtr[indices[idx].x] = max;					// 이거 하지않는것은..?
 		}
 
 		contourInfo conInfo = getContourInfoFromPixels(indices);

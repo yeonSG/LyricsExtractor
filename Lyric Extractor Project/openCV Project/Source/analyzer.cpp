@@ -398,9 +398,9 @@ bool analyzer::videoAnalization3(string videoPath)
 		return false;
 	}
 
-	Scalar unPrintColor;
-	bool isFoundColor = getUnprintColorRutin(unPrintColor);
-	//Scalar unPrintColor = Scalar( 255, 255, 255 );	// YSYSYS - for debug
+	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
+	//bool isFoundColor = getUnprintColorRutin(unPrintColor);
+
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
 
