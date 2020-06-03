@@ -498,8 +498,9 @@ vector<PeakInfo> LineInfoFinder::start2_useContour(int PrintTypeNum)
 					int maxValue = 0;
 					for (int j = 0; j < expectedLineInfos[i].first.contours.size(); j++)
 					{
-						if (expectedLineInfos[i].first.contours[j].maxValue > maxValue)
-							maxValue = expectedLineInfos[i].first.contours[j].maxValue;
+						int val = expectedLineInfos[i].first.contours[j].getMaxValue();
+						if (val > maxValue)
+							maxValue = val;
 					}
 					printf(" [Line start Frame : %d] \r\n", curFrame - (maxValue + expectedLineInfos[i].second));
 					
@@ -567,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 690;//3650;	// debug	 // YSYSYS
+	int curFrame = 340;//3650;	// debug	 // YSYSYS
 	
 #endif
 
@@ -1543,14 +1544,14 @@ int LineInfoFinder::getSequentialIncreasedContoursCount(vector<contourInfo> cont
 				seqContours.push_back(contours[i]);
 			else // 
 			{
-				if (seqContours.back().maxValue > contours[i].maxValue)
+				if (seqContours.back().getMaxValue() > contours[i].getMaxValue())
 				{
 					seqContours.push_back(contours[i]);
 				}
 				else
 				{
 					if (seqContours.size() >= 2
-						&& seqContours[seqContours.size() - 1].maxValue > contours[i].maxValue)
+						&& seqContours[seqContours.size() - 1].getMaxValue() > contours[i].getMaxValue())
 					{
 						seqContours.back() = contours[i];	// 저장된값의 마지막 값보다 크면서 그 이전값보다 작으면 업데이트
 					}

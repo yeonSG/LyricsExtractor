@@ -30,11 +30,11 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		Mat test_m_stackBinImage = m_stackBinImage;
 		
 		Mat bin_refUnprintImage;
-		//inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
-		//m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
+		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
+		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
 		// 이 이미지를 통하여 컨투어 판단을 하고 라인으로 처리함
 
-		m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
+		//m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
 		//m_stackBinImage = stackBinImage_noiseRemove(m_stackBinImage, patternFill);
 		
 		// m_stackBinImage , patternFill에다가 노이즈제거 하고 0인것을 m_stackBinImage에다가 적용 
@@ -297,16 +297,21 @@ void PeakFinder::makeContourMaxBinImageAndContourInfos()
 				max = yPtr[indices[idx].x];
 		}
 		//int avgContourColor = sum / indices.size();
-
+		
+		vector<int> includeValues;
 		for (int idx = 0; idx < indices.size(); idx++)	// 해당 컨투어에 맥스값을 칠함
 		{
-			uchar* yPtr = outImage.ptr<uchar>(indices[idx].y);	//in
+			uchar* yPtr_stack = m_stackBinImage.ptr<uchar>(indices[idx].y);	//in
+			uchar* yPtr_out = outImage.ptr<uchar>(indices[idx].y);	//in
 			//yPtr[indices[idx].x] = avgContourColor;
-			yPtr[indices[idx].x] = max;					// 이거 하지않는것은..?
+			//yPtr_out[indices[idx].x] = max;						// 이거 하지않는것은..?	 YS-TAG : max 값이 아닌 가지고 있는 값들의 배열을 갖음
+			yPtr_out[indices[idx].x] = yPtr_stack[indices[idx].x];	// 원본복사
+			includeValues.push_back(yPtr_stack[indices[idx].x]);
 		}
-
+		includeValues = contourInfo::includeValuesDeduplicate(includeValues);
 		contourInfo conInfo = getContourInfoFromPixels(indices);
-		conInfo.maxValue = max;
+		//conInfo.maxValue = max;
+		conInfo.includeValues = includeValues;
 		m_contourMaxBinImage_contourInfos.push_back(conInfo);
 	}
 	sort(m_contourMaxBinImage_contourInfos.begin(), m_contourMaxBinImage_contourInfos.end(), imageHandler::asc_contourInfo);
@@ -349,12 +354,13 @@ Mat PeakFinder::getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpa
 
 vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourInfo> contourInfos)
 {
+	// ys-tag
 	vector<contourLineInfo> conLineInfos;	// Expect contour Line
 	
 		;	// contourLineInfo 생성 루틴
 			// 2.1 전채순회하여 모든 연결 구함 (모든 컨투어 진행)
 			// 2.2 
-		for (int i = 0; i < contourInfos.size(); i++)
+		for (int i = 0; i < contourInfos.size(); i++)	// contourInfos 는 x_start좌표 기준으로 정렬되어있음
 		{
 			if (contourInfos[i].isRefed == false)
 			{
@@ -366,13 +372,20 @@ vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourIn
 				contourLineInfo.coorX_start = contourInfos[i].coorX_start;
 				contourLineInfo.coorX_end = contourInfos[i].coorX_end;
 
-				for (int j = i + 1; j < contourInfos.size(); j++)	// 남은 컨투어들 확인
+				for (int j = i + 1; j < contourInfos.size(); j++)	// 남은 컨투어들 확인	
 				{
 					// Y start~end 안에 포함된다면 추가
 					if (imageHandler::isRelation(contourLineInfo.coorY_start, contourLineInfo.coorY_end, contourInfos[j].coorY_start, contourInfos[j].coorY_end))
 					{
-						contourLineInfo.contours.push_back(contourInfos[j]);
-						contourInfos[j].isRefed = true;
+						for (int rec = 0; rec < contourLineInfo.contours.size(); rec++)	// 이전값이 값이 넣으려는 값보다 큰게 있어야함
+						{
+							if (contourInfos[j].getMaxValue() < contourLineInfo.contours[rec].getMaxValue())
+							{
+								contourLineInfo.contours.push_back(contourInfos[j]);
+								contourInfos[j].isRefed = true;
+								break;
+							}
+						}
 					}
 					contourLineInfo.pixelCount = imageHandler::getContourLineInfoVolume(contourLineInfo);
 				}
@@ -380,6 +393,11 @@ vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourIn
 				conLineInfos.push_back(contourLineInfo);
 			}
 		}	
+
+		for (int i = 0; i < conLineInfos.size(); i++)
+		{
+			conLineInfos[i].maxValue = conLineInfos[i].getMaxValue();
+		}
 		return conLineInfos;
 }
 
@@ -397,7 +415,6 @@ Mat PeakFinder::getLineInfoAreaCuttedImage(contourLineInfo LineInfo)
 contourInfo PeakFinder::getContourInfoFromPixels(vector<Point> pixels)
 {
 	contourInfo conInfo;
-	conInfo.maxValue = 0;
 	for (int idx = 0; idx < pixels.size(); idx++)
 	{
 		if (idx == 0)	// 초기화
@@ -453,12 +470,10 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 			if (conLineInfos[i].coorX_end < conLineInfos[i].contours[j].coorX_end)
 				conLineInfos[i].coorX_end = conLineInfos[i].contours[j].coorX_end;	// 최대값
 		}
-
-
 	}
 
 	vector<contourLineInfo> conLineInfos_buffer;
-	for (int i = 0; i < conLineInfos.size(); i++)	// 2.
+	for (int i = 0; i < conLineInfos.size(); i++)	// 2. -> 3번이 먼저 해야 하지 않을까..?
 	{
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
@@ -476,13 +491,23 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 	conLineInfos = conLineInfos_buffer;
 	conLineInfos_buffer.clear();
 
-	for (int i = 0; i < conLineInfos.size(); i++)	// 3. 
+	for (int i = 0; i < conLineInfos.size(); i++)	// 3. Y 기준으로 머지
 	{
 		bool isMerged = false;
 		for (int j = 0; j < conLineInfos_buffer.size(); j++)
 		{
-			if (imageHandler::isRelation(conLineInfos_buffer[j].coorY_start, conLineInfos_buffer[j].coorY_end, conLineInfos[i].coorY_start, conLineInfos[i].coorY_end))
+			// 머지조건 : Y축 겹침 AND X축이 앞선것이 max값이 크거나 같음
+			if (imageHandler::isRelation(conLineInfos_buffer[j].coorY_start, conLineInfos_buffer[j].coorY_end, conLineInfos[i].coorY_start, conLineInfos[i].coorY_end)
+				&& (((conLineInfos_buffer[j].coorX_start > conLineInfos[i].coorX_start) && (conLineInfos_buffer[j].getMaxValue() <= conLineInfos[i].getMaxValue()))
+				|| ((conLineInfos_buffer[j].coorX_start < conLineInfos[i].coorX_start) && (conLineInfos_buffer[j].getMaxValue() >= conLineInfos[i].getMaxValue())))
+				)
 			{
+				if (conLineInfos_buffer[j].coorX_start > conLineInfos[i].coorX_start)
+					conLineInfos_buffer[j].coorX_start = conLineInfos[i].coorX_start;
+
+				if (conLineInfos_buffer[j].coorX_end < conLineInfos[i].coorX_end)
+					conLineInfos_buffer[j].coorX_end = conLineInfos[i].coorX_end;
+
 				if (conLineInfos_buffer[j].coorY_start > conLineInfos[i].coorY_start)
 					conLineInfos_buffer[j].coorY_start = conLineInfos[i].coorY_start;
 
@@ -512,8 +537,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		conLineInfos[i].contours.erase(
 			unique(conLineInfos[i].contours.begin(), conLineInfos[i].contours.end(),
 				[](const contourInfo& a, const contourInfo& b) {
-			if (a.maxValue == b.maxValue &&
-				a.coorX_start == b.coorX_start &&
+			if (a.coorX_start == b.coorX_start &&
 				a.coorX_end == b.coorX_end &&
 				a.coorY_start == b.coorY_start &&
 				a.coorY_end == b.coorY_end)
@@ -706,8 +730,9 @@ int PeakFinder::getMaxValue(contourLineInfo lineInfo)
 	int maxValue = 0;
 	for (int i = 0; i < lineInfo.contours.size(); i++)
 	{
-		if (lineInfo.contours[i].maxValue > maxValue)
-			maxValue = lineInfo.contours[i].maxValue;
+		int val = lineInfo.contours[i].getMaxValue();
+		if (val > maxValue)
+			maxValue = val;
 	}
 	return maxValue;
 }

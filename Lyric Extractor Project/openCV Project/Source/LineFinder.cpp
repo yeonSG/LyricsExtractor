@@ -195,6 +195,7 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	int totalRange = rightistCoorX- leftistCoorX;
 	int sepaRange = totalRange / 3;
 	vector<int> weightAvg;
+	vector<int> pixelsum;
 	Mat maskImage_rmNoise = lineInfo.maskImage_withWeight.clone();
 	inRange(maskImage_rmNoise, 4, 255, maskImage_rmNoise);	// 3프레임까지 버림
 	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
@@ -206,9 +207,10 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, lineInfo.maskImage_withWeight.rows);
 		bitwise_and(areaMask, maskImage_rmNoise, areaMask);
 		weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
+		pixelsum.push_back(imageHandler::getWhitePixelCount(areaMask));
 		if (weightAvg.back() == 0)
 		{
-			lineInfo.errorOccured(LINEERROR_MASKCHECK_WEIGHT);
+			lineInfo.errorOccured(LINEERROR_MASKCHECK_WEIGHT_AVG);
 			return lineInfo;
 		}
 	}
@@ -216,7 +218,7 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	int minVal = 255;
 	for (int i = 0; i < weightAvg.size(); i++)
 	{
-		if (weightAvg[i] <= minVal)
+		if (weightAvg[i] < minVal)	// 1이라도 감소해야함
 		{
 			minVal = weightAvg[i];
 		}

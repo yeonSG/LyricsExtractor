@@ -13,10 +13,14 @@ public:
 	int coorX_end;			//
 	int coorY_start;		//	*y좌표 시작점
 	int coorY_end;			//	*y좌표 끝점 
-	int maxValue;
+	//int maxValue;
+	vector<int> includeValues;
+	int getMaxValue();
+
 	int pixelCount;
 	bool isRefed = false;	// 참조 되었는지에 대한 여부
 
+	static vector<int> includeValuesDeduplicate(vector<int> includeValues);	//중복제거
 	static vector<contourInfo> getContourInfosFromBinImage(Mat binImage, Mat &outImage);	
 	static contourInfo getContourInfoFromPixels(vector<Point> pixels);
 };
@@ -43,6 +47,8 @@ public:
 	WeightMat weightMat;		// LineInfo에 대한 bin이미지 
 	WeightMat weightMat_Unprint;// 해당 시점의 unprint Weight Image
 	contourLineInfo();
+
+	int getMaxValue();
 
 	static contourLineInfo getLineinfoFrombinMat(Mat binWeightMat);
 };

@@ -445,6 +445,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
+		int validLineCount = 0;
 		vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeAndJudgeLineInfo(notErrorLineInfo);	//
 		vector<LineInfo> noErrorMergeJudgeLineInfo;
 
@@ -467,7 +468,30 @@ bool analyzer::videoAnalization3(string videoPath)
 			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge_d_" + to_string(i) + ".jpg", bin_Debug);
 
 			mergeJudgeLineInfo[i].printColor = nColor;	// 컬러코드 정의필요()
-			lineInfo_all.push_back(mergeJudgeLineInfo[i]);	// 통합라인에 추가
+			validLineCount++;
+		}
+
+		bool isHaveColor = false;
+		if (nColor != 0)	// 라인 색이 파랑이 아닐 때 조건 추가
+		{
+			if (validLineCount > 5)	// 라인 카운트가 5이상
+			{
+				if (lineInfo_all.size() > 2)
+				{
+					if (lineInfo_all.size() * 0.2 < validLineCount)	// 파랑 라인의 20% 이상이어야 인정
+					{
+						isHaveColor = true;
+					}
+				}
+			}
+		}
+		else if (nColor == 0)	// 파랑일때
+			isHaveColor = true;
+
+		if (isHaveColor)
+		{
+			for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+				lineInfo_all.push_back(mergeJudgeLineInfo[i]);	// 통합라인에 추가
 		}
 
 	}

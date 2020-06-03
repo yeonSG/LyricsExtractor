@@ -573,7 +573,6 @@ Mat imageHandler::getMaxColorContoursImage(Mat& binaryMat, vector<contourLineInf
 		}
 
 		contourInfo conInfo;
-		conInfo.maxValue = max;
 		for (int idx = 0; idx < indices.size(); idx++)
 		{
 			if (idx == 0)	// 초기화
@@ -693,8 +692,7 @@ Mat imageHandler::getMaxColorContoursImage(Mat& binaryMat, vector<contourLineInf
 		conLineInfos[i].contours.erase(
 			unique(conLineInfos[i].contours.begin(), conLineInfos[i].contours.end(),
 				[](const contourInfo& a, const contourInfo& b) {
-			if (a.maxValue == b.maxValue &&
-				a.coorX_start == b.coorX_start &&
+			if (a.coorX_start == b.coorX_start &&
 				a.coorX_end == b.coorX_end &&
 				a.coorY_start == b.coorY_start &&
 				a.coorY_end == b.coorY_end)
@@ -2903,6 +2901,19 @@ contourLineInfo::contourLineInfo()
 	;
 }
 
+int contourLineInfo::getMaxValue()
+{
+	int max = 0;
+	for (int i = 0; i < contours.size(); i++)
+	{
+		int val = contours[i].getMaxValue();
+		if (max < val)
+			max = val;
+	}
+	return max;
+	return 0;
+}
+
 contourLineInfo contourLineInfo::getLineinfoFrombinMat(Mat binWeightMat)
 {
 	return contourLineInfo();
@@ -2978,6 +2989,32 @@ Mat imageHandler::getFillImage_unPrint(Mat rgbImage, Scalar targetColor)
 	return FC_Bin;
 }
 
+int contourInfo::getMaxValue()
+{
+	int max = 0;
+	for (int i = 0; i < includeValues.size(); i++)
+	{
+		if (max < includeValues[i])
+			max = includeValues[i];
+	}
+	return max;
+}
+
+vector<int> contourInfo::includeValuesDeduplicate(vector<int> includeValues)
+{
+	sort(includeValues.begin(), includeValues.end(), greater<int>());
+	includeValues.erase(
+		unique(includeValues.begin(), includeValues.end(),
+			[](const int& a, const int& b) {
+		if (a == b)
+			return true;
+		else
+			return false;
+	}), includeValues.end());
+
+	return includeValues;
+}
+
 vector<contourInfo> contourInfo::getContourInfosFromBinImage(Mat binImage, Mat &outImage)	// m_unPrintWeight 이미지도 사용해서 뽑자..
 {
 	outImage = Mat::zeros(binImage.rows, binImage.cols, CV_8U);
@@ -3024,7 +3061,6 @@ vector<contourInfo> contourInfo::getContourInfosFromBinImage(Mat binImage, Mat &
 		}
 
 		contourInfo conInfo = contourInfo:: getContourInfoFromPixels(indices);
-		conInfo.maxValue = max;
 		outInfos.push_back(conInfo);
 	}
 	sort(outInfos.begin(), outInfos.end(), imageHandler::asc_contourInfo);
@@ -3035,7 +3071,6 @@ vector<contourInfo> contourInfo::getContourInfosFromBinImage(Mat binImage, Mat &
 contourInfo contourInfo::getContourInfoFromPixels(vector<Point> pixels)
 {
 	contourInfo conInfo;
-	conInfo.maxValue = 0;
 	for (int idx = 0; idx < pixels.size(); idx++)
 	{
 		if (idx == 0)	// 초기화
