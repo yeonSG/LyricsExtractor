@@ -123,6 +123,7 @@ public:
 
 	static Mat cutColumByHistorgram(Mat binImage);
 	static Mat removeSubLyricLine(Mat binImage);
+	static Mat removeSubLyricLine2(Mat binImage);
 	static Mat removeNotPrimeryLyricLine(Mat binImage);
 
 	static bool isWhite(const Vec3b& ptr);

@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 340;//3650;	// debug	 // YSYSYS
+	int curFrame = 3300;//3650;	// debug	 // YSYSYS
 	
 #endif
 
@@ -628,7 +628,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 						Mat tt_3peakFinder_after = peakFinder.m_stackBinImage.clone();
 						//unprintImage.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);
 						// peakFinder.m_stackBinImage 보정
-						//if (lineInfos.size() == 2)	// ysysys
+						//if (lineInfos.size() == 3)	// ysysys
 						//	return lineInfos;
 					}
 					else
@@ -640,12 +640,12 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 		}
 
 #if(0 && _DEBUG)
-		cout << endl;
-		imshow("stackBinImage", peakFinder.m_stackBinImage);
-		Mat debugImg;
-		inRange(peakFinder.m_stackBinImage, 1, 255, debugImg);
-		imshow("debugImg", debugImg);
-		imshow("subImage", subImage);
+		//cout << endl;
+		//imshow("stackBinImage", peakFinder.m_stackBinImage);
+		//Mat debugImg;
+		//inRange(peakFinder.m_stackBinImage, 1, 255, debugImg);
+		//imshow("debugImg", debugImg);
+		//imshow("subImage", subImage);
 
 		{	// for test
 			int key = waitKey(0);
@@ -1587,13 +1587,14 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 	{
 		Mat floodfill = imageHandler::getBorderFloodFilledImage(lineInfo_out[i].maskImage_withWeight);
 		Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(floodfill);
+		Mat clearedImage = imageHandler::removeNotPrimeryLyricLine(erodeImage_Denoise);
 
 		LineInfo tempLineinfo;
-		tempLineinfo.maskImage_withWeight = erodeImage_Denoise;
+		tempLineinfo.maskImage_withWeight = clearedImage;
 		tempLineinfo = LineFinder::checkValidMask(tempLineinfo);
 		if (tempLineinfo.isValid)
 		{
-			lineInfo_out[i].maskImage_withWeight = erodeImage_Denoise.clone();
+			lineInfo_out[i].maskImage_withWeight = tempLineinfo.maskImage_withWeight.clone();
 			lineInfo_out[i].isValid = true;
 		}
 		else
@@ -1625,14 +1626,22 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 			bool isRelation = imageHandler::isRelation(lineInfo_temp.back().frame_start, lineInfo_temp.back().frame_end, lineInfos[i].frame_start, lineInfos[i].frame_end);
 			if (isRelation)	// 겹친다면 병합 수행
 			{
-				bool isOtherLine_byYcoor = false;;
-				bool isOtherLine_byframe = false;;	// 둘다 만족해야 다른 라인으로 봄
+				bool isOtherLine_byYcoor = false;
+				bool isOtherLine_byframe = false;	// 둘다 만족해야 다른 라인으로 봄
 
 				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
 				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
 				if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
 				{
 					isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
+				}
+
+				// 부분집합인지 확인
+				bool isSubset = false;
+				if (lineInfo_temp.back().frame_start <= lineInfos[i].frame_start && lineInfo_temp.back().frame_end >= lineInfos[i].frame_end
+					|| lineInfo_temp.back().frame_start >= lineInfos[i].frame_start && lineInfo_temp.back().frame_end <= lineInfos[i].frame_end)
+				{
+					isSubset = true;
 				}
 
 				int allLength_start = min(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
@@ -1648,32 +1657,56 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 				}
 				else
 				{
-					int allLength = allLength_end - allLength_start;	
+					int allLength = allLength_end - allLength_start;
 					if (allLength == 0)	// error 방지
 						;
-					else if ((dupLength / (float)allLength) < 0.7)	// 60프로도 겹치지 않음
+					else if ((dupLength / (float)allLength) < 0.7)	// 70프로도 겹치지 않음
 						isOtherLine_byframe = true;
 				}
-					
 
-				if(isOtherLine_byYcoor && isOtherLine_byframe)
-				{
-					lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.
-					continue;
+
+				if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
+				{	// 듀엣라인검사
+					if (isOtherLine_byYcoor && isOtherLine_byframe)
+					{
+						lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.
+						continue;
+					}
+					else // 같은 라인 (머지)
+					{
+						relationCount++;
+						if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
+							lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
+						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
+							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
+						Mat orImg;
+						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
+						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+
+						if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
+							lineInfo_temp.back().printColor = 3;	// 컬러코드 (3==듀엣)
+					}
 				}
-				else // 같은 라인 (머지)
-				{
-					relationCount++;
-					if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
-						lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
-					if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
-						lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
-					Mat orImg;
-					bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
-					lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+				else
+				{	// 일반라인검사
+					if (isOtherLine_byYcoor && isOtherLine_byframe && !isSubset)
+					{
+						lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.
+						continue;
+					}
+					else // 같은 라인 (머지)
+					{
+						relationCount++;
+						if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
+							lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
+						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
+							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
+						Mat orImg;
+						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
+						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
 
-					if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
-						lineInfo_temp.back().printColor = 3;	// 컬러코드 (3==듀엣)
+					}
+
 				}
 			}
 			else

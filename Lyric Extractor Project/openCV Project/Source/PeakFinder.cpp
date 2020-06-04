@@ -1,16 +1,19 @@
-#include "PeakFinder.h"
+ï»¿#include "PeakFinder.h"
 #include "loger.h"
 
 const int PeakFinder::JUDGE_TIMEOUT = 5;
 
 vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int frameNumber, Scalar targetColor, Mat refUnprintImage)
 {	
-	Mat patternFill = imageHandler::getPatternFillImage_2(frameImage, targetColor);		// ³ëÀÌÁî Á¦°ÅÇÑ°Å
-	Mat patternFill_RemoveDepthContour = imageHandler::getDepthContourRemovedMat(patternFill); // patternFill ¿¡¼­ µª½º°¡ 1ÀÌ»óÀÎ °÷ »èÁ¦ (O ¾È¿¡ ³ëÀÌÁî°¡ ÀÖÀ» ¶§ ¹®Á¦ ¹ß»ı°¡´É.. )
+	Mat patternFill = imageHandler::getPatternFillImage_2(frameImage, targetColor);		// ë…¸ì´ì¦ˆ ì œê±°í•œê±°
+	Mat patternFill_RemoveDepthContour = imageHandler::getDepthContourRemovedMat(patternFill); // patternFill ì—ì„œ ëìŠ¤ê°€ 1ì´ìƒì¸ ê³³ ì‚­ì œ (O ì•ˆì— ë…¸ì´ì¦ˆê°€ ìˆì„ ë•Œ ë¬¸ì œ ë°œìƒê°€ëŠ¥.. )
+	//Mat test;
+	//inRange(patternFill_RemoveDepthContour, 1, 255, test);
+	//imshow("patternFill_RemoveDepthContour", patternFill_RemoveDepthContour);
 
 	Mat FC_Bin = imageHandler::getFillImage(frameImage, targetColor);
 	inRange(FC_Bin, Scalar(254, 254, 254), Scalar(255, 255, 255), FC_Bin);	// to 1 demend
-	Mat refPatternStack = accMat.accumulateProcess(FC_Bin);	// ³ëÀÌÁî Á¦°Å¾ÈÇÑ°Å
+	Mat refPatternStack = accMat.accumulateProcess(FC_Bin);	// ë…¸ì´ì¦ˆ ì œê±°ì•ˆí•œê±°
 
 	this->m_frameNumber = frameNumber;
 	this->m_refUnprintColorWeight = refUnprintImage;
@@ -25,20 +28,21 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 			}
 	else
 	{
-		// ¿ø·¡
-		Mat test_refUnprintImage = refUnprintImage;
-		Mat test_m_stackBinImage = m_stackBinImage;
+		// ì›ë˜
+		//if(frameNumber==3657)
+		//	Mat test_refUnprintImage = refUnprintImage;
+		//Mat test_m_stackBinImage = m_stackBinImage;
 		
 		Mat bin_refUnprintImage;
-		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// ÃÖ±Ù 3ÇÁ·¡ÀÓÁß Èò»öÀÌ¾ú´ø°÷
-		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStackµµ »ç¿ëÇÒ¼öÀÖÀ½
-		// ÀÌ ÀÌ¹ÌÁö¸¦ ÅëÇÏ¿© ÄÁÅõ¾î ÆÇ´ÜÀ» ÇÏ°í ¶óÀÎÀ¸·Î Ã³¸®ÇÔ
+		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// ìµœê·¼ 3í”„ë˜ì„ì¤‘ í°ìƒ‰ì´ì—ˆë˜ê³³
+		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStackë„ ì‚¬ìš©í• ìˆ˜ìˆìŒ
+		// ì´ ì´ë¯¸ì§€ë¥¼ í†µí•˜ì—¬ ì»¨íˆ¬ì–´ íŒë‹¨ì„ í•˜ê³  ë¼ì¸ìœ¼ë¡œ ì²˜ë¦¬í•¨
 
 		//m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
 		//m_stackBinImage = stackBinImage_noiseRemove(m_stackBinImage, patternFill);
 		
-		// m_stackBinImage , patternFill¿¡´Ù°¡ ³ëÀÌÁîÁ¦°Å ÇÏ°í 0ÀÎ°ÍÀ» m_stackBinImage¿¡´Ù°¡ Àû¿ë 
-		// Á¶°Ç : m_stackBinImage[x]°¡ 10 ÀÌ»ó, patternFill[x]°¡ 0
+		// m_stackBinImage , patternFillì—ë‹¤ê°€ ë…¸ì´ì¦ˆì œê±° í•˜ê³  0ì¸ê²ƒì„ m_stackBinImageì—ë‹¤ê°€ ì ìš© 
+		// ì¡°ê±´ : m_stackBinImage[x]ê°€ 10 ì´ìƒ, patternFill[x]ê°€ 0
 
 		//m_stackBinImage = imageHandler::getBorderFloodFilledImage(m_stackBinImage);
 
@@ -58,9 +62,9 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 }
 
 
-// x¶óÀÎÀÌ È®Á¤µÇ¸é È®Á¤µÈ ÀÌ¹ÌÁöº¸´Ù ¿©ÀüÈ÷ Å« °ªÀ» °¡Áö´Â Á¡À» º¸Á¤ÇØÁÖ¾î 
-// ¶óÀÎÀÌ È®Á¤µÇ¸é ÇØ´çÇÏ´Â yÃàÀÇ binImage¸¦ 0À¸·Î ¸¸µê.
-// ÀÌ ÈÄ ¶óÀÎ ÆÇº°µÉ ¶§ ¾Õ¿¡ ¶óÀÎ±îÁö Àâ¾Æ¸Ô´Â Çö»óÀ» Á¦°ÅÇÏ±â À§ÇÔ
+// xë¼ì¸ì´ í™•ì •ë˜ë©´ í™•ì •ëœ ì´ë¯¸ì§€ë³´ë‹¤ ì—¬ì „íˆ í° ê°’ì„ ê°€ì§€ëŠ” ì ì„ ë³´ì •í•´ì£¼ì–´ 
+// ë¼ì¸ì´ í™•ì •ë˜ë©´ í•´ë‹¹í•˜ëŠ” yì¶•ì˜ binImageë¥¼ 0ìœ¼ë¡œ ë§Œë“¦.
+// ì´ í›„ ë¼ì¸ íŒë³„ë  ë•Œ ì•ì— ë¼ì¸ê¹Œì§€ ì¡ì•„ë¨¹ëŠ” í˜„ìƒì„ ì œê±°í•˜ê¸° ìœ„í•¨
 void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImage)
 {
 	Mat corrImage = m_stackBinImage.clone();
@@ -76,10 +80,10 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 
 		for (int x = 0; x < width; x++)
 		{
-			if (yPtr_corr[x] > yPtr_valid[x] && yPtr_valid[x]!=0)	// stackBin[x]ÀÇ °ªÀÌ vaild[x]º¸´Ù Å©°í vaild[x]°¡ 0ÀÌ ¾Æ´Ñ °÷ Á¶Á¤ÇÔ
+			if (yPtr_corr[x] > yPtr_valid[x] && yPtr_valid[x]!=0)	// stackBin[x]ì˜ ê°’ì´ vaild[x]ë³´ë‹¤ í¬ê³  vaild[x]ê°€ 0ì´ ì•„ë‹Œ ê³³ ì¡°ì •í•¨
 			{
 				int temp = yPtr_corr[x] - (yPtr_valid[x] + JUDGE_TIMEOUT);
-				if (temp < 0)	// ¿¬»ê °ªÀÌ - ÀÌ¸é ¿¬»êÇÏÁö¾ÊÀ½
+				if (temp < 0)	// ì—°ì‚° ê°’ì´ - ì´ë©´ ì—°ì‚°í•˜ì§€ì•ŠìŒ
 					;//yPtr_corr[x] = 0;
 				else 
 					yPtr_corr[x] = temp;
@@ -89,7 +93,7 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 		}
 	}
 
-	// ÇØ´ç Y Ãà¿¡ 5 ÀÌ»óÀÎ °ªµé ÀüºÎ »èÁ¦.
+	// í•´ë‹¹ Y ì¶•ì— 5 ì´ìƒì¸ ê°’ë“¤ ì „ë¶€ ì‚­ì œ.
 	int removeY_start = lineSet.maximum.coorY_start;
 	int removeY_end = lineSet.maximum.coorY_end;
 
@@ -103,40 +107,41 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 				yPtr_corr[x] = 0;
 		}
 	}
-
 	m_stackBinImage = corrImage.clone();
 }
 
-// patternImage¿¡ ´ëÇÏ¿© Ãß°¡ ¿¬»ê ÇÊ¿ä ()
+// patternImageì— ëŒ€í•˜ì—¬ ì¶”ê°€ ì—°ì‚° í•„ìš” ()
 Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage, Mat refPatternStack)
 {
 	int height = stackBinImage.rows;
 	int width = stackBinImage.cols;
 
 	Mat bin_refUnprintImage;
-	inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// ÃÖ±Ù 3ÇÁ·¡ÀÓÁß Èò»öÀÌ¾ú´ø°÷
+	inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// ìµœê·¼ 3í”„ë˜ì„ì¤‘ í°ìƒ‰ì´ì—ˆë˜ê³³
 
-	// refUnprintImage ¿Í refPatternStackÀÇ °ªÀÌ °°Àº °÷ (0, 255 Á¦¿Ü)
-	Mat test_sameArea= Mat::zeros(height, width, CV_8U);
-	for (int y = 0; y < height; y++)
-	{
-		uchar* yPtr_unp= refUnprintImage.ptr<uchar>(y);
-		uchar* yPtr_p= refPatternStack.ptr<uchar>(y);
-		uchar* yPtr_out = test_sameArea.ptr<uchar>(y);
-		for (int x = 0; x < width; x++)
-		{
-			if (yPtr_unp[x] == yPtr_p[x])
-			{
-				if (yPtr_unp[x] != 255)
-				{
-					yPtr_out[x] = yPtr_p[x];
-				}
-			}
-		}
-	}
-	Mat test_sameArea_bin;
-	inRange(test_sameArea, 1, 255, test_sameArea_bin);
+	// refUnprintImage ì™€ refPatternStackì˜ ê°’ì´ ê°™ì€ ê³³ (0, 255 ì œì™¸)
+	//Mat test_sameArea= Mat::zeros(height, width, CV_8U);
+	//for (int y = 0; y < height; y++)
+	//{
+	//	uchar* yPtr_unp= refUnprintImage.ptr<uchar>(y);
+	//	uchar* yPtr_p= refPatternStack.ptr<uchar>(y);
+	//	uchar* yPtr_out = test_sameArea.ptr<uchar>(y);
+	//	for (int x = 0; x < width; x++)
+	//	{
+	//		if (yPtr_unp[x] == yPtr_p[x])
+	//		{
+	//			if (yPtr_unp[x] != 255)
+	//			{
+	//				yPtr_out[x] = yPtr_p[x];
+	//			}
+	//		}
+	//	}
+	//}
+	//Mat test_sameArea_bin;
+	//inRange(test_sameArea, 1, 255, test_sameArea_bin);
 
+	// refPatternStackì´ 0ì´ê³ , stackì´ !0ì¸ ê³³ì€ ìœ ì§€(++)
+	//
 
 	for (int y = 0; y < height; y++)
 	{
@@ -146,27 +151,32 @@ Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprin
 
 		uchar* yPtr_unp = refUnprintImage.ptr<uchar>(y);
 		uchar* yPtr_p = refPatternStack.ptr<uchar>(y);
-		uchar* yPtr_refsum = test_sameArea_bin.ptr<uchar>(y);
+		//uchar* yPtr_refsum = test_sameArea_bin.ptr<uchar>(y);
 
 		for (int x = 0; x < width; x++)
 		{
-			// ´©Àû¹ı
-			// ÆĞÅÏÀÌ °ËÁ¤ -> 0Ã³¸®
-			// ÆĞÅÏÀÌ Èò»ö and Unprint°¡ Èò»öÀÌ¾ú´ø°÷ -> 1Ã³¸® (½ÃÀÛ)
-			// ½ºÅÃÀÌ¹ÌÁö°¡ ÀÌ¹Ì Ä¥ÇØÁ® ÀÖÀ¸¸é¼­ ÆĞÅÏÀÎ°÷
+			// ëˆ„ì ë²•
+			// íŒ¨í„´ì´ ê²€ì • -> 0ì²˜ë¦¬
+			// íŒ¨í„´ì´ í°ìƒ‰ and Unprintê°€ í°ìƒ‰ì´ì—ˆë˜ê³³ -> 1ì²˜ë¦¬ (ì‹œì‘)
+			// ìŠ¤íƒì´ë¯¸ì§€ê°€ ì´ë¯¸ ì¹ í•´ì ¸ ìˆìœ¼ë©´ì„œ íŒ¨í„´ì¸ê³³
 
-			if (yPtr_pattern[x] == 0)	// 0ÀÎ°÷  On Á¶°Ç
+			if (yPtr_pattern[x] == 0)	// 0ì¸ê³³  On ì¡°ê±´
 			{
-				//if (yPtr_refsum[x]==0)
-					yPtr_stack[x] = 0;
+				//if (yPtr_stack[x] != 0 && yPtr_p[x] == 0)	//fill_FCê°€ 0ì´ì§€ë§Œ, FCëŠ” íŒŒë‘ì´ê³ , stackë˜ê³  ìˆëŠ” ê³³ì´ë¼ë©´..
+				//{
+				//	yPtr_stack[x] += 1;
+				//}
+				////if (yPtr_refsum[x]==0)
+				//else
+				yPtr_stack[x] = 0;
 			}
-			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// ÆĞÅÏÀÌ¸é¼­,
+			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// íŒ¨í„´ì´ë©´ì„œ,
 			{
 				yPtr_stack[x] += 1;
 			}
-			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// ÆĞÅÏÀÌ¸é¼­ Èò»öÀÌ¾ú´ø°÷ (½ÃÀÛÁ¶°Ç)
+			else if (yPtr_pattern[x] != 0 && yPtr_refUnprint[x] != 0)	// íŒ¨í„´ì´ë©´ì„œ í°ìƒ‰ì´ì—ˆë˜ê³³ (ì‹œì‘ì¡°ê±´)
 			{
-				yPtr_stack[x] = 1;	// ½ÃÀÛÁ¶°Ç
+				yPtr_stack[x] = 1;	// ì‹œì‘ì¡°ê±´
 			}
 
 		}
@@ -174,9 +184,9 @@ Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprin
 	return stackBinImage;
 }
 
-// refUnprintImage°¡ [0,255] °¡ ¾Æ´Ñ unPaint weight ¸¦ ¹ŞÀ½
-// patternImage[x]¿Í refUnpaintImage[x]ÀÇ Â÷ÀÌ°¡ +-2 ÀÏ °æ¿ì ¿şÀÌÆ® °ª ºÎ¿©
-// stack ÀÌ¹ÌÁö¿¡ ¿şÀÌÆ®°ª ´©Àû,
+// refUnprintImageê°€ [0,255] ê°€ ì•„ë‹Œ unPaint weight ë¥¼ ë°›ìŒ
+// patternImage[x]ì™€ refUnpaintImage[x]ì˜ ì°¨ì´ê°€ +-2 ì¼ ê²½ìš° ì›¨ì´íŠ¸ ê°’ ë¶€ì—¬
+// stack ì´ë¯¸ì§€ì— ì›¨ì´íŠ¸ê°’ ëˆ„ì ,
 Mat PeakFinder::stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnprintImage)
 {
 	int height = stackBinImage.rows;
@@ -190,16 +200,16 @@ Mat PeakFinder::stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnpri
 
 		for (int x = 0; x < width; x++)
 		{
-			// ´©Àû¹ı
-			// ÆĞÅÏ°ª°ú Unpaint °ªÀÇ Â÷ÀÌ°¡ +-2ÀÓ
-			// ÆĞÅÏÀÌ Èò»ö and Unprint°¡ Èò»öÀÌ¾ú´ø°÷ -> 1Ã³¸® (½ÃÀÛ)
-			// ½ºÅÃÀÌ¹ÌÁö°¡ ÀÌ¹Ì Ä¥ÇØÁ® ÀÖÀ¸¸é¼­ ÆĞÅÏÀÎ°÷
+			// ëˆ„ì ë²•
+			// íŒ¨í„´ê°’ê³¼ Unpaint ê°’ì˜ ì°¨ì´ê°€ +-2ì„
+			// íŒ¨í„´ì´ í°ìƒ‰ and Unprintê°€ í°ìƒ‰ì´ì—ˆë˜ê³³ -> 1ì²˜ë¦¬ (ì‹œì‘)
+			// ìŠ¤íƒì´ë¯¸ì§€ê°€ ì´ë¯¸ ì¹ í•´ì ¸ ìˆìœ¼ë©´ì„œ íŒ¨í„´ì¸ê³³
 
 			bool isPatternDot;
 
 			int dif = yPtr_refUnprint[x] - yPtr_pattern[x];
-			if (dif < 3 && dif > 0)	// +- 2 ÀÎ °÷				
-			//	&& (abs(yPtr_stack[x] - yPtr_pattern[x]) < 10)// stackImage ¿Í ºñ±³ÇßÀ» ¶§ Â÷ÀÌ°¡ Å©Áö ¾ÊÀº °Í 	
+			if (dif < 3 && dif > 0)	// +- 2 ì¸ ê³³				
+			//	&& (abs(yPtr_stack[x] - yPtr_pattern[x]) < 10)// stackImage ì™€ ë¹„êµí–ˆì„ ë•Œ ì°¨ì´ê°€ í¬ì§€ ì•Šì€ ê²ƒ 	
 			//	)
 //			if(yPtr_refUnprint[x] == yPtr_pattern[x]
 //				&& (yPtr_refUnprint[x] - yPtr_pattern[x] < 5)//  	
@@ -213,7 +223,7 @@ Mat PeakFinder::stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnpri
 			}
 
 			if (yPtr_pattern[x] == 255 && yPtr_refUnprint[x] == 255)
-				yPtr_stack[x] == yPtr_stack[x];	// µÑ´Ù 255 ÀÌ¸é 255ÇÁ·¡ÀÓµ¿¾È »öÄ¥µÈ°Ô À¯ÁöµÇ¾ú°Å³ª, ÃÊ±âÈ­µÈ »óÈ²ÀÓ(¿¡·¯ Ã³¸® ÇÊ¿ä!)
+				yPtr_stack[x] == yPtr_stack[x];	// ë‘˜ë‹¤ 255 ì´ë©´ 255í”„ë˜ì„ë™ì•ˆ ìƒ‰ì¹ ëœê²Œ ìœ ì§€ë˜ì—ˆê±°ë‚˜, ì´ˆê¸°í™”ëœ ìƒí™©ì„(ì—ëŸ¬ ì²˜ë¦¬ í•„ìš”!)
 			else if (isPatternDot == true && yPtr_stack[x] != 255)
 				yPtr_stack[x]++;
 			else
@@ -230,7 +240,7 @@ Mat PeakFinder::stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage)
 {
 	Mat PatternFullfill;
 	PatternFullfill = imageHandler::getBorderFloodFilledImage(fillImage);
-	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// »ç°¢¹Ú½ºÀÖ´Â°÷ Á¦°Å
+	Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(PatternFullfill);	// ì‚¬ê°ë°•ìŠ¤ìˆëŠ”ê³³ ì œê±°
 
 	Mat outImage = stackBinImage.clone();
 
@@ -240,11 +250,11 @@ Mat PeakFinder::stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage)
 	for (int y = 0; y < height; y++)
 	{
 		uchar* yPtr_stack = outImage.ptr<uchar>(y);
-		uchar* yPtr_noiseRemoved = erodeImage_Denoise.ptr<uchar>(y);	// 0 ÀÌ¸é ³ëÀÌÁî Á¦°ÅµÈ °÷ÀÓ
+		uchar* yPtr_noiseRemoved = erodeImage_Denoise.ptr<uchar>(y);	// 0 ì´ë©´ ë…¸ì´ì¦ˆ ì œê±°ëœ ê³³ì„
 
 		for (int x = 0; x < width; x++)
 		{
-			if (yPtr_stack[x] >= 10 && yPtr_noiseRemoved[x] == 0)	// stackbin[x]°¡ 10ÀÌ»óÀÌ¸é¼­ ³ëÀÌÁî Á¦°ÅµÈ ºÎºĞ Á¦°Å
+			if (yPtr_stack[x] >= 10 && yPtr_noiseRemoved[x] == 0)	// stackbin[x]ê°€ 10ì´ìƒì´ë©´ì„œ ë…¸ì´ì¦ˆ ì œê±°ëœ ë¶€ë¶„ ì œê±°
 			{
 				yPtr_stack[x] = 0;
 			}
@@ -255,7 +265,7 @@ Mat PeakFinder::stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage)
 
 }
 
-// ÄÁÅõ¾î ¸Æ½º ÀÌ¹ÌÁö »ı¼º°ú ÄÁÅõ¾î Á¤º¸ »ı¼º
+// ì»¨íˆ¬ì–´ ë§¥ìŠ¤ ì´ë¯¸ì§€ ìƒì„±ê³¼ ì»¨íˆ¬ì–´ ì •ë³´ ìƒì„±
 void PeakFinder::makeContourMaxBinImageAndContourInfos()
 {
 	Mat contourMaxImage;
@@ -271,7 +281,7 @@ void PeakFinder::makeContourMaxBinImageAndContourInfos()
 	Mat binTempImage;
 	inRange(m_stackBinImage, 1, 255, binTempImage);
 	//inRange(unPrintFillteredImage, 1, 255, binTempImage);
-	binTempImage = imageHandler::getDustRemovedImage(binTempImage);	// ºÎÇÇ°¡ 3º¸´Ù ÀÛÀº°Í »èÁ¦ÇÔ
+	binTempImage = imageHandler::getDustRemovedImage(binTempImage);	// ë¶€í”¼ê°€ 3ë³´ë‹¤ ì‘ì€ê²ƒ ì‚­ì œí•¨
 
 	vector<vector<Point>> contours;
 	findContours(binTempImage, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
@@ -279,11 +289,11 @@ void PeakFinder::makeContourMaxBinImageAndContourInfos()
 	for (unsigned int i = 0; i < contours.size(); i++)
 	{
 		Mat contourMask = Mat::zeros(m_stackBinImage.rows, m_stackBinImage.cols, CV_8U);;
-		// ÄÁÅõ¾îº° ¸¶½ºÅ©
+		// ì»¨íˆ¬ì–´ë³„ ë§ˆìŠ¤í¬
 		vector<vector<Point>> contours_picked;
 		contours_picked.push_back(contours[i]);
 		fillPoly(contourMask, contours_picked, 255);
-		vector<Point> indices;		// ³»ºÎÀÇ Á¡µéÀ» ¾òÀ½
+		vector<Point> indices;		// ë‚´ë¶€ì˜ ì ë“¤ì„ ì–»ìŒ
 		bitwise_and(contourMask, binTempImage, contourMask);
 		findNonZero(contourMask, indices);
 		
@@ -299,13 +309,13 @@ void PeakFinder::makeContourMaxBinImageAndContourInfos()
 		//int avgContourColor = sum / indices.size();
 		
 		vector<int> includeValues;
-		for (int idx = 0; idx < indices.size(); idx++)	// ÇØ´ç ÄÁÅõ¾î¿¡ ¸Æ½º°ªÀ» Ä¥ÇÔ
+		for (int idx = 0; idx < indices.size(); idx++)	// í•´ë‹¹ ì»¨íˆ¬ì–´ì— ë§¥ìŠ¤ê°’ì„ ì¹ í•¨
 		{
 			uchar* yPtr_stack = m_stackBinImage.ptr<uchar>(indices[idx].y);	//in
 			uchar* yPtr_out = outImage.ptr<uchar>(indices[idx].y);	//in
 			//yPtr[indices[idx].x] = avgContourColor;
-			//yPtr_out[indices[idx].x] = max;						// ÀÌ°Å ÇÏÁö¾Ê´Â°ÍÀº..?	 YS-TAG : max °ªÀÌ ¾Æ´Ñ °¡Áö°í ÀÖ´Â °ªµéÀÇ ¹è¿­À» °®À½
-			yPtr_out[indices[idx].x] = yPtr_stack[indices[idx].x];	// ¿øº»º¹»ç
+			//yPtr_out[indices[idx].x] = max;						// ì´ê±° í•˜ì§€ì•ŠëŠ”ê²ƒì€..?	 YS-TAG : max ê°’ì´ ì•„ë‹Œ ê°€ì§€ê³  ìˆëŠ” ê°’ë“¤ì˜ ë°°ì—´ì„ ê°–ìŒ
+			yPtr_out[indices[idx].x] = yPtr_stack[indices[idx].x];	// ì›ë³¸ë³µì‚¬
 			includeValues.push_back(yPtr_stack[indices[idx].x]);
 		}
 		includeValues = contourInfo::includeValuesDeduplicate(includeValues);
@@ -338,7 +348,7 @@ Mat PeakFinder::getUnprintFillteredstackBinImage(Mat weightPaint, Mat weightUnpa
 		for (int x = 0; x < width; x++)
 		{
 			int diff = yPtr_p[x] - yPtr_unp[x];
-			if (diff <= 10)	// p°¡ npº¸´Ù Å©°Å³ª °°Àº°ªÀÏ ¶§
+			if (diff <= 10)	// pê°€ npë³´ë‹¤ í¬ê±°ë‚˜ ê°™ì€ê°’ì¼ ë•Œ
 			{
 				yPtr_out[x] = yPtr_p[x];
 			}
@@ -357,10 +367,10 @@ vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourIn
 	// ys-tag
 	vector<contourLineInfo> conLineInfos;	// Expect contour Line
 	
-		;	// contourLineInfo »ı¼º ·çÆ¾
-			// 2.1 ÀüÃ¤¼øÈ¸ÇÏ¿© ¸ğµç ¿¬°á ±¸ÇÔ (¸ğµç ÄÁÅõ¾î ÁøÇà)
+		;	// contourLineInfo ìƒì„± ë£¨í‹´
+			// 2.1 ì „ì±„ìˆœíšŒí•˜ì—¬ ëª¨ë“  ì—°ê²° êµ¬í•¨ (ëª¨ë“  ì»¨íˆ¬ì–´ ì§„í–‰)
 			// 2.2 
-		for (int i = 0; i < contourInfos.size(); i++)	// contourInfos ´Â x_startÁÂÇ¥ ±âÁØÀ¸·Î Á¤·ÄµÇ¾îÀÖÀ½
+		for (int i = 0; i < contourInfos.size(); i++)	// contourInfos ëŠ” x_startì¢Œí‘œ ê¸°ì¤€ìœ¼ë¡œ ì •ë ¬ë˜ì–´ìˆìŒ
 		{
 			if (contourInfos[i].isRefed == false)
 			{
@@ -372,12 +382,12 @@ vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourIn
 				contourLineInfo.coorX_start = contourInfos[i].coorX_start;
 				contourLineInfo.coorX_end = contourInfos[i].coorX_end;
 
-				for (int j = i + 1; j < contourInfos.size(); j++)	// ³²Àº ÄÁÅõ¾îµé È®ÀÎ	
+				for (int j = i + 1; j < contourInfos.size(); j++)	// ë‚¨ì€ ì»¨íˆ¬ì–´ë“¤ í™•ì¸	
 				{
-					// Y start~end ¾È¿¡ Æ÷ÇÔµÈ´Ù¸é Ãß°¡
+					// Y start~end ì•ˆì— í¬í•¨ëœë‹¤ë©´ ì¶”ê°€
 					if (imageHandler::isRelation(contourLineInfo.coorY_start, contourLineInfo.coorY_end, contourInfos[j].coorY_start, contourInfos[j].coorY_end))
 					{
-						for (int rec = 0; rec < contourLineInfo.contours.size(); rec++)	// ÀÌÀü°ªÀÌ °ªÀÌ ³ÖÀ¸·Á´Â °ªº¸´Ù Å«°Ô ÀÖ¾î¾ßÇÔ
+						for (int rec = 0; rec < contourLineInfo.contours.size(); rec++)	// ì´ì „ê°’ì´ ê°’ì´ ë„£ìœ¼ë ¤ëŠ” ê°’ë³´ë‹¤ í°ê²Œ ìˆì–´ì•¼í•¨
 						{
 							if (contourInfos[j].getMaxValue() < contourLineInfo.contours[rec].getMaxValue())
 							{
@@ -417,7 +427,7 @@ contourInfo PeakFinder::getContourInfoFromPixels(vector<Point> pixels)
 	contourInfo conInfo;
 	for (int idx = 0; idx < pixels.size(); idx++)
 	{
-		if (idx == 0)	// ÃÊ±âÈ­
+		if (idx == 0)	// ì´ˆê¸°í™”
 		{
 			conInfo.coorX_start = pixels[idx].x;
 			conInfo.coorX_end = pixels[idx].x;
@@ -442,11 +452,11 @@ void PeakFinder::makeExpectedLineInfos()
 {
 	vector<contourLineInfo> conLineInfo;
 
-	conLineInfo = getLineInfoFromContourInfos(m_contourMaxBinImage_contourInfos);		// ÄÁÅõ¾î¸¦ ¶óÀÎÀ¸·Î ¹­±â¸¸ ÇÔ
+	conLineInfo = getLineInfoFromContourInfos(m_contourMaxBinImage_contourInfos);		// ì»¨íˆ¬ì–´ë¥¼ ë¼ì¸ìœ¼ë¡œ ë¬¶ê¸°ë§Œ í•¨
 
 	if (conLineInfo.size() != 0)
 	{
-		m_contourMaxBinImage_expectedLineInfo = expectedLineInfoAfterProcess(conLineInfo);	// ¶óÀÎ ÈÄÃ³¸®(ÇÊÅÍ)
+		m_contourMaxBinImage_expectedLineInfo = expectedLineInfoAfterProcess(conLineInfo);	// ë¼ì¸ í›„ì²˜ë¦¬(í•„í„°)
 	}
 }
 
@@ -459,26 +469,26 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		for (int j = 0; j < conLineInfos[i].contours.size(); j++)
 		{
 			if (conLineInfos[i].coorY_start > conLineInfos[i].contours[j].coorY_start)
-				conLineInfos[i].coorY_start = conLineInfos[i].contours[j].coorY_start;	//ÃÖ¼Ò°ª
+				conLineInfos[i].coorY_start = conLineInfos[i].contours[j].coorY_start;	//ìµœì†Œê°’
 
 			if (conLineInfos[i].coorY_end < conLineInfos[i].contours[j].coorY_end)
-				conLineInfos[i].coorY_end = conLineInfos[i].contours[j].coorY_end;	// ÃÖ´ë°ª
+				conLineInfos[i].coorY_end = conLineInfos[i].contours[j].coorY_end;	// ìµœëŒ€ê°’
 
 			if (conLineInfos[i].coorX_start > conLineInfos[i].contours[j].coorX_start)
-				conLineInfos[i].coorX_start = conLineInfos[i].contours[j].coorX_start;	//ÃÖ¼Ò°ª
+				conLineInfos[i].coorX_start = conLineInfos[i].contours[j].coorX_start;	//ìµœì†Œê°’
 
 			if (conLineInfos[i].coorX_end < conLineInfos[i].contours[j].coorX_end)
-				conLineInfos[i].coorX_end = conLineInfos[i].contours[j].coorX_end;	// ÃÖ´ë°ª
+				conLineInfos[i].coorX_end = conLineInfos[i].contours[j].coorX_end;	// ìµœëŒ€ê°’
 		}
 	}
 
 	vector<contourLineInfo> conLineInfos_buffer;
-	for (int i = 0; i < conLineInfos.size(); i++)	// 2. -> 3¹øÀÌ ¸ÕÀú ÇØ¾ß ÇÏÁö ¾ÊÀ»±î..?
+	for (int i = 0; i < conLineInfos.size(); i++)	// 2. -> 3ë²ˆì´ ë¨¼ì € í•´ì•¼ í•˜ì§€ ì•Šì„ê¹Œ..?
 	{
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
 		bool isPassOnMaxWeight = false;
-		if (conLineInfos[i].contours.size() >= 2)
+		if (conLineInfos[i].contours.size() >= 3)
 			isPassOnSize = true;
 		if (conLineInfos[i].pixelCount >= 100)
 			isPassOnVolume = true;
@@ -491,12 +501,12 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 	conLineInfos = conLineInfos_buffer;
 	conLineInfos_buffer.clear();
 
-	for (int i = 0; i < conLineInfos.size(); i++)	// 3. Y ±âÁØÀ¸·Î ¸ÓÁö
+	for (int i = 0; i < conLineInfos.size(); i++)	// 3. Y ê¸°ì¤€ìœ¼ë¡œ ë¨¸ì§€
 	{
 		bool isMerged = false;
 		for (int j = 0; j < conLineInfos_buffer.size(); j++)
 		{
-			// ¸ÓÁöÁ¶°Ç : YÃà °ãÄ§ AND XÃàÀÌ ¾Õ¼±°ÍÀÌ max°ªÀÌ Å©°Å³ª °°À½
+			// ë¨¸ì§€ì¡°ê±´ : Yì¶• ê²¹ì¹¨ AND Xì¶•ì´ ì•ì„ ê²ƒì´ maxê°’ì´ í¬ê±°ë‚˜ ê°™ìŒ
 			if (imageHandler::isRelation(conLineInfos_buffer[j].coorY_start, conLineInfos_buffer[j].coorY_end, conLineInfos[i].coorY_start, conLineInfos[i].coorY_end)
 				&& (((conLineInfos_buffer[j].coorX_start > conLineInfos[i].coorX_start) && (conLineInfos_buffer[j].getMaxValue() <= conLineInfos[i].getMaxValue()))
 				|| ((conLineInfos_buffer[j].coorX_start < conLineInfos[i].coorX_start) && (conLineInfos_buffer[j].getMaxValue() >= conLineInfos[i].getMaxValue())))
@@ -544,7 +554,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 				return true;
 			else
 				return false;
-		}	  // Áßº¹Á¦°Å	 
+		}	  // ì¤‘ë³µì œê±°	 
 		), conLineInfos[i].contours.end());
 	}
 
@@ -561,7 +571,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
 		bool isPassOnMaxWeight = false;
-		if (conLineInfos[i].contours.size() >= 5)
+		if (conLineInfos[i].contours.size() >= 3)
 			isPassOnSize = true;
 		if (conLineInfos[i].pixelCount >= 100)
 			isPassOnVolume = true;
@@ -580,14 +590,14 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 
 	return outExpectedLine;
 
-	// >> ÇöÁ¦ ÇÁ·¡ÀÓ¿¡¼­ ¿¹»ó¶óÀÎÀ» Ã£¾Æ³¿
-	// 1. contourLineInfoÀÇ coorY_start¿Í coorY_end¸¦ ¸ğµç ÄÁÅõ¾î¿¡ ´ëÇÑ ÃÖ´ë-ÃÖ¼Ò°ªÀ¸·Î ¹Ù²Ş
-	// 2. vecContours.Size()°¡ 5 ÀÌ»óÀÎ °Í¸¸ »ì¸² & ÇÈ¼¿Ä«¿îÆ®°¡ 100 ÀÌ»óÀÎ°Í¸¸ »ì¸² & ÃÖ´ë weight°¡ 5 ÀÌ»óÀÎ°Í¸¸ »ì¸²
-	// 3. contourLineInfo³¢¸® Y°ªÀÌ °ãÄ¡´Â ºÎºĞÀÌ ÀÖÀ¸¸é ÇÕÄ¡°í(merge) vecContours ´Ù½Ã ¼ÒÆÃ -> Å¬·¯½ºÅÍ¸µ µÈ °Í¸¸ ³²À½
-	// 4. contoursÁßº¹ Á¦°Å
-	// 5. ºÎÇÇ °è»ê & °ü·Ã ÀÌ¹ÌÁö »ı¼º & ÃÖ´ë°ª ÀÔ·Â
-	// 2. (ÇÑ¹ø´õ)vecContours.Size()°¡ 5 ÀÌ»óÀÎ °Í¸¸ »ì¸² & ÇÈ¼¿Ä«¿îÆ®°¡ 100 ÀÌ»óÀÎ°Í¸¸ »ì¸² & ÃÖ´ë weight°¡ 5 ÀÌ»óÀÎ°Í¸¸ »ì¸²
-	// 6. ÇØ´ç °ª ¸®ÅÏ ( ÇÊ¿äÇÏ´Ù¸é Á¶°Ç Ãß°¡ ¹× º¯°æÇÒ°Í!)
+	// >> í˜„ì œ í”„ë˜ì„ì—ì„œ ì˜ˆìƒë¼ì¸ì„ ì°¾ì•„ëƒ„
+	// 1. contourLineInfoì˜ coorY_startì™€ coorY_endë¥¼ ëª¨ë“  ì»¨íˆ¬ì–´ì— ëŒ€í•œ ìµœëŒ€-ìµœì†Œê°’ìœ¼ë¡œ ë°”ê¿ˆ
+	// 2. vecContours.Size()ê°€ 5 ì´ìƒì¸ ê²ƒë§Œ ì‚´ë¦¼ & í”½ì…€ì¹´ìš´íŠ¸ê°€ 100 ì´ìƒì¸ê²ƒë§Œ ì‚´ë¦¼ & ìµœëŒ€ weightê°€ 5 ì´ìƒì¸ê²ƒë§Œ ì‚´ë¦¼
+	// 3. contourLineInfoë¼ë¦¬ Yê°’ì´ ê²¹ì¹˜ëŠ” ë¶€ë¶„ì´ ìˆìœ¼ë©´ í•©ì¹˜ê³ (merge) vecContours ë‹¤ì‹œ ì†ŒíŒ… -> í´ëŸ¬ìŠ¤í„°ë§ ëœ ê²ƒë§Œ ë‚¨ìŒ
+	// 4. contoursì¤‘ë³µ ì œê±°
+	// 5. ë¶€í”¼ ê³„ì‚° & ê´€ë ¨ ì´ë¯¸ì§€ ìƒì„± & ìµœëŒ€ê°’ ì…ë ¥
+	// 2. (í•œë²ˆë”)vecContours.Size()ê°€ 5 ì´ìƒì¸ ê²ƒë§Œ ì‚´ë¦¼ & í”½ì…€ì¹´ìš´íŠ¸ê°€ 100 ì´ìƒì¸ê²ƒë§Œ ì‚´ë¦¼ & ìµœëŒ€ weightê°€ 5 ì´ìƒì¸ê²ƒë§Œ ì‚´ë¦¼
+	// 6. í•´ë‹¹ ê°’ ë¦¬í„´ ( í•„ìš”í•˜ë‹¤ë©´ ì¡°ê±´ ì¶”ê°€ ë° ë³€ê²½í• ê²ƒ!)
 
 }
 
@@ -597,45 +607,47 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 
 	for (int i = 0; i < m_expectedLineInfos.size(); i++)	// 1.
 	{
+		// ì›ì¸ : ì‚´ì•„ìˆëŠ” ë¼ì¸ê³¼ ê´€ë ¨ëœ ë¼ì¸ì´ 2ê°œì¸ë° (Yì¢Œí‘œ ê²¹ì¹¨) í•˜ë‚˜ëŠ” ë§Œì¡±í•˜ê³ , ë‹¤ë¥¸í•˜ë‚˜ëŠ” ë§Œì¡±ë˜ì§€ ì•ŠìŒ()
+		// ê²€ì‚¬ë  ë¼ì¸ì— ê´€ë ¨(Yì¢Œí‘œ ê²¹ì¹¨)ìˆëŠ” ê²ƒë“¤ì„ ë½‘ì•„ì„œ ë¨¸ì§€ í›„ ê²€ì‚¬í•¨	3379
 		bool isFind = false;
-		for (int j = 0; j < m_contourMaxBinImage_expectedLineInfo.size(); j++)	// ÀÌ¹ø¿¡ ÇÁ·¹ÀÓ¿¡ Ã£¾Æ³½ ¶óÀÎ
+		for (int j = 0; j < m_contourMaxBinImage_expectedLineInfo.size(); j++)	// ì´ë²ˆì— í”„ë ˆì„ì— ì°¾ì•„ë‚¸ ë¼ì¸
 		{
 			bool isRelative = imageHandler::isRelation(m_expectedLineInfos[i].first.progress.coorY_start, m_expectedLineInfos[i].first.progress.coorY_end, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_end);
-			if (isRelative)	// ÀÌ¹øÇÁ·¹ÀÓ¿¡µµ ÁÂÇ¥¿¡ Á¸ÀçÇÔ
+			if (isRelative)	// ì´ë²ˆí”„ë ˆì„ì—ë„ ì¢Œí‘œì— ì¡´ì¬í•¨
 			{
 				isFind = true;
 				if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)
 				{	//
-					m_expectedLineInfos[i].second++;	// Á¸ÀçÇÏÁö¸¸ ÇÈ¼¿¼ö°¡ Àı¹İÀÌÇÏ·Î ÁÙ¾îµê
+					m_expectedLineInfos[i].second++;	// ì¡´ì¬í•˜ì§€ë§Œ í”½ì…€ìˆ˜ê°€ ì ˆë°˜ì´í•˜ë¡œ ì¤„ì–´ë“¦
 				}
-				else if (m_expectedLineInfos[i].first.progress.maxValue > m_contourMaxBinImage_expectedLineInfo[j].progress.maxValue)	// maxvalue°¡ ÀÌÀüº¸´Ù ³·À½
+				else if (m_expectedLineInfos[i].first.progress.maxValue > m_contourMaxBinImage_expectedLineInfo[j].progress.maxValue)	// maxvalueê°€ ì´ì „ë³´ë‹¤ ë‚®ìŒ
 				{
 					m_expectedLineInfos[i].second++;
 				}
 				else 
 				{
-					if (m_expectedLineInfos[i].second == 0)	// ¿¬¼ÓÀ¸·Î 0ÀÏ¶§¸¸ Á¤º¸ ¾÷µ¥ÀÌÆ®
+					if (m_expectedLineInfos[i].second == 0)	// ì—°ì†ìœ¼ë¡œ 0ì¼ë•Œë§Œ ì •ë³´ ì—…ë°ì´íŠ¸
 					{
-						int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// ÇÈ¼¿¼ö°¡ ´õ ¸¹´Ù¸é ÀÌ¹ÌÁö À¯Áö
-						if (pixelCount > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)	// ¸Æ½Ã¸ØÀÌ progressº¸´Ù Å­ -> ¸Æ½Ã¸ØÀº À¯Áö
+						int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// í”½ì…€ìˆ˜ê°€ ë” ë§ë‹¤ë©´ ì´ë¯¸ì§€ ìœ ì§€
+						if (pixelCount > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)	// ë§¥ì‹œë©ˆì´ progressë³´ë‹¤ í¼ -> ë§¥ì‹œë©ˆì€ ìœ ì§€
 						{
-							m_expectedLineInfos[i].first.progress = m_expectedLineInfos[i].first.progress;
+							m_expectedLineInfos[i].first.progress = m_expectedLineInfos[i].first.progress;	
 						}
-						else // ¸Æ½Ã¸Ø, ÇÁ·Î±×·¡½º µÑ´Ù ¾÷µ¥ÀÌÆ®
+						else // ë§¥ì‹œë©ˆ, í”„ë¡œê·¸ë˜ìŠ¤ ë‘˜ë‹¤ ì—…ë°ì´íŠ¸
 						{
 							m_expectedLineInfos[i].first = m_contourMaxBinImage_expectedLineInfo[j];	
 						}
 						//
 					}
-					m_expectedLineInfos[i].second = 0;	// Ä«¿îÆ® ÃÊ±âÈ­
+					m_expectedLineInfos[i].second = 0;	// ì¹´ìš´íŠ¸ ì´ˆê¸°í™”
 				}
 				;
 			}
 		}
-		if (isFind != true)	// ÀÌ¹øÇÁ·¹ÀÓ¿¡ ¾øÀ½
+		if (isFind != true)	// ì´ë²ˆí”„ë ˆì„ì— ì—†ìŒ
 		{
 			m_expectedLineInfos[i].second++;
-			;	// Ä«¿îÆ® Áõ°¡ : Count++;
+			;	// ì¹´ìš´íŠ¸ ì¦ê°€ : Count++;
 		}
 	}
 
@@ -671,21 +683,21 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 				break;
 			}
 		}
-		if (isFind != true)	// ¸øÃ£¾ÒÀ» °æ¿ì = »õ·Î¿î ¶óÀÎ
+		if (isFind != true)	// ëª»ì°¾ì•˜ì„ ê²½ìš° = ìƒˆë¡œìš´ ë¼ì¸
 		{
 			m_expectedLineInfos.push_back(make_pair(m_contourMaxBinImage_expectedLineInfo[i], 0));
 			printf(" [Line Add] ");
-			; // ¶óÀÎ Ãß°¡ : addLine()
+			; // ë¼ì¸ ì¶”ê°€ : addLine()
 		}
 	}
 
 	vector<pair< contourLineInfoSet, int>> expectedLineInfos_temp;
 	for (int i = 0; i < m_expectedLineInfos.size(); i++)	// 4. 
 	{
-		if (m_expectedLineInfos[i].second >= PeakFinder::JUDGE_TIMEOUT)	// timeOutÀÌ 5ÀÌ»óÀÌ¸é ¶óÀÎÀ¸·Î Ã³¸® 
+		if (m_expectedLineInfos[i].second >= PeakFinder::JUDGE_TIMEOUT)	// timeOutì´ 5ì´ìƒì´ë©´ ë¼ì¸ìœ¼ë¡œ ì²˜ë¦¬ 
 		{
 			judgedLine.push_back(m_expectedLineInfos[i].first);
-			; // expectedLineInfos È®Á¤				
+			; // expectedLineInfos í™•ì •				
 		}
 		else
 		{
@@ -694,7 +706,7 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 	}
 	m_expectedLineInfos = expectedLineInfos_temp;
 
-	// 5. Áßº¹ Á¦°Å
+	// 5. ì¤‘ë³µ ì œê±°
 	sort(judgedLine.begin(), judgedLine.end(), imageHandler::asc_contourLineInfo);
 	for (int i = 0; i < judgedLine.size(); i++)
 	{
@@ -715,12 +727,12 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 
 	return judgedLine;
 
-	// >> frame Èå¸§¿¡ ÀÖ¾î¼­ ¶óÀÎÀ¸·Î ÆÇº°
-	// 1. ¹ŞÀº¶óÀÎÁ¤º¸°¡ ±âÁ¸ ¶óÀÎ¿¡ ÀÖ´Ù¸é ¾÷µ¥ÀÌÆ® and ¾ø¾îÁø ¶óÀÎ count++
-	// 2. ¾÷µ¥ÀÌÆ® µÈ ¶óÀÎ Áß Áßº¹µÈ ¶óÀÎÀÌ ÀÖ´Ù¸é »èÁ¦  (µÎ°³ÀÇ ¶óÀÎÀÌ ÁøÇàµÇ´Ù ÇÏ³ª·Î ÇÕÃÄÁö±âµµ ÇÔ.)
-	// 3. ½Å±Ô ¶óÀÎ Ã£¾Æ Ãß°¡ 
-	// 4. timeOut count°¡ 5 ÀÌ»óÀÎ°Íµé ¶óÀÎÀ¸·Î ÃÖÁ¾ÆÇ°á (ÀÌÇÏÀÎ °Í ¶óÀÎÀ¸·Î º¸Áö¾ÊÀ½) + Á¶°Ç(MaxValue, etc..)
-	// 5. Áßº¹ Á¦°Å 
+	// >> frame íë¦„ì— ìˆì–´ì„œ ë¼ì¸ìœ¼ë¡œ íŒë³„
+	// 1. ë°›ì€ë¼ì¸ì •ë³´ê°€ ê¸°ì¡´ ë¼ì¸ì— ìˆë‹¤ë©´ ì—…ë°ì´íŠ¸ and ì—†ì–´ì§„ ë¼ì¸ count++
+	// 2. ì—…ë°ì´íŠ¸ ëœ ë¼ì¸ ì¤‘ ì¤‘ë³µëœ ë¼ì¸ì´ ìˆë‹¤ë©´ ì‚­ì œ  (ë‘ê°œì˜ ë¼ì¸ì´ ì§„í–‰ë˜ë‹¤ í•˜ë‚˜ë¡œ í•©ì³ì§€ê¸°ë„ í•¨.)
+	// 3. ì‹ ê·œ ë¼ì¸ ì°¾ì•„ ì¶”ê°€ 
+	// 4. timeOut countê°€ 5 ì´ìƒì¸ê²ƒë“¤ ë¼ì¸ìœ¼ë¡œ ìµœì¢…íŒê²° (ì´í•˜ì¸ ê²ƒ ë¼ì¸ìœ¼ë¡œ ë³´ì§€ì•ŠìŒ) + ì¡°ê±´(MaxValue, etc..)
+	// 5. ì¤‘ë³µ ì œê±° 
 
 	//printf(" ( %d : %d ) ", expectedLineInfos_buffer_toLine.size(), expectedLineInfos_buffer_toMaintain.size());
 }

@@ -76,7 +76,10 @@ public:
 	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
 
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
-	vector<LineInfo> mergeLineInfo(vector<LineInfo> lineInfos);
+	vector<LineInfo> mergeLineInfo(vector<LineInfo> lineInfos);		// 단색 머지랑, 복합 색 머지랑 달라야 함 (듀엣 곡일 경우 빨,파 함께 진행되는 경우가 있음)
+		// 단색 머지 - 부분집합 관계시 하나는 영어자막으로 보고 삭제함
+		// 컬러 머지 - 부분집합 관계시 듀엣으로 보고 머지함
+	//vector<LineInfo> mergeLineInfo(vector<LineInfo> lineInfos);	// 
 	
 private:
 	MVInformation m_mvInformation;

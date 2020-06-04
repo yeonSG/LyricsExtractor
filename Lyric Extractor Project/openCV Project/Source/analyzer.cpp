@@ -399,7 +399,7 @@ bool analyzer::videoAnalization3(string videoPath)
 	}
 
 	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
-	//bool isFoundColor = getUnprintColorRutin(unPrintColor);
+	bool isFoundColor = getUnprintColorRutin(unPrintColor);
 
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
@@ -417,7 +417,7 @@ bool analyzer::videoAnalization3(string videoPath)
 	for(int nColor = 0; nColor < 3; nColor++)	// 0=blue, 1=red, 2=purple
 	{
 		
-		//if (nColor == 0)		// YSYSYS - debug
+		//if (nColor == 1)		// YSYSYS - debug
 		//	continue;
 		//if (nColor == 2)	// RED
 		//	continue;
@@ -1715,14 +1715,15 @@ void analyzer::captureLines()
 	{
 		Line* line = m_lyric.getLine(i);
 		Mat startImage, endImage;
-		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->startFrame - 2);
+		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->startFrame);
 		videoCapture->read(startImage);
 		videoCapture->set(CAP_PROP_POS_FRAMES, (double)line->endFrame);	// -1
 		videoCapture->read(endImage);
 		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_Start.jpg", startImage);
 		imwrite(fileManager::getSavePath() + "/Captures/Line" + to_string(i) + "_End.jpg", endImage);
 
-		catpureBinaryImageForOCR(line->maskImage.clone(), i, fileManager::getSavePath());
+		Mat OCRMat = imageHandler::removeSubLyricLine2(line->maskImage.clone());
+		catpureBinaryImageForOCR(OCRMat, i, fileManager::getSavePath());
 	}
 }
 

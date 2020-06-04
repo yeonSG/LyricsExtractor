@@ -141,7 +141,8 @@ void Lyric::saveBinaryImage(string videoPath)
 		Mat binImage = lines[i].maskImage;
 		cvtColor(binImage, binImage, COLOR_RGB2GRAY);
 		threshold(binImage, binImage, 10, 255, THRESH_BINARY);
-		binImage = imageHandler::removeSubLyricLine(binImage);
+		//binImage = imageHandler::removeSubLyricLine(binImage);
+		binImage = imageHandler::removeSubLyricLine2(binImage);
 
 		bitwise_not(binImage, binImage);
 		// resize

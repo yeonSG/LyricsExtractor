@@ -170,8 +170,8 @@ Mat imageHandler::getBorderFloodFilledImage(Mat& binaryMat, bool toBlack)
 
 	// 상측 
 	for (int i = 0; i < nCols; i++)
-		if (outImage.at<uchar>(2, i) != color)
-			floodFill(outImage, Point(i, 2), color);
+		if (outImage.at<uchar>(0, i) != color)
+			floodFill(outImage, Point(i, 0), color);
 
 	// 좌측
 	for (int i = 0; i < nRows; i++)
@@ -1887,6 +1887,7 @@ Mat imageHandler::removeSubLyricLine(Mat binImage)
 	// 섬이 2개 이상이면서, 가장 아래섬이 흰점수 2등 이면
 	// 보조 lyric으로 판별하여 2등 제거
 	/*	or 가장 큰 volume의 Lyric만 남김 */
+
 	bool blackZone = false;
 	int startPoint = 0;
 	int endPoint = 0;
@@ -1946,6 +1947,67 @@ Mat imageHandler::removeSubLyricLine(Mat binImage)
 	return maskingImage;
 }
 
+Mat imageHandler::removeSubLyricLine2(Mat binImage)
+{
+	vector<int> projection = getHorizontalProjectionData(binImage);
+
+	vector<pair<int, int>> islands;
+	vector<int> islandsVolum;
+
+	// 섬의 갯수 구함, 
+	// 섬의 개수가 2개 이상이면 가장 부피가 큰 섬 기준으로 아래섬 삭제
+
+	bool blackZone = false;
+	int startPoint = 0;
+	int endPoint = 0;
+	int volume = 0;
+
+	for (int i = 0; i < projection.size(); i++)
+	{
+		if (projection[i] != 0)	// Not blackZone
+		{
+			if (blackZone == true)	// blackZone -> Not BlackZone
+			{
+				startPoint = i;
+			}
+
+			volume += projection[i];
+			blackZone = false;
+		}
+		else // blackZone
+		{
+			if (blackZone == false)	// Not blackZone -> blackZone
+			{	// save island
+				islands.push_back(make_pair(startPoint, i));
+				islandsVolum.push_back(volume);
+				volume = 0;
+			}
+			//
+			blackZone = true;
+		}
+	}
+
+	int maximumVolumeIslandVolume = 0;
+	int maximumVolumeIslandIndex = 0;	// 가장 부피가 큰 섬 indxe
+	for (int i = 0; i < islandsVolum.size(); i++)
+	{
+		if (islandsVolum[i] > maximumVolumeIslandVolume)
+		{
+			maximumVolumeIslandVolume = islandsVolum[i];
+			maximumVolumeIslandIndex = i;
+		}
+	}
+
+	Mat maskingImage = Mat::zeros(binImage.rows, binImage.cols, CV_8U); 
+	{	// 가장 부피가 큰 섬 endY 좌표까지의 마스크 생성
+		// bitwiseand 연산수행
+		maskingImage = getWhiteMaskImage(maskingImage, 0, 0, binImage.cols, islands[maximumVolumeIslandIndex].second);
+		bitwise_and(maskingImage, binImage, maskingImage);
+	}
+
+	return maskingImage;
+}
+
 Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 {
 	vector<int> projection = getHorizontalProjectionData(binImage);
@@ -1957,7 +2019,7 @@ Mat imageHandler::removeNotPrimeryLyricLine(Mat binImage)
 	// 섬의 갯수 구함, 
 	// 섬이 2개 이상이면서, 가장 아래섬이 흰점수 2등 이면
 	// 보조 lyric으로 판별하여 2등 제거
-	/*	or 가장 큰 volume의 Lyric만 남김 */
+
 	bool blackZone = false;
 	int startPoint = 0;
 	int endPoint = 0;
