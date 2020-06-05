@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\44559_0~58Lines_StartFontNoOutLine.mp4");
+	testClass.test_Video("Input\\63749_0~24Lines.mp4");
 	//testClass.test_Video("40003.mp4");
 
 	//testClass.test_Video4("40009.mp4");
@@ -134,59 +134,7 @@ int main(int argc, char* argv[])
 	
 
 	analyzer ana;
-	//ana.startVideoAnalization("gramy_vol8_4.mp4");
-
-	//ana.videoAnalization1("movie1.mp4");
-	//ana.videoAnalization1("40009.mp4");
-
-	//ana.startVideoAnalization("40009_forDebug.mp4");	// *shortist test movie
-	//ana.startVideoAnalization("movie1_forTest2.mp4");
-	//ana.startVideoAnalization("movie1_forTest2.mp4");
-	//ana.startVideoAnalization("40011_forTest.mp4");
-	//ana.startVideoAnalization("40011_forTest_upscale.mp4");
-
-	//ana.startVideoAnalization("50123.mp4");	// 0~31 lines
-
-//	ana.startVideoAnalization("movie.mp4");		// 0~27
-	//ana.startVideoAnalization("movie1.mp4");	// 0~62
-	//ana.startVideoAnalization("40009.mp4");	// 0~66
-	//ana.startVideoAnalization("40011.mp4");		// 0~46
-	//ana.startVideoAnalization("40006.mp4");		// 0~43
-	//ana.startVideoAnalization("40003.mp4");		// 0~60
-	//	  
-	//ana.startVideoAnalization("gramy_vol8_4.mp4");
-	//ana.startVideoAnalization("gramy_vol8_6.mp4");
-
-	//ana.startVideoAnalization("64440_4lines.mp4");	// 0~23 lines	(라인 시작부분에 남,여 표시가 있으며 색칠하는 이벤트 존재)
-	//ana.startVideoAnalization("64439.mp4");	// 0~32 Lines
-	//ana.startVideoAnalization("64321.mp4");	// 0~28 lines
-	//ana.startVideoAnalization("43780.mp4");	// 0~72 lines (most 화질구지)
-
-	//ana.startVideoAnalization("51781_0~73Lines_hardist.mp4");		// 하늘색,분홍색으로 paint 됨..
-	//ana.startVideoAnalization("51815_0~35Lines_Duet.mp4");
-	//ana.startVideoAnalization("53355_0~33Lines_Gradation_시작기호.mp4");
-	//ana.startVideoAnalization("62989_0~32Lines.mp4");
-	//ana.startVideoAnalization("63279_0~44Lines.mp4");
-	//ana.startVideoAnalization("63535_0~46Lines_UnpaintBlur.mp4");
-	//ana.startVideoAnalization("63985_0~37Lines_FontWeired.mp4");
-
-	//ana.startVideoAnalization("51781_0~73Lines_Duet_ColorWeired.mp4");			// 하늘색 P type(0&2, 0) 
-	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	// 오랜지색 UP	type(0, 1, twin)
-	ana.startVideoAnalization("Input\\62436_0~76Lines.mp4");		// 0~62
-
-	//ana.startVideoAnalization("Input\\50569_0~18Lines.mp4");	
-	//ana.startVideoAnalization("Input\\40011.mp4");
-	//ana.startVideoAnalization("Input\\54395_0~32Lines_TwinLine_Unprint색다름.mp4");	// twinLine
-	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");
-	
-
-	//ana.startVideoAnalization("40009_forDebug.mp4");		// type(0, 0)
-	//ana.startVideoAnalization("54326_0~15Lines_TwinLine_Unprint색다름.mp4");	
-	//ana.startVideoAnalization("50123_0~31Lines_TwinLine_BadQuality.mp4");
-	
-	
-	
-
+	ana.startVideoAnalization("Input\\63749_0~24Lines.mp4");		// 0~62
 	
 	//BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "nProcess Successed : " <<(clock() - startClock) / CLOCKS_PER_SEC <<"Sec";
 	//printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);

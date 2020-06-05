@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 3300;//3650;	// debug	 // YSYSYS
+	int curFrame = 3630;	// debug	 // YSYSYS
 	
 #endif
 

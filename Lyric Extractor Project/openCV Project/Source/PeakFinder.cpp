@@ -29,9 +29,9 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	else
 	{
 		// 원래
-		//if(frameNumber==3657)
-		//	Mat test_refUnprintImage = refUnprintImage;
-		//Mat test_m_stackBinImage = m_stackBinImage;
+		if(frameNumber==3659)
+			Mat test_refUnprintImage = refUnprintImage;
+		Mat test_m_stackBinImage = m_stackBinImage.clone();
 		
 		Mat bin_refUnprintImage;
 		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
@@ -49,9 +49,45 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		//m_weightSumAtBinImage = imageHandler::getSumOfBinImageValues(m_stackBinImage);
 		//m_colorPixelSumAtBinImage = imageHandler::getWhitePixelCount(m_stackBinImage);
 
+		// 추가 연산 : 
+		if(0)//if (m_expectedLineInfos.size() != 0)
+		{
+			Mat expectedLineInfosMask = Mat::zeros(m_stackBinImage.rows, m_stackBinImage.cols, CV_8U);;
+			for (int i = 0; i < m_expectedLineInfos.size(); i++)
+			{
+				Mat temp;
+				inRange(m_expectedLineInfos[i].first.maximum.weightMat.binImage, 1, 255, temp);
+				bitwise_or(expectedLineInfosMask, temp, expectedLineInfosMask);				
+			}
+			// 2. FC_Bin == 1, patternFill == 0 이면서  m_expectedLineInfosMask==1 인곳 살림
+			/*
+				FC	Pa
+				0	0	= 0
+				0	1	= 0
+				1	0	= 1
+				1	1	= 0
+				( NOT(patternFill) AND FC ) AND m_expectedLineInfosMask;
+				m_expectedLineInfos OR m_expectedLineInfosMask;
+			*/
+			Mat exceptionMask;	// 살려야 할 부분
+			Mat WhiteToBlackMat = imageHandler::getWhiteToBlackImage(FC_Bin, patternFill);
+			bitwise_and(WhiteToBlackMat, expectedLineInfosMask, exceptionMask);
+			if (imageHandler::getWhitePixelCount(exceptionMask) != 0)
+			{
+				Mat neverZeroMat;	// 죽이면 안되는부분
+				bitwise_and(FC_Bin, patternFill, neverZeroMat);
+
+				Mat matmat;
+				bitwise_or(exceptionMask, neverZeroMat, matmat);
+
+				bitwise_and(test_m_stackBinImage, matmat, m_stackBinImage);	//라인이 사라졌을때만 이걸 수행해야함
+			}
+		}
+
 		makeContourMaxBinImageAndContourInfos();
 		makeExpectedLineInfos();
 		printf("[found CLine %d]", m_contourMaxBinImage_expectedLineInfo.size());
+		printf("[ex CLine %d]", m_expectedLineInfos.size());
 		
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
 	}
@@ -88,10 +124,50 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 				else 
 					yPtr_corr[x] = temp;
 				//yPtr_corr[x] = yPtr_corr[x] - (yPtr_valid[x]+JUDGE_TIMEOUT);
-				
+				// 결과물에서 컨투어 딴
 			}
 		}
 	}
+
+	// 대상 : corrImage
+	// 필요한것: corrImage의 컨투어들, lineSet.progress.weightMat.binImage의 binImage
+	// 할것 : corr각각의 컨투어의 점들이 위 이미지의 흰점에만 존제한다면 삭제함.
+	Mat corrImage_bin;
+	inRange(corrImage, 1, 255, corrImage_bin);
+	vector<vector<Point>> contours;
+	findContours(corrImage_bin, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		Mat contourMask = Mat::zeros(m_stackBinImage.rows, m_stackBinImage.cols, CV_8U);;
+		// 컨투어별 마스크
+		vector<vector<Point>> contours_picked;
+		contours_picked.push_back(contours[i]);
+		fillPoly(contourMask, contours_picked, 255);
+		vector<Point> indices;		// 내부의 점들을 얻음
+		bitwise_and(contourMask, corrImage_bin, contourMask);
+		findNonZero(contourMask, indices);
+
+		bool isHaveOnlyIn = true;
+		for (int idx = 0; idx < indices.size(); idx++)
+		{
+			uchar* yPtr_val = validImage.ptr<uchar>(indices[idx].y);	// 이전에 확정난 이미지
+			uchar* yPtr_con = contourMask.ptr<uchar>(indices[idx].y);	//확인해야할
+			//sum += yPtr[indices[idx].x];
+			if (yPtr_val[indices[idx].x]==0)	// 다른곳에 점이 있다.
+			{
+				isHaveOnlyIn = false;	// 유지함
+				break;
+			}
+		}
+		if (isHaveOnlyIn == true)
+		{
+			floodFill(corrImage_bin, indices[0], 0);
+			// 지워버림
+		}
+	}
+	bitwise_and(corrImage, corrImage_bin, corrImage);
+
 
 	// 해당 Y 축에 5 이상인 값들 전부 삭제.
 	int removeY_start = lineSet.maximum.coorY_start;
@@ -387,9 +463,10 @@ vector<contourLineInfo> PeakFinder::getLineInfoFromContourInfos(vector<contourIn
 					// Y start~end 안에 포함된다면 추가
 					if (imageHandler::isRelation(contourLineInfo.coorY_start, contourLineInfo.coorY_end, contourInfos[j].coorY_start, contourInfos[j].coorY_end))
 					{
-						for (int rec = 0; rec < contourLineInfo.contours.size(); rec++)	// 이전값이 값이 넣으려는 값보다 큰게 있어야함
+						for (int rec = 0; rec < contourLineInfo.contours.size(); rec++)	// 이전값이 값이 넣으려는 값보다 큰게 있어야함 AND X값이 멀지않아야함
 						{
-							if (contourInfos[j].getMaxValue() < contourLineInfo.contours[rec].getMaxValue())
+							if (contourInfos[j].getMaxValue() < contourLineInfo.contours[rec].getMaxValue()	// weight가 더 큰게 있어야함
+								&& contourInfos[j].coorX_start < contourLineInfo.contours[rec].coorX_end+200 ) // X값이 +200pix 안에 있어야함 
 							{
 								contourLineInfo.contours.push_back(contourInfos[j]);
 								contourInfos[j].isRefed = true;
@@ -604,60 +681,157 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 {
 	vector<contourLineInfoSet> judgedLine;
+	vector<bool> foundLineRelated;	// m_contourMaxBinImage_expectedLineInfo (이번에 찾은 라인이 참조되었는지에 대한 정보 )
+	for (int i = 0; i < m_contourMaxBinImage_expectedLineInfo.size(); i++)
+		foundLineRelated.push_back(false);
 
 	for (int i = 0; i < m_expectedLineInfos.size(); i++)	// 1.
 	{
 		// 원인 : 살아있는 라인과 관련된 라인이 2개인데 (Y좌표 겹침) 하나는 만족하고, 다른하나는 만족되지 않음()
 		// 검사될 라인에 관련(Y좌표 겹침)있는 것들을 뽑아서 머지 후 검사함	3379
-		bool isFind = false;
+
+		// Releation인 m_contourMaxBinImage_expectedLineInfo들 모아서, 머지한 후 처리
+		vector<int> relatedIndex;
+
 		for (int j = 0; j < m_contourMaxBinImage_expectedLineInfo.size(); j++)	// 이번에 프레임에 찾아낸 라인
 		{
 			bool isRelative = imageHandler::isRelation(m_expectedLineInfos[i].first.progress.coorY_start, m_expectedLineInfos[i].first.progress.coorY_end, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_end);
 			if (isRelative)	// 이번프레임에도 좌표에 존재함
 			{
-				isFind = true;
-				if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)
-				{	//
-					m_expectedLineInfos[i].second++;	// 존재하지만 픽셀수가 절반이하로 줄어듦
-				}
-				else if (m_expectedLineInfos[i].first.progress.maxValue > m_contourMaxBinImage_expectedLineInfo[j].progress.maxValue)	// maxvalue가 이전보다 낮음
-				{
-					m_expectedLineInfos[i].second++;
-				}
-				else 
-				{
-					if (m_expectedLineInfos[i].second == 0)	// 연속으로 0일때만 정보 업데이트
-					{
-						int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// 픽셀수가 더 많다면 이미지 유지
-						if (pixelCount > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
-						{
-							m_expectedLineInfos[i].first.progress = m_expectedLineInfos[i].first.progress;	
-						}
-						else // 맥시멈, 프로그래스 둘다 업데이트
-						{
-							m_expectedLineInfos[i].first = m_contourMaxBinImage_expectedLineInfo[j];	
-						}
-						//
-					}
-					m_expectedLineInfos[i].second = 0;	// 카운트 초기화
-				}
-				;
+				relatedIndex.push_back(j);
+				foundLineRelated[j] = true;
 			}
 		}
-		if (isFind != true)	// 이번프레임에 없음
+
+		contourLineInfo mergedLineInfo;
+		for (int j = 0; j < relatedIndex.size(); j++) // 이번에 프레임에 찾아낸 라인들 머지
+		{
+			if (j == 0)
+				mergedLineInfo = m_contourMaxBinImage_expectedLineInfo[relatedIndex[j]].progress;
+			else
+			{
+				contourLineInfo targetLine = m_contourMaxBinImage_expectedLineInfo[relatedIndex[j]].progress;
+				if (mergedLineInfo.coorX_start > targetLine.coorX_start)
+					mergedLineInfo.coorX_start = targetLine.coorX_start;
+
+				if (mergedLineInfo.coorX_end < targetLine.coorX_end)
+					mergedLineInfo.coorX_end = targetLine.coorX_end;
+
+				if (mergedLineInfo.coorY_start > targetLine.coorY_start)
+					mergedLineInfo.coorY_start = targetLine.coorY_start;
+
+				if (mergedLineInfo.coorY_end < targetLine.coorY_end)
+					mergedLineInfo.coorY_end = targetLine.coorY_end;
+
+				for (int idx = 0; idx < targetLine.contours.size(); idx++)
+				{
+					mergedLineInfo.contours.push_back(targetLine.contours[idx]);
+				}
+				sort(mergedLineInfo.contours.begin(), mergedLineInfo.contours.end(), imageHandler::asc_contourInfo);
+				mergedLineInfo.pixelCount = imageHandler::getContourLineInfoVolume(mergedLineInfo);
+				mergedLineInfo.maxValue = getMaxValue(mergedLineInfo);
+				Mat mergedMat;
+				bitwise_or(mergedLineInfo.weightMat.binImage, targetLine.weightMat.binImage, mergedMat);
+				mergedLineInfo.weightMat = WeightMat(mergedMat, mergedLineInfo.weightMat.frameNum);
+				//mergedLineInfo.weightMat_Unprint = WeightMat(targetLine.weightMat_Unprint.binImage, targetLine.weightMat_Unprint.frameNum);
+			}
+		}
+
+		if (relatedIndex.size() == 0)
 		{
 			m_expectedLineInfos[i].second++;
 			;	// 카운트 증가 : Count++;
 		}
+		else // 머지된 라인과 검사 진행
+		{
+			mergedLineInfo;
+
+			if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > mergedLineInfo.pixelCount)
+			{	//
+				m_expectedLineInfos[i].second++;	// 존재하지만 픽셀수가 절반이하로 줄어듦
+			}
+			else if (m_expectedLineInfos[i].first.progress.maxValue > mergedLineInfo.maxValue)	// maxvalue가 이전보다 낮음
+			{
+				m_expectedLineInfos[i].second++;
+			}
+			else
+			{
+				if (m_expectedLineInfos[i].second == 0)	// 연속으로 0일때만 정보 업데이트
+				{
+					//int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// 픽셀수가 더 많다면 이미지 유지
+					//if (pixelCount > mergedLineInfo.pixelCount)	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
+					int pixelCount = imageHandler::getSumOfBinImageValues(m_expectedLineInfos[i].first.maximum.weightMat.binImage); //m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);
+					if (pixelCount > imageHandler::getSumOfBinImageValues(mergedLineInfo.weightMat.binImage))	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
+					{
+						m_expectedLineInfos[i].first.progress = mergedLineInfo;	// 맥시멈만 따로 하는 이유:  라인이 Fade-out일 경우임 (픽셀수가 가장 많음, && )
+					}
+					else // 맥시멈, 프로그래스 둘다 업데이트
+					{
+						m_expectedLineInfos[i].first = contourLineInfoSet(mergedLineInfo);
+					}
+					//
+				}
+				m_expectedLineInfos[i].second = 0;	// 카운트 초기화
+			}
+		}
+
+		// foundLineRelated 에 있는 라인들 머지 
+
+
+		////////////////////////////////////////////////
+
+		//bool isFind = false;
+		//for (int j = 0; j < m_contourMaxBinImage_expectedLineInfo.size(); j++)	// 이번에 프레임에 찾아낸 라인
+		//{
+
+		//	bool isRelative = imageHandler::isRelation(m_expectedLineInfos[i].first.progress.coorY_start, m_expectedLineInfos[i].first.progress.coorY_end, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_end);
+		//	if (isRelative)	// 이번프레임에도 좌표에 존재함
+		//	{
+		//		isFind = true;
+		//		if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)
+		//		{	//
+		//			m_expectedLineInfos[i].second++;	// 존재하지만 픽셀수가 절반이하로 줄어듦
+		//		}
+		//		else if (m_expectedLineInfos[i].first.progress.maxValue > m_contourMaxBinImage_expectedLineInfo[j].progress.maxValue)	// maxvalue가 이전보다 낮음
+		//		{
+		//			m_expectedLineInfos[i].second++;
+		//		}
+		//		else 
+		//		{
+		//			if (m_expectedLineInfos[i].second == 0)	// 연속으로 0일때만 정보 업데이트
+		//			{
+		//				int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// 픽셀수가 더 많다면 이미지 유지
+		//				if (pixelCount > m_contourMaxBinImage_expectedLineInfo[j].progress.pixelCount)	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
+		//				{
+		//					m_expectedLineInfos[i].first.progress = m_expectedLineInfos[i].first.progress;	
+		//				}
+		//				else // 맥시멈, 프로그래스 둘다 업데이트
+		//				{
+		//					m_expectedLineInfos[i].first = m_contourMaxBinImage_expectedLineInfo[j];	
+		//				}
+		//				//
+		//			}
+		//			m_expectedLineInfos[i].second = 0;	// 카운트 초기화
+		//		}
+		//		;
+		//	}
+		//}
+		//if (isFind != true)	// 이번프레임에 없음
+		//{
+		//	m_expectedLineInfos[i].second++;
+		//	;	// 카운트 증가 : Count++;
+		//}
+		////////////////////////////////////////////////
+
 	}
 
-	// 2. 
+	// 2. 중복제거
 	for (int i = 0; i < m_expectedLineInfos.size(); i++)	// 
 	{
 		m_expectedLineInfos[i].first.progress.coorY_start;
 		m_expectedLineInfos[i].first.progress.coorY_end;
 		m_expectedLineInfos[i].first.progress.pixelCount;
-
+		// ***** Sorting 추가 -> coorY_start
 		m_expectedLineInfos.erase(
 			unique(m_expectedLineInfos.begin(), m_expectedLineInfos.end(),
 				[](const pair<contourLineInfoSet, int>& a, const pair<contourLineInfoSet, int>& b) {
@@ -671,19 +845,26 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 		), m_expectedLineInfos.end());
 	}
 
-	for (int i = 0; i < m_contourMaxBinImage_expectedLineInfo.size(); i++)	// 3. 
+	for (int i = 0; i < m_contourMaxBinImage_expectedLineInfo.size(); i++)	// 3. 신규 라인 찾아 추가 
 	{
-		bool isFind = false;
-		for (int j = 0; j < m_expectedLineInfos.size(); j++)
-		{
-			bool isRelative = imageHandler::isRelation(m_contourMaxBinImage_expectedLineInfo[i].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[i].progress.coorY_end, m_expectedLineInfos[j].first.progress.coorY_start, m_expectedLineInfos[j].first.progress.coorY_end);
-			if (isRelative)	// 
-			{
-				isFind = true;
-				break;
-			}
-		}
-		if (isFind != true)	// 못찾았을 경우 = 새로운 라인
+		//bool isFind = false;
+		//for (int j = 0; j < m_expectedLineInfos.size(); j++)
+		//{
+		//	bool isRelative = imageHandler::isRelation(m_contourMaxBinImage_expectedLineInfo[i].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[i].progress.coorY_end, m_expectedLineInfos[j].first.progress.coorY_start, m_expectedLineInfos[j].first.progress.coorY_end);
+		//	if (isRelative)	// 
+		//	{
+		//		isFind = true;
+		//		break;
+		//	}
+		//}
+		//if (isFind != true)	// 못찾았을 경우 = 새로운 라인
+		//{
+		//	m_expectedLineInfos.push_back(make_pair(m_contourMaxBinImage_expectedLineInfo[i], 0));
+		//	printf(" [Line Add] ");
+		//	; // 라인 추가 : addLine()
+		//}
+
+		if (foundLineRelated[i] == false)
 		{
 			m_expectedLineInfos.push_back(make_pair(m_contourMaxBinImage_expectedLineInfo[i], 0));
 			printf(" [Line Add] ");

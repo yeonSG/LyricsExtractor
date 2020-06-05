@@ -26,14 +26,29 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage)
 	return lineInfo;
 }
 
+/*
+	1. 시작 시간을 구함
+	2. 끝시간을 구함
+*/
 LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 {
 	LineInfo lineInfo;
 	lineInfo.isValid = true;
 
+	// 마스크 노이즈 제거 () : 아이템의
+
 	lineInfo.frame_start = calculateStartTime(weightPrintImage, unPrintColor);				// 시작시간 계산
 	Mat mask = getLineMask(weightPrintImage.binImage, lineInfo.frame_start, unPrintColor);
 	lineInfo.maskImage_withWeight = mask.clone();
+	weightPrintImage.binImage = lineInfo.maskImage_withWeight;
+
+	lineInfo.frame_start = calculateStartTime(weightPrintImage, unPrintColor);
+
+	Mat mask_d;
+	inRange(mask, 1, 255, mask_d);
+	Mat maskWeight = weightPrintImage.binImage.clone();
+	Mat maskWeight_d;
+	inRange(maskWeight, 1, 255, maskWeight_d);
 
 	Mat mat_bin;	// mask
 	inRange(lineInfo.maskImage_withWeight, 1, 255, mat_bin);	// 확인용
@@ -79,6 +94,8 @@ int LineFinder::calculateStartTime(WeightMat weightMat, Scalar unPrintColor)
 	//  weightMat.binImage와 tempMat의 bitwiseAnd의 결과
 	//  가장 dot의 수가 많았던 프레임을 startFrame 으로 함.
 	// curFrame부터 정방향 진행, 점의 수가 훅 올라가는부분이 있다면 그부분을 curFrmae으로 조정
+
+	
 	int dotCountMax = 0;
 	for (int i = curFrame; i < weightMat.frameNum; i++)
 	{
@@ -91,7 +108,7 @@ int LineFinder::calculateStartTime(WeightMat weightMat, Scalar unPrintColor)
 		Mat tempMat = imageHandler::getFillImage_unPrint(subImage, unPrintColor);
 		//inRange(tempMat, Scalar(254, 254, 254), Scalar(255, 255, 255), tempMat);	// to 1 demend
 
-		int dotCount = imageHandler::getWhitePixelCount(tempMat);
+		int dotCount = imageHandler::getWhitePixelCount(tempMat);	// 흰점수
 		if (dotCountMax == 0)	// 초기화
 		{
 			dotCount = dotCountMax;
@@ -103,9 +120,9 @@ int LineFinder::calculateStartTime(WeightMat weightMat, Scalar unPrintColor)
 				calcStartFrame  = i;
 		}
 	}
-
-
 	return calcStartFrame;
+	
+	//return weightMat.frameNum;
 }
 
 Mat LineFinder::getLineMask(Mat weightPrintImage, int startFrame, Scalar unPrintColor)
