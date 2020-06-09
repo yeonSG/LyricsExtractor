@@ -2429,6 +2429,21 @@ int imageHandler::getRightistWhitePixel_x(Mat binImage, int targetStartX, int ra
 	return targetStartX;	// 못찾으면 값 유지 
 }
 
+uchar imageHandler::getLeftistWhitePixel_value(Mat binImage)
+{
+	uchar leftist_value = 0;
+
+	for (int width = 0; width < binImage.cols; width++)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return binImage.at<uchar>(hight, width);
+		}
+	}
+	return leftist_value;
+}
+
 // 편중된 색상에 대한 흑백 이미지를 얻음
 Mat imageHandler::getBiasedColorImage(Mat rgbImage, Color biasedColor)
 {

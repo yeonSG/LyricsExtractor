@@ -213,6 +213,8 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	vector<int> pixelsum;
 	Mat maskImage_rmNoise = lineInfo.maskImage_withWeight.clone();
 	inRange(maskImage_rmNoise, 4, 255, maskImage_rmNoise);	// 3프레임까지 버림
+	maskImage_rmNoise = imageHandler::getMorphImage(maskImage_rmNoise, MORPH_ERODE);
+
 	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
 
 	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
@@ -254,9 +256,9 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	leftistCoorX = imageHandler::getLeftistWhitePixel_x(lineInfo.maskImage_withWeight);
 	rightistCoorX = imageHandler::getRightistWhitePixel_x(lineInfo.maskImage_withWeight);
 	// 조건 : 가장 오른쪽 점과 가장 왼쪽 점(라인의 길이)까지 거리가 100pix이상
-	if (rightistCoorX - leftistCoorX < 100)
+	if (rightistCoorX - leftistCoorX < 60)	// 100 -> 60??
 	{
-		lineInfo.errorOccured(LINEERROR_MASKCHECK_Y_LENGHTH);	// 
+		lineInfo.errorOccured(LINEERROR_MASKCHECK_X_LENGHTH);	// 
 		return lineInfo;
 	}
 

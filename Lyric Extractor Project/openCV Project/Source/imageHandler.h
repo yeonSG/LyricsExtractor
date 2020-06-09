@@ -149,6 +149,7 @@ public:
 	static int getLeftistWhitePixel_x(Mat binImage);
 	static int getRightistWhitePixel_x(Mat binImage);
 	static int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);
+	static uchar getLeftistWhitePixel_value(Mat binImage);
 
 	static Mat getBiasedColorImage(Mat rgbImage, Color biasedColor);
 

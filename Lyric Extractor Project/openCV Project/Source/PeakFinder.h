@@ -53,6 +53,7 @@ private:
 	Mat getLineInfoAreaCuttedImage(contourLineInfo LineInfo);
 
 	vector<contourLineInfoSet> getJudgeLineByFrameFlow();
+	bool lineValidCheck(contourLineInfo managedLine, contourLineInfo checkLine);
 
 	// calculations
 	int getMaxValue(contourLineInfo lineInfo);

@@ -413,11 +413,12 @@ bool analyzer::videoAnalization3(string videoPath)
 
 	int mergeProcess_Lines[3] = { 0, };
 	int mergeProcess_Lines_error[3] = { 0, };
+	int lineErrorCount[3][LINEERROR_MAX] = { 0, };
 
 	for(int nColor = 0; nColor < 3; nColor++)	// 0=blue, 1=red, 2=purple
 	{
 		
-		//if (nColor == 1)		// YSYSYS - debug
+		//if (nColor == 0)		// YSYSYS - debug
 		//	continue;
 		//if (nColor == 2)	// RED
 		//	continue;
@@ -433,6 +434,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			{
 				lineFoundProcess_Lines_error[nColor]++;	// 라인 중 에러였던 것.
 				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : ERROR:"<< lineInfo[i].errorNumber << "(" << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end << ")";
+				lineErrorCount[nColor][lineInfo[i].errorNumber]++;
 				continue;
 			}
 
@@ -457,6 +459,7 @@ bool analyzer::videoAnalization3(string videoPath)
 			{
 				mergeProcess_Lines_error[nColor]++;	// 라인 중 에러였던 것.
 				BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : ERROR:" << mergeJudgeLineInfo[i].errorNumber;
+				lineErrorCount[nColor][lineInfo[i].errorNumber]++;
 				continue;
 			}
 			noErrorMergeJudgeLineInfo.push_back(mergeJudgeLineInfo[i]);
@@ -474,7 +477,7 @@ bool analyzer::videoAnalization3(string videoPath)
 		bool isHaveColor = false;
 		if (nColor != 0)	// 라인 색이 파랑이 아닐 때 조건 추가
 		{
-			if (validLineCount > 5)	// 라인 카운트가 5이상
+			if (validLineCount >= 10)	// 라인 수가 10 이하면 보조색 인정안함 
 			{
 				if (lineInfo_all.size() > 2)
 				{
@@ -502,8 +505,15 @@ bool analyzer::videoAnalization3(string videoPath)
 	{
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << lineFoundProcess_Lines[i] << "	" << lineFoundProcess_Lines_error[i];
 		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << mergeProcess_Lines[i] << "	" << mergeProcess_Lines_error[i];
+
 	}
 
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "ERROR TYPE (Blue, Red, Purple)";
+	for (int i = 0; i < LINEERROR_MAX; i++)	// color Types
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << lineErrorCount[0][i] << "	" << lineErrorCount[1][i]<<"	" << lineErrorCount[2][i];
+
+	}
 	
 	vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeLineInfo(lineInfo_all);	//전체 라인 머지	
 

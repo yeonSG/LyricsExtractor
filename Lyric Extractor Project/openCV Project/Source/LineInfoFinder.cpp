@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 3630;	// debug	 // YSYSYS
+	int curFrame = 2710;	// debug	 // YSYSYS
 	
 #endif
 
@@ -594,7 +594,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 		// 이미지 분석하여 라인의 조건에 만족하는 컨투어 셋을 반환함.
 		
 		if (line_PeakInfo.size() > 0)
-		{
+		{			
 			vector<contourLineInfoSet> filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
 
 			cout << endl;
@@ -1477,9 +1477,9 @@ vector<contourLineInfoSet> LineInfoFinder::line_PeakInfoFilter(vector<contourLin
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
 		}
-		if (lineInfosSet[i].maximum.pixelCount <= 500)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		if (lineInfosSet[i].maximum.pixelCount <= 300)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 		{
-			printf(" [IS NOT LINE : pixelCount<200] ");
+			printf(" [IS NOT LINE : pixelCount<300] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_PIXELCOUNT);
 			errorLineInfos.push_back(errorLineInfo);
 			continue;

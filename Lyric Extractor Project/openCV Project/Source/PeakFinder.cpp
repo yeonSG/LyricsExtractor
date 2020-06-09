@@ -13,7 +13,7 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 
 	Mat FC_Bin = imageHandler::getFillImage(frameImage, targetColor);
 	inRange(FC_Bin, Scalar(254, 254, 254), Scalar(255, 255, 255), FC_Bin);	// to 1 demend
-	Mat refPatternStack = accMat.accumulateProcess(FC_Bin);	// 노이즈 제거안한거
+	Mat refPatternStack = FC_Bin;//accMat.accumulateProcess(FC_Bin);	// 노이즈 제거안한거
 
 	this->m_frameNumber = frameNumber;
 	this->m_refUnprintColorWeight = refUnprintImage;
@@ -25,11 +25,11 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	{	// get dummy
 		//stackBinImages = Mat::zeros(patternFill.rows, patternFill.cols, CV_16U);
 		m_stackBinImage = Mat::zeros(patternFill.rows, patternFill.cols, CV_8U);
-			}
+	}
 	else
 	{
 		// 원래
-		if(frameNumber==3659)
+		if(frameNumber==2254)
 			Mat test_refUnprintImage = refUnprintImage;
 		Mat test_m_stackBinImage = m_stackBinImage.clone();
 		
@@ -88,6 +88,10 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		makeExpectedLineInfos();
 		printf("[found CLine %d]", m_contourMaxBinImage_expectedLineInfo.size());
 		printf("[ex CLine %d]", m_expectedLineInfos.size());
+		if (m_expectedLineInfos.size() != 0)
+		{
+			printf("[%d]", imageHandler::getLeftistWhitePixel_value(m_expectedLineInfos[0].first.progress.weightMat.binImage));
+		}
 		
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
 	}
@@ -696,7 +700,7 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 		for (int j = 0; j < m_contourMaxBinImage_expectedLineInfo.size(); j++)	// 이번에 프레임에 찾아낸 라인
 		{
 			bool isRelative = imageHandler::isRelation(m_expectedLineInfos[i].first.progress.coorY_start, m_expectedLineInfos[i].first.progress.coorY_end, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_start, m_contourMaxBinImage_expectedLineInfo[j].progress.coorY_end);
-			if (isRelative)	// 이번프레임에도 좌표에 존재함
+			if (isRelative)	// 이번프레임에도 좌표에 존재함 + 추가조건()
 			{
 				relatedIndex.push_back(j);
 				foundLineRelated[j] = true;
@@ -744,16 +748,24 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 		}
 		else // 머지된 라인과 검사 진행
 		{
-			mergedLineInfo;
-
-			if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > mergedLineInfo.pixelCount)
-			{	//
-				m_expectedLineInfos[i].second++;	// 존재하지만 픽셀수가 절반이하로 줄어듦
-			}
-			else if (m_expectedLineInfos[i].first.progress.maxValue > mergedLineInfo.maxValue)	// maxvalue가 이전보다 낮음
+			if (false==lineValidCheck(m_expectedLineInfos[i].first.progress, mergedLineInfo))
 			{
 				m_expectedLineInfos[i].second++;
 			}
+//			m_expectedLineInfos[i].first.progress.weightMat.binImage;
+//			if (m_expectedLineInfos[i].first.progress.pixelCount / 2 > mergedLineInfo.pixelCount)
+//			{	//
+//				m_expectedLineInfos[i].second++;	// 존재하지만 픽셀수가 절반이하로 줄어듦
+//			}
+//			//else if (m_expectedLineInfos[i].first.progress.maxValue > mergedLineInfo.maxValue)	// maxvalue가 이전보다 낮음 -> 이 조건 없애거나 OR maxValue는 가장 왼쪽 점의 값으로 하기?
+//			//{
+//			//	m_expectedLineInfos[i].second++;
+//			//}
+//			else if(imageHandler::getLeftistWhitePixel_value(m_expectedLineInfos[i].first.progress.weightMat.binImage) > 
+//				imageHandler::getLeftistWhitePixel_value(mergedLineInfo.weightMat.binImage))
+//			{
+//				m_expectedLineInfos[i].second++;
+//			}
 			else
 			{
 				if (m_expectedLineInfos[i].second == 0)	// 연속으로 0일때만 정보 업데이트
@@ -917,6 +929,77 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 
 	//printf(" ( %d : %d ) ", expectedLineInfos_buffer_toLine.size(), expectedLineInfos_buffer_toMaintain.size());
 }
+
+bool PeakFinder::lineValidCheck(contourLineInfo managedLine, contourLineInfo checkLine)
+{
+	bool isValid = true;
+
+
+	int a = imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage);	// maxvalue를 가진 곳을 마스크 해서 얻은 값?
+	int b = imageHandler::getLeftistWhitePixel_value(checkLine.weightMat.binImage);
+
+	// lineValidCheck (contourLineInfo managedLine, contourLineInfo checkLine)
+	//  - check_lineEnd_pixelCount
+	//  - check_lineEnd_maxValue
+	// managedLine.contours[0] 의 값 == max값
+	// managedLine.contours[0]의 범위를 마스크로 사용하여 mergedLineInfo.weightMat.binImage 마스킹 한 값에서 max값 얻어냄
+	// 비교
+
+	managedLine.weightMat.binImage;
+	if (managedLine.pixelCount / 2 > checkLine.pixelCount)
+	{	//
+		isValid = false;
+		return isValid;
+	}
+
+	int validContourIndex = -1;
+	int managedLineMaxValue = 0;
+	int checkLineMaxValue = 0;
+	for (int i = 0; i < managedLine.contours.size(); i++)
+	{
+		if (managedLine.contours[i].pixelCount > 100)
+		{
+			validContourIndex = i;
+
+
+			Mat mask = Mat::zeros(managedLine.weightMat.binImage.rows, managedLine.weightMat.binImage.cols, CV_8U);
+			mask = imageHandler::getWhiteMaskImage(mask, managedLine.contours[validContourIndex].coorX_start, managedLine.contours[validContourIndex].coorY_start, managedLine.contours[validContourIndex].coorX_end - managedLine.contours[validContourIndex].coorX_start, managedLine.contours[validContourIndex].coorY_end - managedLine.contours[validContourIndex].coorY_start);
+
+			Mat maskedMat;
+			bitwise_and(mask, managedLine.weightMat.binImage, maskedMat);
+			managedLineMaxValue = imageHandler::getMaximumValue(maskedMat);
+			bitwise_and(mask, checkLine.weightMat.binImage, maskedMat);
+			checkLineMaxValue = imageHandler::getMaximumValue(maskedMat);
+
+			if (managedLineMaxValue!=0 && checkLineMaxValue!=0)
+				break;
+		}
+		if (i == managedLine.contours.size() - 1)
+		{
+			isValid = false;
+			return isValid;
+		}
+	}
+
+
+	if(managedLineMaxValue > checkLineMaxValue)
+	//if (imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage) > imageHandler::getMaximumValue(maskedMat))
+	{
+		isValid = false;
+	}
+	//else if (m_expectedLineInfos[i].first.progress.maxValue > mergedLineInfo.maxValue)	// maxvalue가 이전보다 낮음 -> 이 조건 없애거나 OR maxValue는 가장 왼쪽 점의 값으로 하기?
+	//{
+	//	m_expectedLineInfos[i].second++;
+	//}
+	//if (imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage) >
+	//	imageHandler::getLeftistWhitePixel_value(checkLine.weightMat.binImage))
+	//{
+	//	isValid = false;
+	//}
+
+	return isValid;
+}
+
 
 int PeakFinder::getMaxValue(contourLineInfo lineInfo)
 {
