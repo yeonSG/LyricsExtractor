@@ -399,6 +399,7 @@ bool analyzer::videoAnalization3(string videoPath)
 	}
 
 	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
+	//Scalar unPrintColor = Scalar(0, 255, 255);	// YSYSYS - for debug
 	bool isFoundColor = getUnprintColorRutin(unPrintColor);
 
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
@@ -516,6 +517,26 @@ bool analyzer::videoAnalization3(string videoPath)
 	}
 	
 	vector<LineInfo> mergeJudgeLineInfo = lineFinder.mergeLineInfo(lineInfo_all);	//전체 라인 머지	
+
+	// 가사 통계	
+	float avgLyricLength = 0;
+	bool isDuet = false;
+	bool isDuet_sameTimeSinging = false;
+	for (int i = 0; i < mergeJudgeLineInfo.size(); i++)
+	{
+		avgLyricLength += mergeJudgeLineInfo[i].frame_end - mergeJudgeLineInfo[i].frame_start;
+		if (mergeJudgeLineInfo[i].printColor == 3)
+			isDuet_sameTimeSinging = true;
+		if (mergeJudgeLineInfo[i].printColor != 0)	// 파랑이 아님
+			isDuet = true;
+	}
+	avgLyricLength = avgLyricLength / (float)mergeJudgeLineInfo.size();
+
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "LYRIC TYPE" ;
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "-Avg Length : " << avgLyricLength;
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "-is Duet : " << isDuet;
+	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "-is Duet with sametime singing : " << isDuet_sameTimeSinging;
+	
 
 	// lineInfo_all Sorting
 	// lineFinder.mergeAndJudgeLineInfo() 수행

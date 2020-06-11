@@ -211,17 +211,16 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	//start	 -> 
 	vector<int> weightAvg;
 	vector<int> pixelsum;
-	Mat maskImage_rmNoise = lineInfo.maskImage_withWeight.clone();
-	inRange(maskImage_rmNoise, 4, 255, maskImage_rmNoise);	// 3프레임까지 버림
-	maskImage_rmNoise = imageHandler::getMorphImage(maskImage_rmNoise, MORPH_ERODE);
-
-	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
-
-	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
-	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage_rmNoise);
-
+	Mat maskImage= lineInfo.maskImage_withWeight.clone();
+	inRange(maskImage, 4, 255, maskImage);	// 3프레임까지 버림
+	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage);
+	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage);
 	int totalRange = rightistCoorX- leftistCoorX;
 	int sepaRange = totalRange / 3;
+
+	Mat maskImage_rmNoise = imageHandler::getMorphImage(maskImage, MORPH_ERODE);
+	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
+
 
 	for (int i = 0; i < 3; i++)	// 3등분해서 확인
 	{
@@ -229,7 +228,24 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 		int coorX = leftistCoorX + sepaRange * i;
 		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, lineInfo.maskImage_withWeight.rows);
 		bitwise_and(areaMask, maskImage_rmNoise, areaMask);
-		weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
+		//weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
+
+		vector<int>	weightValues = imageHandler::getValueArrWithSort(areaMask); // .size() == 총 점의 개수, [i].value == 해당점의 weight
+		weightValues.erase(
+			unique(weightValues.begin(), weightValues.end(),
+				[](const int& a, const int& b) {
+			if (a == b)
+				return true;
+			else
+				return false;
+		}	  // 중복제거	 
+		), weightValues.end());
+
+		if (weightValues.size() == 0)
+			weightAvg.push_back(0);
+		else 
+			weightAvg.push_back(weightValues[weightValues.size() / 2]);
+
 		pixelsum.push_back(imageHandler::getWhitePixelCount(areaMask));
 		if (weightAvg.back() == 0)
 		{

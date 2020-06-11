@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 2710;	// debug	 // YSYSYS
+	int curFrame = 1759;	// debug	 // YSYSYS
 	
 #endif
 
@@ -1627,7 +1627,7 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 			if (isRelation)	// 겹친다면 병합 수행
 			{
 				bool isOtherLine_byYcoor = false;
-				bool isOtherLine_byframe = false;	// 둘다 만족해야 다른 라인으로 봄
+				bool isOtherLine_byframe = false;	// 다 만족해야 다른 라인으로 봄
 
 				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
 				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
@@ -1647,23 +1647,22 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 				int allLength_start = min(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
 				int allLength_end = max(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
 
-				int dupLength_start = max(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
-				int dupLength_end = min(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
-				int dupLength = dupLength_end - dupLength_start;	//
+				int dupFrame_start = max(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
+				int dupFrame_end = min(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
+				int dupFrame = dupFrame_end - dupFrame_start;	//
 
-				if (dupLength <= 0)	// 라인 안겹침
+				if (dupFrame <= 0)	// 프레임 안겹침
 				{
 					isOtherLine_byframe = true;
 				}
 				else
 				{
-					int allLength = allLength_end - allLength_start;
-					if (allLength == 0)	// error 방지
+					int allFrame = allLength_end - allLength_start;
+					if (allFrame == 0)	// error 방지
 						;
-					else if ((dupLength / (float)allLength) < 0.7)	// 70프로도 겹치지 않음
+					else if ((dupFrame / (float)allFrame) < 0.7)	// 70프로도 겹치지 않음
 						isOtherLine_byframe = true;
 				}
-
 
 				if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
 				{	// 듀엣라인검사
@@ -1689,9 +1688,9 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 				}
 				else
 				{	// 일반라인검사
-					if (isOtherLine_byYcoor && isOtherLine_byframe && !isSubset)
+					if (isOtherLine_byYcoor && isOtherLine_byframe && !isSubset)	
 					{
-						lineInfo_temp.push_back(lineInfos[i]);;// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.
+						lineInfo_temp.push_back(lineInfos[i]);
 						continue;
 					}
 					else // 같은 라인 (머지)
@@ -1711,7 +1710,60 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 			}
 			else
 			{
-				lineInfo_temp.push_back(lineInfos[i]);
+				if (lineInfo_temp.back().printColor == lineInfos[i].printColor)	// 두 라인의 컬러코드가 같음
+				{
+					bool isOtherLine_byXcoor = false;	// X좌표에 의하면 다른 라인임 = X좌표가 집합관계에 있다면 다른 라인으로 봄
+					bool isOtherLine_byYcoor = false;	// Y좌표에 의하면 다른 라인임 = Y 평균좌표의 차이가 많이남
+
+					int dupFrame_start = max(lineInfo_temp.back().frame_start, lineInfos[i].frame_start);
+					int dupFrame_end = min(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
+					int dupFrame = dupFrame_end - dupFrame_start;	//
+
+					int lineInfo_temp_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
+					int lineInfos_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfos[i].maskImage_withWeight);
+					int lineInfo_temp_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
+					int lineInfos_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfos[i].maskImage_withWeight);
+
+					int dupXcoor_start = max(lineInfo_temp_Xcoor_start, lineInfos_Xcoor_start);
+					int dupXcoor_end = min(lineInfo_temp_Xcoor_end, lineInfo_temp_Xcoor_end);
+					int dupXcoor = dupXcoor_end - dupXcoor_start;	//
+
+					int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
+					int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+					if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
+					{
+						isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
+					}
+
+					if (dupXcoor <= 0						// X좌표 안겹침
+						&& (dupFrame<0 && dupFrame>-10))	// 적은 프레임차이(10프레임?)
+					{
+						isOtherLine_byXcoor = false;		// 머지 진행함
+					}
+					else
+						isOtherLine_byXcoor = true;
+
+					if (isOtherLine_byXcoor || isOtherLine_byYcoor)
+					{
+						lineInfo_temp.push_back(lineInfos[i]);
+						continue;
+					}
+					else
+					{
+						relationCount++;
+						if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
+							lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
+						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
+							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
+						Mat orImg;
+						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
+						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+					}
+				}
+				else
+				{
+					lineInfo_temp.push_back(lineInfos[i]);
+				}
 			}
 		}
 	}

@@ -934,10 +934,6 @@ bool PeakFinder::lineValidCheck(contourLineInfo managedLine, contourLineInfo che
 {
 	bool isValid = true;
 
-
-	int a = imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage);	// maxvalue를 가진 곳을 마스크 해서 얻은 값?
-	int b = imageHandler::getLeftistWhitePixel_value(checkLine.weightMat.binImage);
-
 	// lineValidCheck (contourLineInfo managedLine, contourLineInfo checkLine)
 	//  - check_lineEnd_pixelCount
 	//  - check_lineEnd_maxValue
@@ -945,59 +941,40 @@ bool PeakFinder::lineValidCheck(contourLineInfo managedLine, contourLineInfo che
 	// managedLine.contours[0]의 범위를 마스크로 사용하여 mergedLineInfo.weightMat.binImage 마스킹 한 값에서 max값 얻어냄
 	// 비교
 
-	managedLine.weightMat.binImage;
 	if (managedLine.pixelCount / 2 > checkLine.pixelCount)
-	{	//
+	{	
 		isValid = false;
 		return isValid;
 	}
 
-	int validContourIndex = -1;
-	int managedLineMaxValue = 0;
-	int checkLineMaxValue = 0;
-	for (int i = 0; i < managedLine.contours.size(); i++)
+	for (int i = 0; i < managedLine.contours.size() / 2 + 1; i++)
 	{
-		if (managedLine.contours[i].pixelCount > 100)
-		{
-			validContourIndex = i;
+		// contour/2+1 개까지 검사하면서
+		// 증가추세인것이 있어야함
+		// 없다면 false한다.
+		int managedLineMaxValue = 0;
+		int checkLineMaxValue = 0;
+		Mat mask = Mat::zeros(managedLine.weightMat.binImage.rows, managedLine.weightMat.binImage.cols, CV_8U);
+		mask = imageHandler::getWhiteMaskImage(mask, managedLine.contours[i].coorX_start, managedLine.contours[i].coorY_start, managedLine.contours[i].coorX_end - managedLine.contours[i].coorX_start, managedLine.contours[i].coorY_end - managedLine.contours[i].coorY_start);
+
+		Mat maskedMat;
+		bitwise_and(mask, managedLine.weightMat.binImage, maskedMat);
+		managedLineMaxValue = imageHandler::getMaximumValue(maskedMat);
+		bitwise_and(mask, checkLine.weightMat.binImage, maskedMat);
+		checkLineMaxValue = imageHandler::getMaximumValue(maskedMat);
 
 
-			Mat mask = Mat::zeros(managedLine.weightMat.binImage.rows, managedLine.weightMat.binImage.cols, CV_8U);
-			mask = imageHandler::getWhiteMaskImage(mask, managedLine.contours[validContourIndex].coorX_start, managedLine.contours[validContourIndex].coorY_start, managedLine.contours[validContourIndex].coorX_end - managedLine.contours[validContourIndex].coorX_start, managedLine.contours[validContourIndex].coorY_end - managedLine.contours[validContourIndex].coorY_start);
+		if (managedLineMaxValue == 0 && checkLineMaxValue == 0)
+			continue;
 
-			Mat maskedMat;
-			bitwise_and(mask, managedLine.weightMat.binImage, maskedMat);
-			managedLineMaxValue = imageHandler::getMaximumValue(maskedMat);
-			bitwise_and(mask, checkLine.weightMat.binImage, maskedMat);
-			checkLineMaxValue = imageHandler::getMaximumValue(maskedMat);
-
-			if (managedLineMaxValue!=0 && checkLineMaxValue!=0)
-				break;
-		}
-		if (i == managedLine.contours.size() - 1)
-		{
-			isValid = false;
-			return isValid;
-		}
+		if (managedLineMaxValue < checkLineMaxValue)
+			return true;
+			
 	}
 
 
-	if(managedLineMaxValue > checkLineMaxValue)
-	//if (imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage) > imageHandler::getMaximumValue(maskedMat))
-	{
-		isValid = false;
-	}
-	//else if (m_expectedLineInfos[i].first.progress.maxValue > mergedLineInfo.maxValue)	// maxvalue가 이전보다 낮음 -> 이 조건 없애거나 OR maxValue는 가장 왼쪽 점의 값으로 하기?
-	//{
-	//	m_expectedLineInfos[i].second++;
-	//}
-	//if (imageHandler::getLeftistWhitePixel_value(managedLine.weightMat.binImage) >
-	//	imageHandler::getLeftistWhitePixel_value(checkLine.weightMat.binImage))
-	//{
-	//	isValid = false;
-	//}
 
-	return isValid;
+	return false;
 }
 
 
