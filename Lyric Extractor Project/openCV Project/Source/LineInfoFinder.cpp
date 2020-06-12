@@ -1580,6 +1580,7 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 {
 	vector<LineInfo> lineInfo_out;
 
+	lineInfo_out = mergeSeparatedByMaximumFrame(lineInfos);	// ys -> 그냥 weightMat 사이즈 올려? char -> short
 	lineInfo_out = mergeLineInfo(lineInfo_out);	// 라인 머지함
 
 	for (int i = 0; i < lineInfo_out.size(); i++)
@@ -1605,6 +1606,70 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 	/*라인들 머지 실행 (isRelation)*/
 	// 관련된 라인 합체(start-end, Mat(bitwise_or)-> 결과에서 다시 후처리(네모칸지우기 등등), 결과 픽셀 확인)
 	return lineInfo_out;
+}
+
+
+vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> lineInfos)
+{
+	int relationCount = 0;
+	vector<LineInfo> lineInfo_temp;
+
+	sort(lineInfos.begin(), lineInfos.end(), LineInfo::asc);	// 소팅
+
+	for (int i = 0; i < lineInfos.size(); i++)
+	{
+		if (i == 0)
+		{
+			lineInfo_temp.push_back(lineInfos[i]);
+		}
+		else
+		{
+			int frameLength = lineInfo_temp.back().frame_end - lineInfo_temp.back().frame_start;
+			if (frameLength > 250 && frameLength < 260)
+			{
+				// 조건
+				// 1. 맥시멈 값이 255 임,
+				// 2. 두 lineInfo 의 weight이 겹치지 않음 (노이즈 고려)		// 첫라인의 가장 오른쪽 x좌표 < 두번째라인의 평균 x좌표
+				bool isRelation_frame = imageHandler::isRelation(lineInfo_temp.back().frame_start, lineInfo_temp.back().frame_end, lineInfos[i].frame_start, lineInfos[i].frame_end);
+				// y좌표 겹쳐저야함
+
+				bool isOtherLine_byYcoor = false;
+				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
+				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+				if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
+				{
+					isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
+				}
+
+				if (isRelation_frame == false && isOtherLine_byYcoor==false)
+				{
+					int xCoor = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
+
+					if (xCoor < imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, true))
+					{
+						relationCount++;
+						if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
+							lineInfo_temp.back().frame_start = lineInfos[i].frame_start;
+						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
+							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
+						Mat orImg;
+						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
+						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+						// 라인 머지  to .back()
+						continue;
+					}
+				}
+			}
+
+			lineInfo_temp.push_back(lineInfos[i]);
+		}
+
+	}
+
+	if (relationCount == 0)
+		return lineInfo_temp;
+	else
+		return mergeSeparatedByMaximumFrame(lineInfo_temp);
 }
 
 vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
