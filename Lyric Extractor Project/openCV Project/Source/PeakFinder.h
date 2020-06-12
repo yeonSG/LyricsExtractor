@@ -39,7 +39,7 @@ public:
 	void stackBinImageCorrect(contourLineInfoSet lineSet);//Mat validImage)
 	
 private:
-	Mat stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage, Mat refPatternStack);
+	Mat stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage);
 	Mat stackBinImage2(Mat stackBinImage, Mat patternImage, Mat refUnprintImage);
 	Mat stackBinImage_noiseRemove(Mat stackBinImage, Mat fillImage);
 

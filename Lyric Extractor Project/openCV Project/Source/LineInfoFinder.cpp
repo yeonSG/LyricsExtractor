@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 1759;	// debug	 // YSYSYS
+	int curFrame = 530;	// debug	 // YSYSYS
 	
 #endif
 
@@ -588,7 +588,6 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 
 		Mat refUnprintImage = unprintImage.unprintImage_process(subImage);
 
-		//peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[m_PrintTypeNumType], refUnprintImage);
 		vector<contourLineInfoSet> line_PeakInfo;
 		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[m_PrintTypeNumType], refUnprintImage);	// ys-process : 벹어낸 라인의 총 수
 		// 이미지 분석하여 라인의 조건에 만족하는 컨투어 셋을 반환함.
@@ -621,11 +620,11 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 					if (lineInfo.isValid == true)
 					{
 						lineInfos.push_back(lineInfo);
-						Mat tt_1lineInfosbin = filltered_line_PeakInfo[i].progress.weightMat.binImage.clone();
-						Mat tt_2peakFinder_mBin = peakFinder.m_stackBinImage.clone();
+						//Mat tt_1lineInfosbin = filltered_line_PeakInfo[i].progress.weightMat.binImage.clone();
+						//Mat tt_2peakFinder_mBin = peakFinder.m_stackBinImage.clone();
 						//peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);	
 						peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i]);
-						Mat tt_3peakFinder_after = peakFinder.m_stackBinImage.clone();
+						//Mat tt_3peakFinder_after = peakFinder.m_stackBinImage.clone();
 						//unprintImage.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);
 						// peakFinder.m_stackBinImage 보정
 						//if (lineInfos.size() == 3)	// ysysys
@@ -1581,7 +1580,7 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 {
 	vector<LineInfo> lineInfo_out;
 
-	lineInfo_out = mergeLineInfo(lineInfos);	// 라인 머지함
+	lineInfo_out = mergeLineInfo(lineInfo_out);	// 라인 머지함
 
 	for (int i = 0; i < lineInfo_out.size(); i++)
 	{

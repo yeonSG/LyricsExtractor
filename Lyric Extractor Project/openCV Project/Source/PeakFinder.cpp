@@ -29,13 +29,12 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	else
 	{
 		// 원래
-		if(frameNumber==2254)
+		if (frameNumber == 750)
 			Mat test_refUnprintImage = refUnprintImage;
 		Mat test_m_stackBinImage = m_stackBinImage.clone();
 		
 		Mat bin_refUnprintImage;
-		inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
-		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage, refPatternStack);	// patternStack도 사용할수있음
+		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage);	// patternStack도 사용할수있음
 		// 이 이미지를 통하여 컨투어 판단을 하고 라인으로 처리함
 
 		//m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
@@ -59,16 +58,6 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 				inRange(m_expectedLineInfos[i].first.maximum.weightMat.binImage, 1, 255, temp);
 				bitwise_or(expectedLineInfosMask, temp, expectedLineInfosMask);				
 			}
-			// 2. FC_Bin == 1, patternFill == 0 이면서  m_expectedLineInfosMask==1 인곳 살림
-			/*
-				FC	Pa
-				0	0	= 0
-				0	1	= 0
-				1	0	= 1
-				1	1	= 0
-				( NOT(patternFill) AND FC ) AND m_expectedLineInfosMask;
-				m_expectedLineInfos OR m_expectedLineInfosMask;
-			*/
 			Mat exceptionMask;	// 살려야 할 부분
 			Mat WhiteToBlackMat = imageHandler::getWhiteToBlackImage(FC_Bin, patternFill);
 			bitwise_and(WhiteToBlackMat, expectedLineInfosMask, exceptionMask);
@@ -191,47 +180,19 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 }
 
 // patternImage에 대하여 추가 연산 필요 ()
-Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage, Mat refPatternStack)
+Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprintImage)
 {
 	int height = stackBinImage.rows;
 	int width = stackBinImage.cols;
 
 	Mat bin_refUnprintImage;
-	inRange(refUnprintImage, 0, 2, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
-
-	// refUnprintImage 와 refPatternStack의 값이 같은 곳 (0, 255 제외)
-	//Mat test_sameArea= Mat::zeros(height, width, CV_8U);
-	//for (int y = 0; y < height; y++)
-	//{
-	//	uchar* yPtr_unp= refUnprintImage.ptr<uchar>(y);
-	//	uchar* yPtr_p= refPatternStack.ptr<uchar>(y);
-	//	uchar* yPtr_out = test_sameArea.ptr<uchar>(y);
-	//	for (int x = 0; x < width; x++)
-	//	{
-	//		if (yPtr_unp[x] == yPtr_p[x])
-	//		{
-	//			if (yPtr_unp[x] != 255)
-	//			{
-	//				yPtr_out[x] = yPtr_p[x];
-	//			}
-	//		}
-	//	}
-	//}
-	//Mat test_sameArea_bin;
-	//inRange(test_sameArea, 1, 255, test_sameArea_bin);
-
-	// refPatternStack이 0이고, stack이 !0인 곳은 유지(++)
-	//
-
+	inRange(refUnprintImage, 0, 4, bin_refUnprintImage);// 최근 3프래임중 흰색이었던곳
+	   
 	for (int y = 0; y < height; y++)
 	{
 		uchar* yPtr_stack = stackBinImage.ptr<uchar>(y);
 		uchar* yPtr_pattern = patternImage.ptr<uchar>(y);
 		uchar* yPtr_refUnprint = bin_refUnprintImage.ptr<uchar>(y);
-
-		uchar* yPtr_unp = refUnprintImage.ptr<uchar>(y);
-		uchar* yPtr_p = refPatternStack.ptr<uchar>(y);
-		//uchar* yPtr_refsum = test_sameArea_bin.ptr<uchar>(y);
 
 		for (int x = 0; x < width; x++)
 		{
@@ -242,12 +203,6 @@ Mat PeakFinder::stackBinImage(Mat stackBinImage, Mat patternImage, Mat refUnprin
 
 			if (yPtr_pattern[x] == 0)	// 0인곳  On 조건
 			{
-				//if (yPtr_stack[x] != 0 && yPtr_p[x] == 0)	//fill_FC가 0이지만, FC는 파랑이고, stack되고 있는 곳이라면..
-				//{
-				//	yPtr_stack[x] += 1;
-				//}
-				////if (yPtr_refsum[x]==0)
-				//else
 				yPtr_stack[x] = 0;
 			}
 			else if (yPtr_pattern[x] != 0 && yPtr_stack[x] != 0)	// 패턴이면서,
@@ -539,6 +494,9 @@ void PeakFinder::makeExpectedLineInfos()
 	{
 		m_contourMaxBinImage_expectedLineInfo = expectedLineInfoAfterProcess(conLineInfo);	// 라인 후처리(필터)
 	}
+	else
+		m_contourMaxBinImage_expectedLineInfo.clear();
+
 }
 
 vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<contourLineInfo> conLineInfos)

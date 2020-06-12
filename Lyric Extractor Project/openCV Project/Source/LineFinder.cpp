@@ -44,14 +44,14 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 
 	lineInfo.frame_start = calculateStartTime(weightPrintImage, unPrintColor);
 
-	Mat mask_d;
-	inRange(mask, 1, 255, mask_d);
-	Mat maskWeight = weightPrintImage.binImage.clone();
-	Mat maskWeight_d;
-	inRange(maskWeight, 1, 255, maskWeight_d);
-
-	Mat mat_bin;	// mask
-	inRange(lineInfo.maskImage_withWeight, 1, 255, mat_bin);	// 확인용
+	//Mat mask_d;
+	//inRange(mask, 1, 255, mask_d);
+	//Mat maskWeight = weightPrintImage.binImage.clone();
+	//Mat maskWeight_d;
+	//inRange(maskWeight, 1, 255, maskWeight_d);
+	//
+	//Mat mat_bin;	// mask
+	//inRange(lineInfo.maskImage_withWeight, 1, 255, mat_bin);	// 확인용
 
 
 	lineInfo = checkValidMask(lineInfo);	// ys-process : 마스크로 에러 검출
@@ -68,7 +68,7 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 		lineInfo.errorOccured(LINEERROR_ENDFRAME_ENDOVERFLOW);
 		return lineInfo;
 	}
-	if (lineInfo.frame_end - lineInfo.frame_start <= 10)	// 라인의 길이가 10미만일 때
+	if (lineInfo.frame_end - lineInfo.frame_start < 10)	// 라인의 길이가 10미만일 때
 	{
 		lineInfo.errorOccured(LINEERROR_ENDFRAME_RANGE);
 		return lineInfo;
@@ -213,13 +213,16 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	vector<int> pixelsum;
 	Mat maskImage= lineInfo.maskImage_withWeight.clone();
 	inRange(maskImage, 4, 255, maskImage);	// 3프레임까지 버림
-	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage);
-	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage);
-	int totalRange = rightistCoorX- leftistCoorX;
-	int sepaRange = totalRange / 3;
 
 	Mat maskImage_rmNoise = imageHandler::getMorphImage(maskImage, MORPH_ERODE);
 	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
+
+	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
+	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage_rmNoise);
+	int totalRange = rightistCoorX- leftistCoorX;
+	int sepaRange = totalRange / 3;
+	
+;
 
 
 	for (int i = 0; i < 3; i++)	// 3등분해서 확인

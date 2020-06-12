@@ -95,6 +95,8 @@ public:
 
 	void findErrorFromLyrics();
 
+	Mat weightImageToOCRbin(Mat weightMat, Scalar unprintColor, int startFrame);
+
 public:
 	VideoCapture *videoCapture = nullptr;		
 

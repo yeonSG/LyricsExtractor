@@ -400,7 +400,7 @@ bool analyzer::videoAnalization3(string videoPath)
 
 	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
 	//Scalar unPrintColor = Scalar(0, 255, 255);	// YSYSYS - for debug
-	bool isFoundColor = getUnprintColorRutin(unPrintColor);
+	//bool isFoundColor = getUnprintColorRutin(unPrintColor);
 
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
@@ -512,7 +512,7 @@ bool analyzer::videoAnalization3(string videoPath)
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "ERROR TYPE (Blue, Red, Purple)";
 	for (int i = 0; i < LINEERROR_MAX; i++)	// color Types
 	{
-		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << lineErrorCount[0][i] << "	" << lineErrorCount[1][i]<<"	" << lineErrorCount[2][i];
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << i << " : "<< lineErrorCount[0][i] << "	" << lineErrorCount[1][i]<<"	" << lineErrorCount[2][i];
 
 	}
 	
@@ -547,8 +547,11 @@ bool analyzer::videoAnalization3(string videoPath)
 		{
 			Line line;
 			Mat saveImage;
-			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, saveImage);
+			//inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, saveImage);
+
 			//catpureBinaryImageForOCR(saveImage, i, fileManager::getSavePath()); // 이미지 저장
+			// weightImage to OCR bin
+			saveImage = weightImageToOCRbin(mergeJudgeLineInfo[i].maskImage_withWeight, unPrintColor, mergeJudgeLineInfo[i].frame_start);
 
 			line.maskImage = saveImage; //mergeJudgeLineInfo[i].maskImage_withWeight;
 			line.startFrame = mergeJudgeLineInfo[i].frame_start;
@@ -609,6 +612,31 @@ void analyzer::findErrorFromLyrics()
 	}
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "lyric Error : "<< errorCount <<"/" << m_lyric.getLinesSize();
 	return;
+}
+
+Mat analyzer::weightImageToOCRbin(Mat weightMat, Scalar unprintColor, int startFrame)
+{
+	Mat outmat;
+
+	Mat orgImage;
+	videoCapture->set(CAP_PROP_POS_FRAMES, (double)startFrame);
+	videoCapture->read(orgImage);
+
+	Mat subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
+
+	Mat targetColorImage = imageHandler::getFillImage_unPrint(subImage, unprintColor);
+	cvtColor(targetColorImage, targetColorImage, COLOR_RGB2GRAY);
+	inRange(targetColorImage, 1, 255, targetColorImage);
+	inRange(weightMat, 1, 255, weightMat);
+
+	 Mat filledImage = imageHandler::getBinImageByFloodfillAlgorism(targetColorImage, weightMat);
+	 Mat filledImage_DeNoise;
+	 filledImage_DeNoise = imageHandler::removeNotLyricwhiteArea(filledImage);
+	 filledImage_DeNoise = imageHandler::getBorderFloodFilledImage(filledImage_DeNoise);
+
+	 bitwise_or(filledImage_DeNoise, weightMat, outmat);
+
+	return outmat;
 }
 
 bool analyzer::getUnprintColorRutin(Scalar& color)

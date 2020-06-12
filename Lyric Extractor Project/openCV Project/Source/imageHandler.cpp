@@ -3187,11 +3187,48 @@ Mat imageHandler::getDepthContourRemovedMat(Mat binImage)
 	findContours(binImage, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
 	// 뎁스가 0이 아닌 에들은 floodfill 해버림
 
+	vector<int> firstGeneration;
+	vector<int> secondGeneration;
+	vector<int> firstSecondGeneration;
 	for (unsigned int i = 0; i < contours.size(); i++)
 	{
-		if (hierarchy[i][3] != -1) // 부모가 있는 애들
+		if (hierarchy[i][3] == -1)
+			firstGeneration.push_back(i);
+	}
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		for (int j = 0; j < firstGeneration.size(); j++)
 		{
-			Mat contourMask = Mat::zeros(binImage.rows, binImage.cols, CV_8U);;
+			if (hierarchy[i][3] == firstGeneration[j])// firstGen 배열에 있는 애가 부모인 경우
+			{
+				secondGeneration.push_back(i);
+				break;	
+			}
+		}
+	}
+	// first, second 부모의 합
+	firstSecondGeneration = firstGeneration;	
+	for (int i = 0 ; i < secondGeneration.size(); i++)
+	{
+		firstSecondGeneration.push_back(secondGeneration[i]);
+	}
+
+	// 부모가 firstGen, secondGen 둘다 아닌경우 3세대 이상으로 보고 삭제함.
+	for (unsigned int i = 0; i < contours.size(); i++)
+	{
+		bool isFSGeneration = false;
+		for (int j = 0; j < firstSecondGeneration.size(); j++)
+		{
+			if (i == firstSecondGeneration[j])	// 1,2 세대임
+			{
+				isFSGeneration = true;
+				break;
+			}
+		}
+		
+		if (isFSGeneration == false)
+		{
+			Mat contourMask = Mat::zeros(binImage.rows, binImage.cols, CV_8U);
 			vector<vector<Point>> contours_picked;
 			contours_picked.push_back(contours[i]);
 			fillPoly(contourMask, contours_picked, 255);
@@ -3199,7 +3236,23 @@ Mat imageHandler::getDepthContourRemovedMat(Mat binImage)
 			bitwise_not(contourMask, contourMask);
 			bitwise_and(contourMask, removedMat, removedMat);
 		}
+
 	}
+
+
+	//for (unsigned int i = 0; i < contours.size(); i++)
+	//{
+	//	if (hierarchy[i][3] != -1) // 부모가 있는 애들 && 
+	//	{
+	//		Mat contourMask = Mat::zeros(binImage.rows, binImage.cols, CV_8U);;
+	//		vector<vector<Point>> contours_picked;
+	//		contours_picked.push_back(contours[i]);
+	//		fillPoly(contourMask, contours_picked, 255);
+
+	//		bitwise_not(contourMask, contourMask);
+	//		bitwise_and(contourMask, removedMat, removedMat);
+	//	}
+	//}
 	return removedMat;
 }
 
