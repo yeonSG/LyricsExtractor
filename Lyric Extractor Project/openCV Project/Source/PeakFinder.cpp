@@ -29,9 +29,15 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	else
 	{
 		// 원래
-		if (frameNumber == 750)
+		if (frameNumber == 3831)
+		{
 			Mat test_refUnprintImage = refUnprintImage;
-		Mat test_m_stackBinImage = m_stackBinImage.clone();
+		//	Mat test1;
+		//	Mat test2;
+		//	inRange(m_expectedLineInfos[0].first.progress.weightMat.binImage, 1, 255, test1);
+		//	inRange(m_expectedLineInfos[2].first.progress.weightMat.binImage, 1, 255, test2);
+		}
+		//Mat test_m_stackBinImage = m_stackBinImage.clone();
 		
 		Mat bin_refUnprintImage;
 		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage);	// patternStack도 사용할수있음
@@ -69,7 +75,7 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 				Mat matmat;
 				bitwise_or(exceptionMask, neverZeroMat, matmat);
 
-				bitwise_and(test_m_stackBinImage, matmat, m_stackBinImage);	//라인이 사라졌을때만 이걸 수행해야함
+				bitwise_and(m_stackBinImage, matmat, m_stackBinImage);	//라인이 사라졌을때만 이걸 수행해야함
 			}
 		}
 
@@ -898,8 +904,17 @@ bool PeakFinder::lineValidCheck(contourLineInfo managedLine, contourLineInfo che
 	// managedLine.contours[0] 의 값 == max값
 	// managedLine.contours[0]의 범위를 마스크로 사용하여 mergedLineInfo.weightMat.binImage 마스킹 한 값에서 max값 얻어냄
 	// 비교
+	//Mat test1;
+	//Mat test2;
+	//inRange(managedLine.weightMat.binImage, 1, 255, test1);
+	//inRange(checkLine.weightMat.binImage, 1, 255, test2);
 
-	if (managedLine.pixelCount / 2 > checkLine.pixelCount)
+	// pixelCount -> weightCount ??
+	uint managedLineWeightSum = imageHandler::getSumOfBinImageValues(managedLine.weightMat.binImage);
+	uint checkLineWeightSum = imageHandler::getSumOfBinImageValues(checkLine.weightMat.binImage);
+
+	//if (managedLine.pixelCount / 2 > checkLine.pixelCount)
+	if (managedLineWeightSum / 2 > checkLineWeightSum)
 	{	
 		isValid = false;
 		return isValid;

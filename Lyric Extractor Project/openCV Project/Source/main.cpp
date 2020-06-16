@@ -18,48 +18,122 @@
 using namespace std;
 using namespace cv;
 
+static void
+usage(const char* argv0) {
+	fprintf(stderr, "Usage: %s [options] <input filenames | foldernames...>\n", argv0);
+	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "  -r --re-analyzation <\"true\" | \"false\">: 이미 분석한 것이 있다면 다시 분석함 \"Lyric.json\"파일 유무로 확인. (Default: false)\n");
+}
 
 int main(int argc, char* argv[])
 {
-	//Json json;
-	//Lyric l;
-	//json.makeJson(l);
-
-//	return 1;
+	bool reAnalyzation = false;
+	int i;
 
 #ifndef _DEBUG
-	if (argc != 2)
+	for (i = 1; i < argc; ++i)
 	{
-		std::cout << "usage: " << argv[0] << " [video file path or directory path].";
-		return 0;
-	}
-
-	boost::filesystem::path path(argv[1]);
-	// fileManager::videoName = p.filename().string();
-	if (!boost::filesystem::exists(path))
-	{
-		cout << path << " is not exists.";
-		return 0;
-	}
-	if (boost::filesystem::is_regular_file(path))
-	{
-		analyzer ana;
-		ana.startVideoAnalization(path.string());
-
-	}
-	else if (boost::filesystem::is_directory(path))
-	{
-		// do all files
-		BOOST_FOREACH(const boost::filesystem::path & p, std::make_pair(boost::filesystem::directory_iterator(path), boost::filesystem::directory_iterator()))
-		{
-			//if (!fs::is_directory(p))
-			//{
-			//	std::cout << p.filename() << std::endl;
-			//}
-			analyzer ana;
-			ana.startVideoAnalization( path.string()+"\\"+p.filename().string() );
+		if (strcmp(argv[i], "-h") == 0 ||
+			strcmp(argv[i], "--help") == 0) {
+			usage(argv[0]);
+			return 0;
+			continue;
 		}
+
+		if (strcmp(argv[i], "-r") == 0 ||
+			strcmp(argv[i], "--re-analyzation") == 0) {
+			i++;
+			if (argc == i)
+			{
+				usage(argv[0]);
+				return 0;
+			}
+
+			if (strcmp(argv[i], "true") == 0)
+			{
+				reAnalyzation = true;
+				continue;
+			}
+			else if (strcmp(argv[i], "false") == 0)
+			{
+				reAnalyzation = false;
+				continue;
+			}
+			usage(argv[0]);
+			return 0;
+		}
+
+		break;
 	}
+
+	if (i == argc) {    // 옵션들은 다 입력됬는데, 파일명이 입력안된경우
+		fprintf(stderr, "No filename given\n\n");
+		usage(argv[0]);
+		return 0;
+	}
+
+	while (i < argc) {
+		boost::filesystem::path path(argv[i]);
+		// fileManager::videoName = p.filename().string();
+		if (!boost::filesystem::exists(path))
+		{
+			cout << path << " input file is not exists." << endl;
+			i++;
+			continue;//return 0;
+		}
+
+		if (boost::filesystem::is_regular_file(path))
+		{
+			printf("is regular file. \r\n");
+			if (reAnalyzation == false)	// 
+			{
+				// is regular file. dbug ".\Output\MV_karaoke_20200416\\movie1.mp4\Lyric.json"
+				boost::filesystem::path jsonPath = ".\\Output\\" + path.filename().string() + "\\" + "Lyric.json";
+
+				if (boost::filesystem::exists(jsonPath) == true)	// path.json 파일이 있다면 작업 하지 않음
+				{
+					cout << path << " is already analyzed." << endl;
+					i++;
+					continue;
+				}
+			}
+			analyzer ana;
+			ana.startVideoAnalization(path.string());
+
+		}
+		else if (boost::filesystem::is_directory(path))
+		{
+			printf("is_directory. \r\n");
+			// do all files
+			BOOST_FOREACH(const boost::filesystem::path & p, std::make_pair(boost::filesystem::directory_iterator(path), boost::filesystem::directory_iterator()))
+			{
+				//if (!fs::is_directory(p))
+				//{
+				//	std::cout << p.filename() << std::endl;
+				//}
+
+				if (reAnalyzation == false)	// 
+				{
+					// is regular file. dbug ".\Output\MV_karaoke_20200416\\movie1.mp4\Lyric.json"
+					boost::filesystem::path jsonPath = ".\\Output\\" + p.filename().string() + "\\" + "Lyric.json";
+
+					if (boost::filesystem::exists(jsonPath) == true)	// path.json 파일이 있다면 작업 하지 않음
+					{
+						cout << p.filename().string() << " is already analyzed." << endl;
+						i++;
+						continue;
+					}
+				}
+
+				analyzer ana;
+				ana.startVideoAnalization(path.string() + "\\" + p.filename().string());
+			}
+		}
+
+		i++;
+		continue;
+	}
+
 	// @@ 버그 : 파일쓰기 맛탱이감
 	/*	TODO Progress
 		0. 케이스 따내는 루틴 생성 : 
@@ -109,7 +183,7 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\63279_0~44Lines.mp4");
+	testClass.test_Video("Input\\51815_0~35Lines_Duet_StartGray.mp4");
 	//testClass.test_Video("40003.mp4");
 
 	//testClass.test_Video4("40009.mp4");
@@ -134,7 +208,7 @@ int main(int argc, char* argv[])
 	
 
 	analyzer ana;
-	ana.startVideoAnalization("Input\\63922_0~19Lines.mp4");		// 0~62
+	ana.startVideoAnalization("Input\\53338_0~27Lines.mp4");		// 0~62
 	
 	//BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "nProcess Successed : " <<(clock() - startClock) / CLOCKS_PER_SEC <<"Sec";
 	//printf("\r\nProcess Successed : %0.1fSec\r\n", (float)(clock() - startClock) / CLOCKS_PER_SEC);

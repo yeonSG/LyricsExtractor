@@ -399,8 +399,17 @@ bool analyzer::videoAnalization3(string videoPath)
 	}
 
 	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
-	//Scalar unPrintColor = Scalar(0, 255, 255);	// YSYSYS - for debug
-	//bool isFoundColor = getUnprintColorRutin(unPrintColor);
+
+#ifndef _DEBUG
+	//bool foundUnprintColor = getUnprintColorRutin(unPrintColor);
+	//if (foundUnprintColor == false)
+	//{
+	//	BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail found UnprintColor.";
+	//	return false;
+	//}
+#else
+	//unPrintColor = Scalar(0, 255, 255);	// YSYSYS yellow - for debug
+#endif
 
 	printf("Unprint Color : { %f %f %f } \r\n", unPrintColor[0], unPrintColor[1], unPrintColor[2]);
 	BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
