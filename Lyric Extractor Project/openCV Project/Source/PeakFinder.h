@@ -55,6 +55,8 @@ private:
 	vector<contourLineInfoSet> getJudgeLineByFrameFlow();
 	bool lineValidCheck(contourLineInfo managedLine, contourLineInfo checkLine);
 
+	contourLineInfo removeLeftNoise(contourLineInfo linInfo);
+
 	// calculations
 	int getMaxValue(contourLineInfo lineInfo);
 };

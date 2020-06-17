@@ -401,12 +401,12 @@ bool analyzer::videoAnalization3(string videoPath)
 	Scalar unPrintColor = Scalar(255, 255, 255);	// YSYSYS - for debug
 
 #ifndef _DEBUG
-	//bool foundUnprintColor = getUnprintColorRutin(unPrintColor);
-	//if (foundUnprintColor == false)
-	//{
-	//	BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "fail found UnprintColor.";
-	//	return false;
-	//}
+	bool foundUnprintColor = getUnprintColorRutin(unPrintColor);
+	if (foundUnprintColor == false)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "Fail found UnprintColor.";
+		return false;
+	}
 #else
 	//unPrintColor = Scalar(0, 255, 255);	// YSYSYS yellow - for debug
 #endif
@@ -552,53 +552,42 @@ bool analyzer::videoAnalization3(string videoPath)
 	// 0. 라인정보 이미지 저장
 	// 1. OCR 수행
 
-		for (int i = 0; i < mergeJudgeLineInfo.size(); i++)	// LineInfo -> Line 변환
-		{
-			Line line;
-			Mat saveImage;
-			//inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, saveImage);
+	for (int i = 0; i < mergeJudgeLineInfo.size(); i++)	// LineInfo -> Line 변환
+	{
+		Line line;
+		Mat saveImage;
+		//inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, saveImage);
 
-			//catpureBinaryImageForOCR(saveImage, i, fileManager::getSavePath()); // 이미지 저장
-			// weightImage to OCR bin
-			saveImage = weightImageToOCRbin(mergeJudgeLineInfo[i].maskImage_withWeight, unPrintColor, mergeJudgeLineInfo[i].frame_start);
+		//catpureBinaryImageForOCR(saveImage, i, fileManager::getSavePath()); // 이미지 저장
+		// weightImage to OCR bin
+		saveImage = weightImageToOCRbin(mergeJudgeLineInfo[i].maskImage_withWeight, unPrintColor, mergeJudgeLineInfo[i].frame_start);
 
-			line.maskImage = saveImage; //mergeJudgeLineInfo[i].maskImage_withWeight;
-			line.startFrame = mergeJudgeLineInfo[i].frame_start;
-			line.endFrame = mergeJudgeLineInfo[i].frame_end;
-			line.text = "OCR TEXT";
-			m_lyric.addLine(line);
-		}
-		captureLines();
-		capturedLinesToText();
+		line.maskImage = saveImage; //mergeJudgeLineInfo[i].maskImage_withWeight;
+		line.startFrame = mergeJudgeLineInfo[i].frame_start;
+		line.endFrame = mergeJudgeLineInfo[i].frame_end;
+		line.text = "OCR TEXT";
+		m_lyric.addLine(line);
+	}
+	captureLines();
+	capturedLinesToText();
 
-		readLyricsFromFile();
-		findErrorFromLyrics();
-		m_lyric.writeLyricFile(videoCapture);
+	readLyricsFromFile();
+	findErrorFromLyrics();
+	m_lyric.writeLyricFile(videoCapture);
 
-		m_lyric.getTimeDataFromframeNum(videoCapture);
-		Json json;
-		json.makeJson(m_lyric);
+	m_lyric.getTimeDataFromframeNum(videoCapture);
+	Json json;
+	json.makeJson(m_lyric);
 
-	// 2. json 파일 생성
+	if (m_lyric.getLinesSize() < 10)
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "Fail found lines.";
+		return false;
+	}
 
-	/**** TO DO **** 
-	0. unPrint 색정하는것
-	0. B, R, P 라인 머지
-	0. OCR 처리
-	0. "Lyric.json" 생성
-	0. binImage 데이터 255 이상까지 저장할 수 있도록 데이터타입 변경
-
-	-> 체크포인트 : 모든 라인들이 다 잡아지는지 확인
-
-	1. 얻은 라인들 병합하기 (R G B 로 찾은것들)
-		- 얻은 라인의 총 픽셀수 or 위엣라인 or 프레임시간? 적절한것으로
-		- 
-	
-	2. 후처리
-		- 파일저장, OCR, json etc..
-
-	*/
+	return true;
 }
+
 void analyzer::findErrorFromLyrics()
 {
 	int errorCount = 0;
@@ -608,13 +597,13 @@ void analyzer::findErrorFromLyrics()
 		if (line->text.size() < 5)	// 글자수가 5이하일때
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text <<" (size under 5)" ;
-			line->text = line->text + " (ERROR:size under 5)";
+			// line->text = line->text + " (ERROR:size under 5)";
 			errorCount++;
 		}
 		else if (line->text.find("  ") != std::string::npos)	 // 글자에 띄어쓰기가 연속으로 들어갈 떄
 		{
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text << " (have continity space word)";
-			line->text = line->text + " (ERROR:have continity space word 5)";
+			// line->text = line->text + " (ERROR:have continity space word 5)";
 			errorCount++;
 		}
 		

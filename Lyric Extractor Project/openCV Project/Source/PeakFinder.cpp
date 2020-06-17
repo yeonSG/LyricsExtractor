@@ -29,14 +29,20 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 	else
 	{
 		// 원래
-		if (frameNumber == 3831)
-		{
-			Mat test_refUnprintImage = refUnprintImage;
-		//	Mat test1;
-		//	Mat test2;
-		//	inRange(m_expectedLineInfos[0].first.progress.weightMat.binImage, 1, 255, test1);
-		//	inRange(m_expectedLineInfos[2].first.progress.weightMat.binImage, 1, 255, test2);
-		}
+//		if (frameNumber == 3158)
+//		{
+//			Mat test_refUnprintImage = refUnprintImage;
+//			Mat test1;
+//		//	Mat test2;
+//			inRange(m_expectedLineInfos[0].first.progress.weightMat.binImage, 1, 255, test1);
+//		//	inRange(m_expectedLineInfos[2].first.progress.weightMat.binImage, 1, 255, test2);
+//		}
+//		if (m_expectedLineInfos.size() != 0)
+//		{
+//			Mat test1;
+//			inRange(m_expectedLineInfos[0].first.progress.weightMat.binImage, 1, 255, test1);
+//
+//		}
 		//Mat test_m_stackBinImage = m_stackBinImage.clone();
 		
 		Mat bin_refUnprintImage;
@@ -89,6 +95,17 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		}
 		
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
+		if (foundExpectedLines.size() != 0)
+		{
+			for (int i = 0; i < foundExpectedLines.size(); i++)
+			{
+				;
+				foundExpectedLines[i].maximum = removeLeftNoise(foundExpectedLines[i].maximum);
+				//
+			}
+			//removeLeftNoise
+
+		}
 	}
 	Mat m_stackBinImage_debug;
 	inRange(m_stackBinImage, 1, 255, m_stackBinImage_debug);
@@ -948,6 +965,35 @@ bool PeakFinder::lineValidCheck(contourLineInfo managedLine, contourLineInfo che
 
 
 	return false;
+}
+
+contourLineInfo PeakFinder::removeLeftNoise(contourLineInfo linInfo)
+{
+	int maxValue = linInfo.getMaxValue();
+	
+	contourInfo contourOfMaximum;
+	int max = 0;
+	for (int i = 0; i < linInfo.contours.size(); i++)
+	{
+		int val = linInfo.contours[i].getMaxValue();
+		if (max < val)
+		{
+			max = val;
+			contourOfMaximum = linInfo.contours[i];	// 최고점을 갖고있는 컨투어
+		}
+	}
+	// 가장 큰점위치구함.
+	// 가장큰점 위치 왼쪽 값 삭제 (정확히는 가장큰점이 존재하는 컨투어 제외 왼쪽점.)
+	int width = linInfo.weightMat.binImage.cols - contourOfMaximum.coorX_start;
+	int height = linInfo.weightMat.binImage.rows;
+	Mat mask = Mat::zeros(linInfo.weightMat.binImage.rows, linInfo.weightMat.binImage.cols, CV_8U);
+	mask = imageHandler::getWhiteMaskImage(mask, contourOfMaximum.coorX_start, 0, width, height);
+
+	Mat maskedImage;
+	bitwise_and(mask, linInfo.weightMat.binImage, maskedImage);
+
+	linInfo.weightMat.binImage = maskedImage;
+	return linInfo;
 }
 
 

@@ -219,16 +219,19 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 
 	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
 	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage_rmNoise);
-	int totalRange = rightistCoorX- leftistCoorX;
+	int totalRange = rightistCoorX+1- leftistCoorX;
 	int sepaRange = totalRange / 3;
 	
 ;
 
-
-	for (int i = 0; i < 3; i++)	// 3등분해서 확인
+	int separationCount = 3;
+	for (int i = 0; i < separationCount; i++)	// 3등분해서 확인
 	{
 		Mat areaMask = Mat::zeros(lineInfo.maskImage_withWeight.rows, lineInfo.maskImage_withWeight.cols, CV_8U);
-		int coorX = leftistCoorX + sepaRange * i;
+		int coorX = leftistCoorX + (sepaRange * i);
+		if (i == separationCount - 1)
+			sepaRange = rightistCoorX - coorX + 1;	// 마지막 값까지 사용하기 위해
+
 		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, lineInfo.maskImage_withWeight.rows);
 		bitwise_and(areaMask, maskImage_rmNoise, areaMask);
 		//weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
