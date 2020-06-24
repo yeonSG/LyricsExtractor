@@ -97,6 +97,8 @@ public:
 
 	Mat weightImageToOCRbin(Mat weightMat, Scalar unprintColor, int startFrame);
 
+	bool unPrintColorValidCheck(Scalar foundUnPrintColor);
+
 public:
 	VideoCapture *videoCapture = nullptr;		
 

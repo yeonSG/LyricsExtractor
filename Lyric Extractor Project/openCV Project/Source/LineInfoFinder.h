@@ -74,6 +74,7 @@ public:
 
 	vector<contourLineInfoSet> line_PeakInfoFilter(vector<contourLineInfoSet> lineInfosSet, vector<LineInfo>& errorLineInfos);
 	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
+	vector<contourLineInfoSet> separateLineIfTwinline(vector<contourLineInfoSet> lineInfoSet);
 	
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
 	vector<LineInfo> mergeSeparatedByMaximumFrame(vector<LineInfo> lineInfos);

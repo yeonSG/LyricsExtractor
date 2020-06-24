@@ -68,11 +68,11 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 		lineInfo.errorOccured(LINEERROR_ENDFRAME_ENDOVERFLOW);
 		return lineInfo;
 	}
-	if (lineInfo.frame_end - lineInfo.frame_start < 10)	// 라인의 길이가 10미만일 때
-	{
-		lineInfo.errorOccured(LINEERROR_ENDFRAME_RANGE);
-		return lineInfo;
-	}
+	//if (lineInfo.frame_end - lineInfo.frame_start < 10)	// 라인의 길이가 10미만일 때
+	//{
+	//	lineInfo.errorOccured(LINEERROR_ENDFRAME_RANGE);
+	//	return lineInfo;
+	//}
 /*	
 	1. weight 이미지(a)의 시작점에서 흰색 필터 이미지(b)를 땀
 	2. bitwise_and(a, b) 수행
@@ -139,7 +139,22 @@ Mat LineFinder::getLineMask(Mat weightPrintImage, int startFrame, Scalar unPrint
 	Mat weightMat_and;	// mask
 	bitwise_and(weightPrintImage, unPrintPatternFill, weightMat_and);
 	
-	return weightMat_and;
+	Mat weightMat_and_bin;
+	Mat weightPrintImage_bin;
+	inRange(weightMat_and, 1, 255, weightMat_and_bin);
+	inRange(weightPrintImage, 1, 255, weightPrintImage_bin);
+
+	Mat targetMat = imageHandler::getBinImageByFloodfillAlgorism(weightPrintImage_bin, weightMat_and_bin);	// weightPrintImage, weightMat_and
+
+	Mat resultMat;
+	bitwise_and(weightPrintImage, targetMat, resultMat);
+	// 0. y축 분석을 통해 가장 프로그레시브 한 y 라인번호를 구함 (프로그래시브 하다는 것은 라인의 weight가 흐르는 것이 많음)
+
+
+
+
+//	return weightMat_and;
+	return resultMat;
 }
 
 LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
@@ -275,10 +290,10 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	}
 	//end
 
-	leftistCoorX = imageHandler::getLeftistWhitePixel_x(lineInfo.maskImage_withWeight);
-	rightistCoorX = imageHandler::getRightistWhitePixel_x(lineInfo.maskImage_withWeight);
+	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
+	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage_rmNoise);
 	// 조건 : 가장 오른쪽 점과 가장 왼쪽 점(라인의 길이)까지 거리가 100pix이상
-	if (rightistCoorX - leftistCoorX < 60)	// 100 -> 60??
+	if (rightistCoorX - leftistCoorX < 50)	// 100 -> 60??
 	{
 		lineInfo.errorOccured(LINEERROR_MASKCHECK_X_LENGHTH);	// 
 		return lineInfo;
@@ -319,6 +334,8 @@ int LineFinder::getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor)
 
 		Mat unPrintPatternFill = imageHandler::getFillImage_unPrint(subImage, unPrintColor);
 		inRange(unPrintPatternFill, Scalar(254, 254, 254), Scalar(255, 255, 255), unPrintPatternFill);
+		unPrintPatternFill = imageHandler::getMorphImage(unPrintPatternFill, MORPH_ERODE);
+
 		bitwise_and(mask_bin, unPrintPatternFill, tempMat);
 
 		int pixelCount = imageHandler::getWhitePixelCount(tempMat);

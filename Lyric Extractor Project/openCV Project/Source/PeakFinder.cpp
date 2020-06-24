@@ -49,6 +49,11 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		m_stackBinImage = stackBinImage(m_stackBinImage, patternFill_RemoveDepthContour, refUnprintImage);	// patternStack도 사용할수있음
 		// 이 이미지를 통하여 컨투어 판단을 하고 라인으로 처리함
 
+#ifdef _DEBUG
+		Mat stackBinimage = m_stackBinImage;
+		Mat stackBinimage_t;
+		inRange(m_stackBinImage, 1, 255, stackBinimage_t);
+#endif
 		//m_stackBinImage = stackBinImage2(m_stackBinImage, refPatternStack, refUnprintImage);
 		//m_stackBinImage = stackBinImage_noiseRemove(m_stackBinImage, patternFill);
 		
@@ -89,10 +94,12 @@ vector<contourLineInfoSet> PeakFinder::frameImage_process(Mat frameImage, int fr
 		makeExpectedLineInfos();
 		printf("[found CLine %d]", m_contourMaxBinImage_expectedLineInfo.size());
 		printf("[ex CLine %d]", m_expectedLineInfos.size());
+#ifdef _DEBUG
 		if (m_expectedLineInfos.size() != 0)
 		{
 			printf("[%d]", imageHandler::getLeftistWhitePixel_value(m_expectedLineInfos[0].first.progress.weightMat.binImage));
 		}
+#endif
 		
 		foundExpectedLines = getJudgeLineByFrameFlow();	// 
 		if (foundExpectedLines.size() != 0)
@@ -186,8 +193,8 @@ void PeakFinder::stackBinImageCorrect(contourLineInfoSet lineSet)//Mat validImag
 
 
 	// 해당 Y 축에 5 이상인 값들 전부 삭제.
-	int removeY_start = lineSet.maximum.coorY_start;
-	int removeY_end = lineSet.maximum.coorY_end;
+	int removeY_start = imageHandler::getHighistWhitePixel_y(lineSet.maximum.weightMat.binImage);//lineSet.maximum.coorY_start;	// 적용할것
+	int removeY_end = imageHandler::getLowistWhitePixel_y(lineSet.maximum.weightMat.binImage);//lineSet.maximum.coorY_end;
 
 	for (int y = removeY_start; y < removeY_end; y++)
 	{
@@ -550,7 +557,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
 		bool isPassOnMaxWeight = false;
-		if (conLineInfos[i].contours.size() >= 3)
+		if (conLineInfos[i].contours.size() >= 2)		// ys - 이걸로 안되면 다른방법 강구 : includeValue..
 			isPassOnSize = true;
 		if (conLineInfos[i].pixelCount >= 100)
 			isPassOnVolume = true;
@@ -633,7 +640,7 @@ vector<contourLineInfoSet> PeakFinder::expectedLineInfoAfterProcess(vector<conto
 		bool isPassOnSize = false;
 		bool isPassOnVolume = false;
 		bool isPassOnMaxWeight = false;
-		if (conLineInfos[i].contours.size() >= 3)
+		if (conLineInfos[i].contours.size() >= 2)
 			isPassOnSize = true;
 		if (conLineInfos[i].pixelCount >= 100)
 			isPassOnVolume = true;
@@ -754,6 +761,7 @@ vector<contourLineInfoSet> PeakFinder::getJudgeLineByFrameFlow()
 					//int pixelCount = m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);	// 픽셀수가 더 많다면 이미지 유지
 					//if (pixelCount > mergedLineInfo.pixelCount)	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
 					int pixelCount = imageHandler::getSumOfBinImageValues(m_expectedLineInfos[i].first.maximum.weightMat.binImage); //m_expectedLineInfos[i].first.maximum.pixelCount; //weightMat_maximum.binImage);
+					// weight 합이 이전게 더 크면 maximum만 업데이트 
 					if (pixelCount > imageHandler::getSumOfBinImageValues(mergedLineInfo.weightMat.binImage))	// 맥시멈이 progress보다 큼 -> 맥시멈은 유지
 					{
 						m_expectedLineInfos[i].first.progress = mergedLineInfo;	// 맥시멈만 따로 하는 이유:  라인이 Fade-out일 경우임 (픽셀수가 가장 많음, && )

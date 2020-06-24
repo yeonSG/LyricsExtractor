@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 3100;	// debug	 // YSYSYS
+	int curFrame = 2900;	// debug	 // YSYSYS
 	
 #endif
 
@@ -582,6 +582,9 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 	{
 		cout << endl;
 		curFrame = (int)videoCapture->get(CAP_PROP_POS_FRAMES);
+		if (videoHandler::getVideoFrameCount() <= curFrame)
+			break;
+
 		printf("frame... %d ", curFrame);
 
 		subImage = imageHandler::getResizeAndSubtitleImage(orgImage);
@@ -594,8 +597,18 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 		
 		if (line_PeakInfo.size() > 0)
 		{			
-			vector<contourLineInfoSet> filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
+			vector<contourLineInfoSet> filltered_line_PeakInfo; 			
+			filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
 
+#ifdef _DEBUG
+			if (curFrame == 3993)
+				filltered_line_PeakInfo = filltered_line_PeakInfo;
+#endif			
+			if (filltered_line_PeakInfo.size() != 0)
+			{
+				vector<contourLineInfoSet> sep_filltered_line_PeakInfo = separateLineIfTwinline(filltered_line_PeakInfo);	// separateLine if twinLine
+				filltered_line_PeakInfo = line_PeakInfoFilter(sep_filltered_line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
+			}
 			cout << endl;
 			for (int i = 0; i < filltered_line_PeakInfo.size(); i++)
 			{
@@ -627,15 +640,18 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 						//Mat tt_3peakFinder_after = peakFinder.m_stackBinImage.clone();
 						//unprintImage.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);
 						// peakFinder.m_stackBinImage 보정
-						//if (lineInfos.size() == 3)	// ysysys
-						//	return lineInfos;
+
+#ifdef _DEBUG
+//if (lineInfos.size() == 3)	// ysysys
+//	return lineInfos;
+#endif				
 					}
 					else
 					{
 						lineInfos.push_back(lineInfo);	// error인 상태로 들어감
 					}
 				}
-			}
+			}			
 		}
 
 #if(0 && _DEBUG)
@@ -1490,9 +1506,9 @@ vector<contourLineInfoSet> LineInfoFinder::line_PeakInfoFilter(vector<contourLin
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
 		}
-		if (lineInfosSet[i].maximum.coorX_end - lineInfosSet[i].maximum.coorX_start < 100) // x축 길이가 100 이하
+		if (lineInfosSet[i].maximum.coorX_end - lineInfosSet[i].maximum.coorX_start < 50) // x축 길이가 50 이하
 		{
-			printf(" [IS NOT LINE : x_length<100] ");
+			printf(" [IS NOT LINE : x_length<60] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_X_LENGHTH);
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
@@ -1576,6 +1592,123 @@ int LineInfoFinder::getSequentialIncreasedContoursCount(vector<contourInfo> cont
 	*/
 }
 
+// 라인이 트윈라인인 경우 라인을 나눠줌
+vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contourLineInfoSet> lineInfoSet)
+{
+	vector<contourLineInfoSet> outLineSet;
+	// 가로섬 단위로 이미지 나눔,
+	// 겹치는 x좌표의 값 비교하여 차이가 크면 다른 라인으로 판단.
+	for (int i = 0; i < lineInfoSet.size(); i++)
+	{
+		vector<int> projection = imageHandler::getHorizontalProjectionData(lineInfoSet[i].maximum.weightMat.binImage);
+
+		vector<pair<int, int>> islands;
+		bool blackZone = false;
+		int startPoint = 0;
+		int endPoint = 0;
+
+		for (int j = 0; j < projection.size(); j++)
+		{
+			if (projection[j] != 0)	// Not blackZone
+			{
+				if (blackZone == true)	// blackZone -> Not BlackZone
+				{
+					startPoint = j;
+				}
+				blackZone = false;
+			}
+			else // blackZone
+			{
+				if (blackZone == false)	// Not blackZone -> blackZone
+				{	// save island
+					islands.push_back(make_pair(startPoint, j));
+				}
+				blackZone = true;
+			}
+		}
+
+		if (islands.size() == 1)	// 섬이 하나임
+		{
+			outLineSet.push_back(lineInfoSet[i]);
+			continue;
+		}
+
+
+		// 섬이 여러개임
+		vector<Mat> separatedMat;	// 섬별로 마스킹 한 Mat 
+		for (int j = 0; j < islands.size(); j++)
+		{
+			Mat mask = Mat::zeros(lineInfoSet[i].maximum.weightMat.binImage.rows, lineInfoSet[i].maximum.weightMat.binImage.cols, CV_8U);
+			printf("j = %d  first = %d  second = %d\r\n", j, islands[j].first, islands[j].second);
+			mask = imageHandler::getWhiteMaskImage(mask, 0, islands[j].first , lineInfoSet[i].maximum.weightMat.binImage.cols, islands[j].second - islands[j].first);
+
+			bitwise_and(mask, lineInfoSet[i].maximum.weightMat.binImage, mask);
+			separatedMat.push_back(mask);	
+		}
+
+		vector<Mat> mergedSeparatedMat;	// 처리된 Mat
+		for (int j = 0; j < separatedMat.size(); j++)
+		{
+			if (j == 0)
+				mergedSeparatedMat.push_back(separatedMat[j]);
+			else
+			{
+				bool isfind = false;
+
+				// 1. separatedMat의 max값 구함
+				int maxValue = imageHandler::getMaximumValue(separatedMat[j]);
+				if (maxValue - 5 <= 0)
+					maxValue = 5;	
+
+				// 1. separatedMat의 inrange(max, max-5) 한 것의 시작점-끝점구함
+				Mat temp;
+				inRange(separatedMat[j], maxValue - 5, maxValue, temp);
+				int tempLeft = imageHandler::getLeftistWhitePixel_x(temp);
+				int tempRight = imageHandler::getRightistWhitePixel_x(temp);
+
+				for (int k = 0; k < mergedSeparatedMat.size(); k++)
+				{
+					Mat mergeTemp;
+					// 1. mergedSeparatedMat의 inrange(max, max-5) 한 것의 시작점-끝점구함
+					inRange(mergedSeparatedMat[k], maxValue - 5, maxValue, mergeTemp);
+					int mergeTempLeft = imageHandler::getLeftistWhitePixel_x(mergeTemp);
+					int mergeTempRight = imageHandler::getRightistWhitePixel_x(mergeTemp);
+					// 1. isRelation() 에 참이 나옴 -> mergedSeparatedMat에 합병시킴
+					//					거짓이 나옴 -> 새로 추가 
+					bool isReration = imageHandler::isRelation(tempLeft, tempRight, mergeTempLeft, mergeTempRight);
+					if (isReration)
+					{
+						bitwise_or(mergedSeparatedMat[k], separatedMat[j], mergedSeparatedMat[k]);
+						// separatedMat[k]
+					}
+					
+					// 조건에 맞음	( separatedMat[j]가 mergedSeparatedMat[k]
+					if (isReration)
+					{
+						isfind = true;
+						break;
+					}
+				}
+				if (isfind == false)
+				{
+					// 새로 추가함  => mergedSeparatedMat
+					mergedSeparatedMat.push_back(separatedMat[j]);
+				}
+
+			}
+		}
+
+		for (int j = 0; j < mergedSeparatedMat.size(); j++)
+		{
+			contourLineInfoSet infoSet = lineInfoSet[i];
+			infoSet.maximum.weightMat.binImage = mergedSeparatedMat[j];	
+			outLineSet.push_back(infoSet);
+		}
+	}
+	
+	return outLineSet;
+}
+
 vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfos)
 {
 	vector<LineInfo> lineInfo_out;
@@ -1608,7 +1741,7 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 	return lineInfo_out;
 }
 
-
+// weight가 255를 넘어가서 라인이 나눠진 경우 머지하는 로직
 vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> lineInfos)
 {
 	int relationCount = 0;

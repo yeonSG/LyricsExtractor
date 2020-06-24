@@ -146,6 +146,8 @@ public:
 
 	static vector<pair<int, int>> getWhitePixels(Mat binImage);
 
+	static int getHighistWhitePixel_y(Mat binImage);
+	static int getLowistWhitePixel_y(Mat binImage);
 	static int getLeftistWhitePixel_x(Mat binImage);
 	static int getRightistWhitePixel_x(Mat binImage);
 	static int getRightistWhitePixel_x(Mat binImage, int targetStartX, int range, int threshold);

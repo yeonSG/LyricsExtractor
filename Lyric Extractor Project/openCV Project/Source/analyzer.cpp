@@ -407,6 +407,13 @@ bool analyzer::videoAnalization3(string videoPath)
 		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "Fail found UnprintColor.";
 		return false;
 	}
+
+	if ( false==unPrintColorValidCheck(unPrintColor) )
+	{
+		BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Unprint Color : { " << (int)unPrintColor[0] << " " << (int)unPrintColor[1] << " " << (int)unPrintColor[2] << "}" << endl;
+		BOOST_LOG_SEV(my_logger::get(), severity_level::error) << "UnprintColor is not Valid.";
+		return false;
+	}
 #else
 	//unPrintColor = Scalar(0, 255, 255);	// YSYSYS yellow - for debug
 #endif
@@ -430,7 +437,7 @@ bool analyzer::videoAnalization3(string videoPath)
 		
 		//if (nColor == 0)		// YSYSYS - debug
 		//	continue;
-		//if (nColor == 2)	// RED
+		//if (nColor == 2)	// Purple
 		//	continue;
 
 		vector<LineInfo> lineInfo;
@@ -487,14 +494,11 @@ bool analyzer::videoAnalization3(string videoPath)
 		bool isHaveColor = false;
 		if (nColor != 0)	// 라인 색이 파랑이 아닐 때 조건 추가
 		{
-			if (validLineCount >= 10)	// 라인 수가 10 이하면 보조색 인정안함 
+			if (validLineCount >= 5)	// 라인 수가 10 미만이면 보조색 인정안함 
 			{
-				if (lineInfo_all.size() > 2)
+				//if (lineInfo_all.size() * 0.2 < validLineCount)	// 파랑 라인의 20% 이상이어야 인정
 				{
-					if (lineInfo_all.size() * 0.2 < validLineCount)	// 파랑 라인의 20% 이상이어야 인정
-					{
-						isHaveColor = true;
-					}
+					isHaveColor = true;
 				}
 			}
 		}
@@ -594,10 +598,10 @@ void analyzer::findErrorFromLyrics()
 	for (int i = 0; i < m_lyric.getLinesSize(); i++)
 	{
 		Line* line = m_lyric.getLine(i);
-		if (line->text.size() < 5)	// 글자수가 5이하일때
+		if (line->text.size() < 1)	// 글자수가 1이하일때
 		{
-			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text <<" (size under 5)" ;
-			// line->text = line->text + " (ERROR:size under 5)";
+			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Error Found from lyric : " << line->text <<" (size under 1)" ;
+			// line->text = line->text + " (ERROR:size under 1)";
 			errorCount++;
 		}
 		else if (line->text.find("  ") != std::string::npos)	 // 글자에 띄어쓰기가 연속으로 들어갈 떄
@@ -635,6 +639,24 @@ Mat analyzer::weightImageToOCRbin(Mat weightMat, Scalar unprintColor, int startF
 	 bitwise_or(filledImage_DeNoise, weightMat, outmat);
 
 	return outmat;
+}
+
+bool analyzer::unPrintColorValidCheck(Scalar foundUnPrintColor)
+{
+	vector<Scalar> vecUnPrintTypes;
+	vecUnPrintTypes.push_back(Scalar(255, 255, 255));	// white
+	vecUnPrintTypes.push_back(Scalar(0, 255, 255));		// yellow(Orange)
+
+	for (int i = 0; i < vecUnPrintTypes.size(); i++)
+	{
+		if (foundUnPrintColor[0] == vecUnPrintTypes[i][0] &&
+			foundUnPrintColor[1] == vecUnPrintTypes[i][1] &&
+			foundUnPrintColor[2] == vecUnPrintTypes[i][2])
+			return true;
+
+	}
+
+	return false;
 }
 
 bool analyzer::getUnprintColorRutin(Scalar& color)

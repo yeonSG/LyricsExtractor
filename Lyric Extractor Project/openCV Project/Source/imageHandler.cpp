@@ -2361,6 +2361,43 @@ vector<pair<int, int>> imageHandler::getWhitePixels(Mat binImage)
 	return whitePixels;
 }
 
+int imageHandler::getHighistWhitePixel_y(Mat binImage)
+{
+	int highist_y = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = 0; width < binImage.cols; width++)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return hight;
+		}
+	}
+	return highist_y;
+
+}
+
+int imageHandler::getLowistWhitePixel_y(Mat binImage)
+{
+	int lowist_y = 0;
+
+	//int height = binImage.rows;
+	//int width = binImage.cols;
+
+	for (int width = binImage.cols - 1; width > 0; width--)
+	{
+		for (int hight = 0; hight < binImage.rows; hight++)
+		{
+			if (binImage.at<uchar>(hight, width) != 0)
+				return hight;
+		}
+	}
+	return 	lowist_y = 0;
+}
+
 int imageHandler::getLeftistWhitePixel_x(Mat binImage)
 {
 	int leftist_x = 0;
