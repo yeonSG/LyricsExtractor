@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
 	//testClass.test_Video3();
 	//testClass.test_Video_GetContourMask2("40009.mp4");
 
-	testClass.test_Video("Input\\56524.mp4");
+	testClass.test_Video("Input\\51073.mp4");
 	//testClass.test_Video("40003.mp4");
 
 	//testClass.test_Video4("40009.mp4");
@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
 	
 
 	analyzer ana;
-	ana.startVideoAnalization("Input\\56524.mp4");			
+	ana.startVideoAnalization("Input\\51073.mp4");			
 	//ana.startVideoAnalization("Input\\64016_0~47Lines.mp4");		
 	
 	//BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "nProcess Successed : " <<(clock() - startClock) / CLOCKS_PER_SEC <<"Sec";

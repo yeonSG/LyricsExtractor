@@ -36,7 +36,8 @@ class LineInfo
 public:
 	int frame_start;
 	int frame_end;
-	Mat maskImage_withWeight;
+	//Mat maskImage_withWeight;
+	WeightMat maskImage;
 	bool isValid = false;
 	int errorNumber = 0;
 	int printColor;

@@ -72,9 +72,10 @@ public:
 
 	void WriteLineInfo_toLog(vector<Line> lineInfos);
 
-	vector<contourLineInfoSet> line_PeakInfoFilter(vector<contourLineInfoSet> lineInfosSet, vector<LineInfo>& errorLineInfos);
+	vector<contourLineInfo> line_PeakInfoFilter(vector<contourLineInfo> lineInfosSet, vector<LineInfo>& errorLineInfos);
 	int getSequentialIncreasedContoursCount(vector<contourInfo> contours);
-	vector<contourLineInfoSet> separateLineIfTwinline(vector<contourLineInfoSet> lineInfoSet);
+	//contourLineInfo lineInfomerge(vector<contourLineInfo> lineInfos);
+	vector<contourLineInfo> separateLineIfTwinline(vector<contourLineInfo> lineInfoSet);
 	
 	vector<LineInfo> mergeAndJudgeLineInfo(vector<LineInfo> lineInfos);
 	vector<LineInfo> mergeSeparatedByMaximumFrame(vector<LineInfo> lineInfos);

@@ -11,10 +11,10 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage)
 	LineInfo lineInfo;
 	lineInfo.isValid = true;
 
-	lineInfo.maskImage_withWeight = weightPrintImage.binImage.clone();
+	lineInfo.maskImage = weightPrintImage;
 
 	Mat mat_bin;	// mask
-	inRange(lineInfo.maskImage_withWeight, 1, 255, mat_bin);	// 확인용
+	inRange(lineInfo.maskImage.binImage, 1, 255, mat_bin);	// 확인용
 
 
 	lineInfo = checkValidMask(lineInfo);	
@@ -39,8 +39,9 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 
 	lineInfo.frame_start = calculateStartTime(weightPrintImage, unPrintColor);				// 시작시간 계산
 	Mat mask = getLineMask(weightPrintImage.binImage, lineInfo.frame_start, unPrintColor);
-	lineInfo.maskImage_withWeight = mask.clone();
-	weightPrintImage.binImage = lineInfo.maskImage_withWeight;
+	lineInfo.maskImage = weightPrintImage;
+	lineInfo.maskImage.binImage = mask.clone();
+	weightPrintImage.binImage = lineInfo.maskImage.binImage;
 
 	lineInfo.frame_start = calculateStartTime(weightPrintImage, unPrintColor);
 
@@ -62,7 +63,7 @@ LineInfo LineFinder::getLine(WeightMat weightPrintImage, Scalar unPrintColor)
 
 
 	// endFrame 구하는 루틴  int getEndFrameNum(int startFrame, Mat mask, Scalar unPrintColor)
-	lineInfo.frame_end = getEndFrameNum(lineInfo.frame_start, lineInfo.maskImage_withWeight, unPrintColor);	// ys-process : end frame으로 에러 검출
+	lineInfo.frame_end = getEndFrameNum(lineInfo.frame_start, lineInfo.maskImage.binImage, unPrintColor);	// ys-process : end frame으로 에러 검출
 	if (lineInfo.frame_end == 0)	// 찾은 끝점이 maxWeight값보다 아래에 있을 때 
 	{
 		lineInfo.errorOccured(LINEERROR_ENDFRAME_ENDOVERFLOW);
@@ -161,17 +162,17 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 {
 	//bool isVaild = true;
 
-	int pixelCount = imageHandler::getWhitePixelCount(lineInfo.maskImage_withWeight);
+	int pixelCount = imageHandler::getWhitePixelCount(lineInfo.maskImage.binImage);
 	if (pixelCount < 200)
 	{
 		lineInfo.errorOccured(LINEERROR_MASKCHECK_PIXELCOUNT);
 		return lineInfo;
 	}
 
-	int maxWeight = imageHandler::getMaximumValue(lineInfo.maskImage_withWeight);
-	int minWeight = imageHandler::getMinimumValue(lineInfo.maskImage_withWeight);	// minValue를 최소값을 제외한 값을 가저오자 or 얼마나 다양하게 있느지 확인 후 ...
+	int maxWeight = imageHandler::getMaximumValue(lineInfo.maskImage.binImage);
+	int minWeight = imageHandler::getMinimumValue(lineInfo.maskImage.binImage);	// minValue를 최소값을 제외한 값을 가저오자 or 얼마나 다양하게 있느지 확인 후 ...
 
-	vector<int>	items = imageHandler::getValueArrWithSort(lineInfo.maskImage_withWeight); // .size() == 총 점의 개수, [i].value == 해당점의 weight
+	vector<int>	items = imageHandler::getValueArrWithSort(lineInfo.maskImage.binImage); // .size() == 총 점의 개수, [i].value == 해당점의 weight
 	items.erase(
 		unique(items.begin(), items.end(),
 			[](const int& a, const int& b) {
@@ -195,12 +196,12 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	}
 
 	Mat testMat;
-	inRange(lineInfo.maskImage_withWeight, 1, 255, testMat);
+	inRange(lineInfo.maskImage.binImage, 1, 255, testMat);
 	
 
 	//// 조건 : 흰점시작점과 흰점끝점 중간 기준으로 왼쪽점들이 오른쪽점들보다 높은 weight를 가짐
-	int leftistCoorX = imageHandler::getLeftistWhitePixel_x(lineInfo.maskImage_withWeight);
-	int rightistCoorX = imageHandler::getRightistWhitePixel_x(lineInfo.maskImage_withWeight);
+	int leftistCoorX = imageHandler::getLeftistWhitePixel_x(lineInfo.maskImage.binImage);
+	int rightistCoorX = imageHandler::getRightistWhitePixel_x(lineInfo.maskImage.binImage);
 	//int midCoorX = (leftistCoorX + rightistCoorX) / 2;
 	//// 가운데 기준 왼쪽, 오른쪽 마스킹한 이미지와 bitwise_and , 
 	//Mat areaMask = Mat::zeros(lineInfo.maskImage_withWeight.rows, lineInfo.maskImage_withWeight.cols, CV_8U);	
@@ -226,11 +227,11 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	//start	 -> 
 	vector<int> weightAvg;
 	vector<int> pixelsum;
-	Mat maskImage= lineInfo.maskImage_withWeight.clone();
+	Mat maskImage= lineInfo.maskImage.binImage.clone();
 	inRange(maskImage, 4, 255, maskImage);	// 3프레임까지 버림
 
 	Mat maskImage_rmNoise = imageHandler::getMorphImage(maskImage, MORPH_ERODE);
-	bitwise_and(maskImage_rmNoise, lineInfo.maskImage_withWeight, maskImage_rmNoise);
+	bitwise_and(maskImage_rmNoise, lineInfo.maskImage.binImage, maskImage_rmNoise);
 
 	leftistCoorX = imageHandler::getLeftistWhitePixel_x(maskImage_rmNoise);
 	rightistCoorX = imageHandler::getRightistWhitePixel_x(maskImage_rmNoise);
@@ -242,12 +243,12 @@ LineInfo LineFinder::checkValidMask(LineInfo lineInfo)
 	int separationCount = 3;
 	for (int i = 0; i < separationCount; i++)	// 3등분해서 확인
 	{
-		Mat areaMask = Mat::zeros(lineInfo.maskImage_withWeight.rows, lineInfo.maskImage_withWeight.cols, CV_8U);
+		Mat areaMask = Mat::zeros(lineInfo.maskImage.binImage.rows, lineInfo.maskImage.binImage.cols, CV_8U);
 		int coorX = leftistCoorX + (sepaRange * i);
 		if (i == separationCount - 1)
 			sepaRange = rightistCoorX - coorX + 1;	// 마지막 값까지 사용하기 위해
 
-		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, lineInfo.maskImage_withWeight.rows);
+		areaMask = imageHandler::getWhiteMaskImage(areaMask, coorX, 0, sepaRange, lineInfo.maskImage.binImage.rows);
 		bitwise_and(areaMask, maskImage_rmNoise, areaMask);
 		//weightAvg.push_back(imageHandler::getWhitePixelAvgValue(areaMask));
 

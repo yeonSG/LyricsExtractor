@@ -568,7 +568,7 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #ifndef _DEBUG
 	int curFrame = 0;
 #else
-	int curFrame = 2900;	// debug	 // YSYSYS
+	int curFrame = 2500;	// debug	 // YSYSYS
 	
 #endif
 
@@ -594,11 +594,14 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 		vector<contourLineInfoSet> line_PeakInfo;
 		line_PeakInfo = peakFinder.frameImage_process(subImage, curFrame, vecPrintTypes[m_PrintTypeNumType], refUnprintImage);	// ys-process : 벹어낸 라인의 총 수
 		// 이미지 분석하여 라인의 조건에 만족하는 컨투어 셋을 반환함.
+		vector<contourLineInfo>	linePeakInfo_max;
+		for (int i = 0; i < line_PeakInfo.size(); i++)
+			linePeakInfo_max.push_back(line_PeakInfo[i].maximum);
 		
-		if (line_PeakInfo.size() > 0)
-		{			
-			vector<contourLineInfoSet> filltered_line_PeakInfo; 			
-			filltered_line_PeakInfo = line_PeakInfoFilter(line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
+		if (linePeakInfo_max.size() > 0)
+		{
+			vector<contourLineInfo> filltered_line_PeakInfo; 			
+			filltered_line_PeakInfo = line_PeakInfoFilter(linePeakInfo_max, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
 
 #ifdef _DEBUG
 			if (curFrame == 3993)
@@ -606,21 +609,23 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 #endif			
 			if (filltered_line_PeakInfo.size() != 0)
 			{
-				vector<contourLineInfoSet> sep_filltered_line_PeakInfo = separateLineIfTwinline(filltered_line_PeakInfo);	// separateLine if twinLine
+				// merge peakInfo
+				vector<contourLineInfo> sep_filltered_line_PeakInfo = separateLineIfTwinline(filltered_line_PeakInfo);	// separateLine if twinLine
+				// line_PeakInfoFilter()에 사용되는 요소는 업데이트해줘야함
 				filltered_line_PeakInfo = line_PeakInfoFilter(sep_filltered_line_PeakInfo, lineInfos);	// ys-process : 기본적인 정보로 라인걸러냄
 			}
 			cout << endl;
 			for (int i = 0; i < filltered_line_PeakInfo.size(); i++)
 			{
-				int maxValue = filltered_line_PeakInfo[i].maximum.maxValue;
-				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].maximum.coorY_start, filltered_line_PeakInfo[i].maximum.coorY_end);
+				int maxValue = filltered_line_PeakInfo[i].maxValue;
+				printf("* Line found [Coor_y(%d ~ %d)] ", filltered_line_PeakInfo[i].coorY_start, filltered_line_PeakInfo[i].coorY_end);
 				printf(" [Line start Frame : %d] ", curFrame - (maxValue + PeakFinder::JUDGE_TIMEOUT));
 
 				{
 					LineFinder lineFinder(videoCapture);
 					LineInfo lineInfo;
 					lineInfo.printColor = m_PrintTypeNumType;
-					lineInfo = lineFinder.getLine(filltered_line_PeakInfo[i].maximum.weightMat, UnprintColor);		// 
+					lineInfo = lineFinder.getLine(filltered_line_PeakInfo[i].weightMat, UnprintColor);		// 
 
 					/* 라인 후보 저장 */
 					/*	// bool getLine(WeightMat, vc)
@@ -633,17 +638,11 @@ vector<LineInfo> LineInfoFinder::start2_useContour2(int PrintTypeNum, Scalar Unp
 					if (lineInfo.isValid == true)
 					{
 						lineInfos.push_back(lineInfo);
-						//Mat tt_1lineInfosbin = filltered_line_PeakInfo[i].progress.weightMat.binImage.clone();
-						//Mat tt_2peakFinder_mBin = peakFinder.m_stackBinImage.clone();
-						//peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);	
 						peakFinder.stackBinImageCorrect(filltered_line_PeakInfo[i]);
-						//Mat tt_3peakFinder_after = peakFinder.m_stackBinImage.clone();
-						//unprintImage.stackBinImageCorrect(filltered_line_PeakInfo[i].progress.weightMat.binImage);
-						// peakFinder.m_stackBinImage 보정
 
 #ifdef _DEBUG
-//if (lineInfos.size() == 3)	// ysysys
-//	return lineInfos;
+						//if (lineInfos.size() <= 3)	// ysysys
+						//	return lineInfos;
 #endif				
 					}
 					else
@@ -1474,39 +1473,39 @@ void LineInfoFinder::WriteLineInfo_toLog(vector<Line> lines)
 	}
 }
 
-vector<contourLineInfoSet> LineInfoFinder::line_PeakInfoFilter(vector<contourLineInfoSet> lineInfosSet, vector<LineInfo>& errorLineInfos)
+vector<contourLineInfo> LineInfoFinder::line_PeakInfoFilter(vector<contourLineInfo> lineInfosSet, vector<LineInfo>& errorLineInfos)
 {
-	vector<contourLineInfoSet> filltered_line_PeakInfo;
+	vector<contourLineInfo> filltered_line_PeakInfo;
 
 	for (int i = 0; i < lineInfosSet.size(); i++)
 	{
 		LineInfo errorLineInfo;
-		errorLineInfo.frame_end = lineInfosSet[i].maximum.weightMat.frameNum;
-		errorLineInfo.maskImage_withWeight = lineInfosSet[i].maximum.weightMat.binImage;
+		errorLineInfo.frame_end = lineInfosSet[i].weightMat.frameNum;
+		errorLineInfo.maskImage = lineInfosSet[i].weightMat;
 		errorLineInfo.printColor = m_PrintTypeNumType;
 
-		if (lineInfosSet[i].maximum.maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		if (lineInfosSet[i].maxValue <= 5)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 		{
 			printf(" [IS NOT LINE : maxWeight<5] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_WEIGHT);
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
 		}
-		if (lineInfosSet[i].maximum.pixelCount <= 300)	// maxValue(Weight)가 5미만이면 라인으로 안봄
+		if (lineInfosSet[i].pixelCount <= 300)	// maxValue(Weight)가 5미만이면 라인으로 안봄
 		{
 			printf(" [IS NOT LINE : pixelCount<300] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_PIXELCOUNT);
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
 		}
-		if (lineInfosSet[i].maximum.coorY_end - lineInfosSet[i].maximum.coorY_start < 10) // y축 길이가 10 이하
+		if (lineInfosSet[i].coorY_end - lineInfosSet[i].coorY_start < 10) // y축 길이가 10 이하
 		{
 			printf(" [IS NOT LINE : y_length<10] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_Y_LENGHTH);
 			errorLineInfos.push_back(errorLineInfo);
 			continue;
 		}
-		if (lineInfosSet[i].maximum.coorX_end - lineInfosSet[i].maximum.coorX_start < 50) // x축 길이가 50 이하
+		if (lineInfosSet[i].coorX_end - lineInfosSet[i].coorX_start < 50) // x축 길이가 50 이하
 		{
 			printf(" [IS NOT LINE : x_length<60] ");
 			errorLineInfo.errorOccured(LINEERROR_PEAKFILLTER_X_LENGHTH);
@@ -1592,15 +1591,31 @@ int LineInfoFinder::getSequentialIncreasedContoursCount(vector<contourInfo> cont
 	*/
 }
 
+//// 라인 셋 머지함
+//contourLineInfo LineInfoFinder::lineInfomerge(vector<contourLineInfo> lineInfos)
+//{
+//	if (lineInfos.size() != 0)
+//	{
+//		contourLineInfo mergedInfo = lineInfos[0];
+//
+//
+//		for (int i = 1; i < lineInfos.size(); i++)
+//		{
+//		}
+//	}
+//}
+
 // 라인이 트윈라인인 경우 라인을 나눠줌
-vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contourLineInfoSet> lineInfoSet)
+vector<contourLineInfo> LineInfoFinder::separateLineIfTwinline(vector<contourLineInfo> lineInfoSet)
 {
-	vector<contourLineInfoSet> outLineSet;
+	vector<contourLineInfo> outLineSet;	// 최종 아웃풋
+
+	vector<contourLineInfo> outLineSetTemp;	// 임시저장소 (모든 lineInfoSet을 separate한 저장소 -> 머지 후 -> 최종 아웃풋에 병합)
 	// 가로섬 단위로 이미지 나눔,
 	// 겹치는 x좌표의 값 비교하여 차이가 크면 다른 라인으로 판단.
 	for (int i = 0; i < lineInfoSet.size(); i++)
 	{
-		vector<int> projection = imageHandler::getHorizontalProjectionData(lineInfoSet[i].maximum.weightMat.binImage);
+		vector<int> projection = imageHandler::getHorizontalProjectionData(lineInfoSet[i].weightMat.binImage);
 
 		vector<pair<int, int>> islands;
 		bool blackZone = false;
@@ -1635,42 +1650,123 @@ vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contour
 
 
 		// 섬이 여러개임
-		vector<Mat> separatedMat;	// 섬별로 마스킹 한 Mat 
+		//vector<Mat> separatedMat;	// 섬별로 마스킹 한 Mat 
+
 		for (int j = 0; j < islands.size(); j++)
 		{
-			Mat mask = Mat::zeros(lineInfoSet[i].maximum.weightMat.binImage.rows, lineInfoSet[i].maximum.weightMat.binImage.cols, CV_8U);
+			Mat mask = Mat::zeros(lineInfoSet[i].weightMat.binImage.rows, lineInfoSet[i].weightMat.binImage.cols, CV_8U);
 			printf("j = %d  first = %d  second = %d\r\n", j, islands[j].first, islands[j].second);
-			mask = imageHandler::getWhiteMaskImage(mask, 0, islands[j].first , lineInfoSet[i].maximum.weightMat.binImage.cols, islands[j].second - islands[j].first);
+			mask = imageHandler::getWhiteMaskImage(mask, 0, islands[j].first, lineInfoSet[i].weightMat.binImage.cols, islands[j].second - islands[j].first);
 
-			bitwise_and(mask, lineInfoSet[i].maximum.weightMat.binImage, mask);
-			separatedMat.push_back(mask);	
+			bitwise_and(mask, lineInfoSet[i].weightMat.binImage, mask);
+			//separatedMat.push_back(mask);
+
+			contourLineInfo infoSet = lineInfoSet[i];
+			infoSet.weightMat.binImage = mask;
+			outLineSetTemp.push_back(infoSet);
 		}
+	}	// separate 완료
 
-		vector<Mat> mergedSeparatedMat;	// 처리된 Mat
-		for (int j = 0; j < separatedMat.size(); j++)
+
+	// max 값 기준으로 정렬, 
+	// (weightMax - frame) ~ frame 이 겹치는 것들 끼리 연산 
+	// 1. 겹치는지 확인
+	// 2. 겹쳐지는 부분 확인 ( x프레임~x프레임+5 까지 추출 후 x좌표가 겹치는지 확인)
+//	{
+//		vector<contourLineInfo> mergedSeparatedMat;	// 처리된 Mat
+//
+//		for (int j = 0; j < outLineSetTemp.size(); j++)
+//		{
+//			if (j == 0)
+//				mergedSeparatedMat.push_back(outLineSetTemp[j]);
+//			else
+//			{
+//				// xframe의 weight 구하는 식 : 현재 프레임=10, 타겟 값 20 
+//				bool isfind = false;
+//				
+//				int weightMax = imageHandler::getMaximumValue(outLineSetTemp[j].weightMat.binImage);
+//				int endFrame = outLineSetTemp[j].weightMat.frameNum;
+//				int stFrame = endFrame - weightMax;
+//				for (int k = 0; k < mergedSeparatedMat.size(); k++)
+//				{
+//					int weightMax_t = imageHandler::getMaximumValue(mergedSeparatedMat[k].weightMat.binImage);
+//					int endFrame_t = mergedSeparatedMat[k].weightMat.frameNum;
+//					int stFrame_t = endFrame_t - weightMax_t;
+//					Mat temp_t;
+//					inRange(mergedSeparatedMat[k].weightMat.binImage, weightMax_t, weightMax_t - 5, temp_t);
+//					int tempLeft_t = imageHandler::getLeftistWhitePixel_x(temp_t);
+//					int tempRight_t = imageHandler::getRightistWhitePixel_x(temp_t);
+//
+//					// 관련있는지 확인
+//					bool isReration = imageHandler::isRelation(stFrame, endFrame, stFrame_t, endFrame_t);
+//					if (isReration)
+//					{
+//						// 특정부분이 겹침 -> 병합 (프레임 어떻게 맞추는가.. 시작프레임이 큰애 기준)
+//						//if (stFrame > stFrame_t)
+//						{	// stFrame_t 기준으로 .. stFrame_t ~ stFrame_t+5 프레임 영역 사용 
+//
+//							int offset = mergedSeparatedMat[k].weightMat.frameNum - outLineSetTemp[k].weightMat.frameNum;
+//
+//							Mat temp;
+//							inRange(outLineSetTemp[j].weightMat.binImage, weightMax_t-offset, weightMax_t-offset - 5, temp);
+//
+//							int tempLeft = imageHandler::getLeftistWhitePixel_x(temp);
+//							int tempRight = imageHandler::getRightistWhitePixel_x(temp);
+//
+//							if (imageHandler::isRelation(tempLeft, tempRight, tempLeft_t, tempRight_t))
+//							{
+//								// 병합	-  frameStart가 낮은곳 기준으로 병합
+//								isfind = true;
+//								break;
+//							}
+//
+//
+//						}
+//						// 겹치는 부분
+//					}
+//
+//				}
+//				if (isfind == false)	// 못찾음
+//				{
+//					// 새로 추가함  => mergedSeparatedMat
+//					mergedSeparatedMat.push_back(outLineSetTemp[j]);
+//				}
+//
+//			}
+//
+//		}
+//	}
+
+
+	{
+		vector<contourLineInfo> mergedSeparatedMat;	// 처리된 Mat
+		for (int j = 0; j < outLineSetTemp.size(); j++)
 		{
 			if (j == 0)
-				mergedSeparatedMat.push_back(separatedMat[j]);
+				mergedSeparatedMat.push_back(outLineSetTemp[j]);
 			else
 			{
 				bool isfind = false;
 
 				// 1. separatedMat의 max값 구함
-				int maxValue = imageHandler::getMaximumValue(separatedMat[j]);
+				int maxValue = imageHandler::getMaximumValue(outLineSetTemp[j].weightMat.binImage);
 				if (maxValue - 5 <= 0)
 					maxValue = 5;	
 
 				// 1. separatedMat의 inrange(max, max-5) 한 것의 시작점-끝점구함
 				Mat temp;
-				inRange(separatedMat[j], maxValue - 5, maxValue, temp);
+				inRange(outLineSetTemp[j].weightMat.binImage, maxValue - 5, maxValue, temp);
 				int tempLeft = imageHandler::getLeftistWhitePixel_x(temp);
 				int tempRight = imageHandler::getRightistWhitePixel_x(temp);
 
 				for (int k = 0; k < mergedSeparatedMat.size(); k++)
-				{
+				{ 
+					if (outLineSetTemp[j].weightMat.frameNum != mergedSeparatedMat[k].weightMat.frameNum)
+						continue;
+
 					Mat mergeTemp;
 					// 1. mergedSeparatedMat의 inrange(max, max-5) 한 것의 시작점-끝점구함
-					inRange(mergedSeparatedMat[k], maxValue - 5, maxValue, mergeTemp);
+					inRange(mergedSeparatedMat[k].weightMat.binImage, maxValue - 5, maxValue, mergeTemp);
 					int mergeTempLeft = imageHandler::getLeftistWhitePixel_x(mergeTemp);
 					int mergeTempRight = imageHandler::getRightistWhitePixel_x(mergeTemp);
 					// 1. isRelation() 에 참이 나옴 -> mergedSeparatedMat에 합병시킴
@@ -1678,7 +1774,7 @@ vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contour
 					bool isReration = imageHandler::isRelation(tempLeft, tempRight, mergeTempLeft, mergeTempRight);
 					if (isReration)
 					{
-						bitwise_or(mergedSeparatedMat[k], separatedMat[j], mergedSeparatedMat[k]);
+						bitwise_or(mergedSeparatedMat[k].weightMat.binImage, outLineSetTemp[j].weightMat.binImage, mergedSeparatedMat[k].weightMat.binImage);
 						// separatedMat[k]
 					}
 					
@@ -1689,10 +1785,10 @@ vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contour
 						break;
 					}
 				}
-				if (isfind == false)
+				if (isfind == false)	// 못찾음
 				{
 					// 새로 추가함  => mergedSeparatedMat
-					mergedSeparatedMat.push_back(separatedMat[j]);
+					mergedSeparatedMat.push_back(outLineSetTemp[j]);
 				}
 
 			}
@@ -1700,9 +1796,7 @@ vector<contourLineInfoSet> LineInfoFinder::separateLineIfTwinline(vector<contour
 
 		for (int j = 0; j < mergedSeparatedMat.size(); j++)
 		{
-			contourLineInfoSet infoSet = lineInfoSet[i];
-			infoSet.maximum.weightMat.binImage = mergedSeparatedMat[j];	
-			outLineSet.push_back(infoSet);
+			outLineSet.push_back(mergedSeparatedMat[j]);
 		}
 	}
 	
@@ -1718,16 +1812,16 @@ vector<LineInfo> LineInfoFinder::mergeAndJudgeLineInfo(vector<LineInfo> lineInfo
 
 	for (int i = 0; i < lineInfo_out.size(); i++)
 	{
-		Mat floodfill = imageHandler::getBorderFloodFilledImage(lineInfo_out[i].maskImage_withWeight);
+		Mat floodfill = imageHandler::getBorderFloodFilledImage(lineInfo_out[i].maskImage.binImage);
 		Mat erodeImage_Denoise = imageHandler::removeNotLyricwhiteArea(floodfill);
 		Mat clearedImage = imageHandler::removeNotPrimeryLyricLine(erodeImage_Denoise);
 
 		LineInfo tempLineinfo;
-		tempLineinfo.maskImage_withWeight = clearedImage;
+		tempLineinfo.maskImage.binImage = clearedImage;
 		tempLineinfo = LineFinder::checkValidMask(tempLineinfo);
 		if (tempLineinfo.isValid)
 		{
-			lineInfo_out[i].maskImage_withWeight = tempLineinfo.maskImage_withWeight.clone();
+			lineInfo_out[i].maskImage.binImage = tempLineinfo.maskImage.binImage.clone();
 			lineInfo_out[i].isValid = true;
 		}
 		else
@@ -1767,8 +1861,8 @@ vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> l
 				// y좌표 겹쳐저야함
 
 				bool isOtherLine_byYcoor = false;
-				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
-				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage.binImage, false);
+				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage.binImage, false);
 				if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
 				{
 					isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
@@ -1776,9 +1870,9 @@ vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> l
 
 				if (isRelation_frame == false && isOtherLine_byYcoor==false)
 				{
-					int xCoor = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
+					int xCoor = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage.binImage);
 
-					if (xCoor < imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, true))
+					if (xCoor < imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage.binImage, true))
 					{
 						relationCount++;
 						if (lineInfo_temp.back().frame_start > lineInfos[i].frame_start)
@@ -1786,8 +1880,8 @@ vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> l
 						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
 							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
 						Mat orImg;
-						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
-						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+						bitwise_or(lineInfo_temp.back().maskImage.binImage, lineInfos[i].maskImage.binImage, orImg);
+						lineInfo_temp.back().maskImage.binImage = orImg.clone();
 						// 라인 머지  to .back()
 						continue;
 					}
@@ -1805,7 +1899,7 @@ vector<LineInfo> LineInfoFinder::mergeSeparatedByMaximumFrame(vector<LineInfo> l
 		return mergeSeparatedByMaximumFrame(lineInfo_temp);
 }
 
-vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
+vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)	// maskImage.frame 을 사용하여 머지할거 머지하자.
 {
 	int relationCount = 0;
 	vector<LineInfo> lineInfo_temp;
@@ -1826,8 +1920,8 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 				bool isOtherLine_byYcoor = false;
 				bool isOtherLine_byframe = false;	// 다 만족해야 다른 라인으로 봄
 
-				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
-				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+				int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage.binImage, false);
+				int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage.binImage, false);
 				if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
 				{
 					isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
@@ -1876,8 +1970,8 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
 							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
 						Mat orImg;
-						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
-						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+						bitwise_or(lineInfo_temp.back().maskImage.binImage, lineInfos[i].maskImage.binImage, orImg);
+						lineInfo_temp.back().maskImage.binImage = orImg.clone();
 
 						if (lineInfo_temp.back().printColor != lineInfos[i].printColor)	// 두 라인의 컬러코드가 다르면 듀엣으로 봄
 							lineInfo_temp.back().printColor = 3;	// 컬러코드 (3==듀엣)
@@ -1898,8 +1992,8 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
 							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
 						Mat orImg;
-						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
-						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+						bitwise_or(lineInfo_temp.back().maskImage.binImage, lineInfos[i].maskImage.binImage, orImg);
+						lineInfo_temp.back().maskImage.binImage = orImg.clone();
 
 					}
 
@@ -1916,17 +2010,17 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 					int dupFrame_end = min(lineInfo_temp.back().frame_end, lineInfos[i].frame_end);
 					int dupFrame = dupFrame_end - dupFrame_start;	//
 
-					int lineInfo_temp_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
-					int lineInfos_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfos[i].maskImage_withWeight);
-					int lineInfo_temp_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage_withWeight);
-					int lineInfos_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfos[i].maskImage_withWeight);
+					int lineInfo_temp_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfo_temp.back().maskImage.binImage);
+					int lineInfos_Xcoor_start = imageHandler::getLeftistWhitePixel_x(lineInfos[i].maskImage.binImage);
+					int lineInfo_temp_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfo_temp.back().maskImage.binImage);
+					int lineInfos_Xcoor_end = imageHandler::getRightistWhitePixel_x(lineInfos[i].maskImage.binImage);
 
 					int dupXcoor_start = max(lineInfo_temp_Xcoor_start, lineInfos_Xcoor_start);
 					int dupXcoor_end = min(lineInfo_temp_Xcoor_end, lineInfo_temp_Xcoor_end);
 					int dupXcoor = dupXcoor_end - dupXcoor_start;	//
 
-					int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage_withWeight, false);
-					int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage_withWeight, false);
+					int temp_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfo_temp.back().maskImage.binImage, false);
+					int other_coorY_avg = imageHandler::getWhitePixelAvgCoordinate(lineInfos[i].maskImage.binImage, false);
 					if (abs(temp_coorY_avg - other_coorY_avg) > 70)// relation_y값 진행 ->참이면 머지수행, 거짓-> 거리가 40 이상이면(s-e, e-s 값 절대값 중 작은값이 40 이상) 각각의 라인으로 판단
 					{
 						isOtherLine_byYcoor = true;	// 점들의 평균점의 차이가 70 이상이면서 평균 웨이트의 차이가 크면 다른 라인으로 봄.					
@@ -1953,8 +2047,8 @@ vector<LineInfo> LineInfoFinder::mergeLineInfo(vector<LineInfo> lineInfos)
 						if (lineInfo_temp.back().frame_end < lineInfos[i].frame_end)
 							lineInfo_temp.back().frame_end = lineInfos[i].frame_end;
 						Mat orImg;
-						bitwise_or(lineInfo_temp.back().maskImage_withWeight, lineInfos[i].maskImage_withWeight, orImg);
-						lineInfo_temp.back().maskImage_withWeight = orImg.clone();
+						bitwise_or(lineInfo_temp.back().maskImage.binImage, lineInfos[i].maskImage.binImage, orImg);
+						lineInfo_temp.back().maskImage.binImage = orImg.clone();
 					}
 				}
 				else

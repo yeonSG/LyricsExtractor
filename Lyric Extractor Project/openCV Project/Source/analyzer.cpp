@@ -459,8 +459,8 @@ bool analyzer::videoAnalization3(string videoPath)
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << lineInfo[i].frame_start << " ~ " << lineInfo[i].frame_end;
 			printf("Line %d : %d ~ %d \r\n", i, lineInfo[i].frame_start, lineInfo[i].frame_end);
 			Mat bin_Debug;
-			inRange(lineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_" + to_string(i) + ".jpg", lineInfo[i].maskImage_withWeight);
+			inRange(lineInfo[i].maskImage.binImage, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_" + to_string(i) + ".jpg", lineInfo[i].maskImage.binImage);
 			imwrite(fileManager::getSavePath() + "/Captures/"+to_string(nColor)+"_d_" + to_string(i) + ".jpg", bin_Debug);
 		}
 
@@ -483,8 +483,8 @@ bool analyzer::videoAnalization3(string videoPath)
 			BOOST_LOG_SEV(my_logger::get(), severity_level::normal) << "Line " << i << " : " << mergeJudgeLineInfo[i].frame_start << " ~ " << mergeJudgeLineInfo[i].frame_end;
 			printf("Line %2d : %d ~ %d \r\n", i, mergeJudgeLineInfo[i].frame_start, mergeJudgeLineInfo[i].frame_end);
 			Mat bin_Debug;
-			inRange(mergeJudgeLineInfo[i].maskImage_withWeight, 1, 255, bin_Debug);
-			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", mergeJudgeLineInfo[i].maskImage_withWeight);
+			inRange(mergeJudgeLineInfo[i].maskImage.binImage, 1, 255, bin_Debug);
+			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge" + to_string(i) + ".jpg", mergeJudgeLineInfo[i].maskImage.binImage);
 			imwrite(fileManager::getSavePath() + "/Captures/" + to_string(nColor) + "_merge_d_" + to_string(i) + ".jpg", bin_Debug);
 
 			mergeJudgeLineInfo[i].printColor = nColor;	// 컬러코드 정의필요()
@@ -564,7 +564,7 @@ bool analyzer::videoAnalization3(string videoPath)
 
 		//catpureBinaryImageForOCR(saveImage, i, fileManager::getSavePath()); // 이미지 저장
 		// weightImage to OCR bin
-		saveImage = weightImageToOCRbin(mergeJudgeLineInfo[i].maskImage_withWeight, unPrintColor, mergeJudgeLineInfo[i].frame_start);
+		saveImage = weightImageToOCRbin(mergeJudgeLineInfo[i].maskImage.binImage, unPrintColor, mergeJudgeLineInfo[i].frame_start);
 
 		line.maskImage = saveImage; //mergeJudgeLineInfo[i].maskImage_withWeight;
 		line.startFrame = mergeJudgeLineInfo[i].frame_start;
