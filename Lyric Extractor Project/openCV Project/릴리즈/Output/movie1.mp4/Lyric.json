@@ -1,0 +1,778 @@
+{
+    "composer": "",
+    "copyright": "",
+    "genre": "",
+    "key": "",
+    "line": [
+        {
+            "count": 4,
+            "countms": 500,
+            "event": "count",
+            "start": 11520
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 18640,
+                    "start": 13520,
+                    "text": "HM SO BEAUTIFUL HOC HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 13520
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 25840,
+                    "start": 20320,
+                    "text": "HA HM SO BEAUTIFUL HOO HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 20320
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 27640,
+                    "start": 26400,
+                    "text": "YOU ARE MY SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 26400
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 29360,
+                    "start": 27960,
+                    "text": "SEX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 27960
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 33080,
+                    "start": 30040,
+                    "text": "1ษมง46 I WANNA WANNA X X YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 30040
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 34720,
+                    "start": 33600,
+                    "text": "¥OU GONNA BE MY LOVELY TIME"
+                }
+            ],
+            "part": "N",
+            "start": 33600
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 36480,
+                    "start": 35280,
+                    "text": "SEX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 35280
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 40240,
+                    "start": 37360,
+                    "text": "WANNA ] WANNA WANNA X X YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 37360
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 43160,
+                    "start": 41920,
+                    "text": "ใม่ต้องมา ลค แอท มี"
+                }
+            ],
+            "part": "N",
+            "start": 41920
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 44880,
+                    "start": 43720,
+                    "text": "DONT THINK ห๐2บล8ละ CLOSE TO ME"
+                }
+            ],
+            "part": "N",
+            "start": 43720
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 46520,
+                    "start": 45480,
+                    "text": "ฉ้นไม่ใช่คน วอนนา ปี"
+                }
+            ],
+            "part": "N",
+            "start": 45480
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 48640,
+                    "start": 47320,
+                    "text": "ทีจวิง แอม นอท แธท พริตตี"
+                }
+            ],
+            "part": "N",
+            "start": 47320
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 50320,
+                    "start": 49200,
+                    "text": "YOU KNOW I CAN BREAK UR HEART"
+                }
+            ],
+            "part": "N",
+            "start": 49200
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 52240,
+                    "start": 51000,
+                    "text": "BEFORE YOU EVEN START"
+                }
+            ],
+            "part": "N",
+            "start": 51000
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 53920,
+                    "start": 52760,
+                    "text": "เล่นกับฉันเหมือนเล่นกับไฟ"
+                }
+            ],
+            "part": "N",
+            "start": 52760
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 55680,
+                    "start": 54600,
+                    "text": "ตั๋วฉันมั่นอั้นตราย"
+                }
+            ],
+            "part": "N",
+            "start": 54600
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 57960,
+                    "start": 56360,
+                    "text": "au ฮอต เพราะฉันน่ะ ออน ไฟร์"
+                }
+            ],
+            "part": "N",
+            "start": 56360
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 59600,
+                    "start": 58200,
+                    "text": "เธอควรจะร้ว่าฉนน่ะร้าย"
+                }
+            ],
+            "part": "N",
+            "start": 58200
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 61360,
+                    "start": 60040,
+                    "text": "อย่ำคิดว่าฉันเป็นคนง่าย"
+                }
+            ],
+            "part": "N",
+            "start": 60040
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 64040,
+                    "start": 61880,
+                    "text": "YOU BETTER BETTER THINK TWICE I FEEL LIKE"
+                }
+            ],
+            "part": "N",
+            "start": 61880
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 65920,
+                    "start": 64840,
+                    "text": "ไม่ได้แอ้มหรอก เอ้"
+                }
+            ],
+            "part": "N",
+            "start": 64840
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 67600,
+                    "start": 66640,
+                    "text": "อยามาหลอกกั้นเพ่"
+                }
+            ],
+            "part": "N",
+            "start": 66640
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 69320,
+                    "start": 68400,
+                    "text": "จะวังจะโดน ถึงตัวเล็ก"
+                }
+            ],
+            "part": "N",
+            "start": 68400
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 71240,
+                    "start": 69560,
+                    "text": "แต่แข็งเหมือนกับเหล็ก ระวังไว้เลยเพ่"
+                }
+            ],
+            "part": "N",
+            "start": 69560
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 76800,
+                    "start": 71680,
+                    "text": "HM SO BEAUTIFUL — OO HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 71680
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 84000,
+                    "start": 78480,
+                    "text": "HA HM SO BEAUTIFUL — OO HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 78480
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 85800,
+                    "start": 84560,
+                    "text": "YOU ARE MY SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 84560
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 87200,
+                    "start": 86160,
+                    "text": "ฐนไม่ได้ใจร้าย"
+                }
+            ],
+            "part": "N",
+            "start": 86160
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 89200,
+                    "start": 87360,
+                    "text": "แตอาจจะคล้ายกับ แบด เกิร์ล"
+                }
+            ],
+            "part": "N",
+            "start": 87360
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 91120,
+                    "start": 89640,
+                    "text": "ระวุงจะกลาย เป็น แแซต์ บ1อย"
+                }
+            ],
+            "part": "N",
+            "start": 89640
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 92600,
+                    "start": 91480,
+                    "text": "อยากร้ก็ลองเชิญ"
+                }
+            ],
+            "part": "N",
+            "start": 91480
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 94840,
+                    "start": 93040,
+                    "text": "แต่ไม่เอาดึกว่า ไม่อยากให้เธอ"
+                }
+            ],
+            "part": "N",
+            "start": 93040
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 96120,
+                    "start": 95080,
+                    "text": "(เข้ามาใน ma เวิลด์"
+                }
+            ],
+            "part": "N",
+            "start": 95080
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 98760,
+                    "start": 96680,
+                    "text": "แบบว่าฉ้นไม่อยากจะย่งอะไรทั้งนั้น"
+                }
+            ],
+            "part": "N",
+            "start": 96680
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 99960,
+                    "start": 99440,
+                    "text": "(ตี่ยวก้ปเธอ"
+                }
+            ],
+            "part": "N",
+            "start": 99440
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 101600,
+                    "start": 100080,
+                    "text": "WHY WHY YOU TRY TO GET CLOSER"
+                }
+            ],
+            "part": "N",
+            "start": 100080
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 103440,
+                    "start": 102120,
+                    "text": "บอกว่าอ้นตรายทําไมไม่ขอมฟัง"
+                }
+            ],
+            "part": "N",
+            "start": 102120
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 105680,
+                    "start": 104160,
+                    "text": "ขอเตือนก้อนเลยว่าเธอควรระวง"
+                }
+            ],
+            "part": "N",
+            "start": 104160
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 107000,
+                    "start": 106200,
+                    "text": "เฟิราะว่าฉน้นน่ะว์ทิน"
+                }
+            ],
+            "part": "N",
+            "start": 106200
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 108720,
+                    "start": 107360,
+                    "text": "จริงจริง แล้วน้นนั้นนะอ่านเธอออก"
+                }
+            ],
+            "part": "N",
+            "start": 107360
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 110600,
+                    "start": 109200,
+                    "text": "ไม่ต้องให้ใครต้องคอยมาบอก"
+                }
+            ],
+            "part": "N",
+            "start": 109200
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 112440,
+                    "start": 111000,
+                    "text": "ๆซาเธออะข้องอะจ้องจะหลอก"
+                }
+            ],
+            "part": "N",
+            "start": 111000
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 114160,
+                    "start": 112800,
+                    "text": "สายตาเธอไวยิ่งกว่าปรอท"
+                }
+            ],
+            "part": "N",
+            "start": 112800
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 115120,
+                    "start": 114640,
+                    "text": "WATCH YOUR BACK"
+                }
+            ],
+            "part": "N",
+            "start": 114640
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 118040,
+                    "start": 115400,
+                    "text": "คิดสิ คิดสิ เธออย่ำคิดว่าฉันไม่รั้"
+                }
+            ],
+            "part": "N",
+            "start": 115400
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 121600,
+                    "start": 118520,
+                    "text": "เธอคิดดิ คิดสิ เธออย่ำคิดว่าฉันไม่ร๊"
+                }
+            ],
+            "part": "N",
+            "start": 118520
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 125440,
+                    "start": 122120,
+                    "text": "เธอคิดดิ คิดสิ เธออย่ำคิดว่าฉันไม่ร้"
+                }
+            ],
+            "part": "N",
+            "start": 122120
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 126760,
+                    "start": 125800,
+                    "text": "เธอคิดด๊คิดสิ"
+                }
+            ],
+            "part": "N",
+            "start": 125800
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 129240,
+                    "start": 127600,
+                    "text": "พราะจริงจริงแล้วฉน้นน้นรัด"
+                }
+            ],
+            "part": "N",
+            "start": 127600
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 134960,
+                    "start": 129840,
+                    "text": "HM SO BEAUTIFUL HOO HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 129840
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 142160,
+                    "start": 136680,
+                    "text": "MA HM SO BEAUTIFUL HOO HM SO BEAUTIFUL"
+                }
+            ],
+            "part": "N",
+            "start": 136680
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 143960,
+                    "start": 142720,
+                    "text": "YOU ARE MY SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 142720
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 145680,
+                    "start": 144280,
+                    "text": "SEX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 144280
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 149400,
+                    "start": 146360,
+                    "text": "IWANNA I WANNA WANNA X X YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 146360
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 151040,
+                    "start": 149920,
+                    "text": "YOU GONNA BE MY LOVELY ME"
+                }
+            ],
+            "part": "N",
+            "start": 149920
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 152800,
+                    "start": 151600,
+                    "text": "SEX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 151600
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 156560,
+                    "start": 153640,
+                    "text": "I WANNA I WANNA WANNA ± X YOU SEXY ๕๗๗"
+                }
+            ],
+            "part": "N",
+            "start": 153640
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 158160,
+                    "start": 157040,
+                    "text": "YOU GONNA BE MY LOVELY TIME"
+                }
+            ],
+            "part": "N",
+            "start": 157040
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 160240,
+                    "start": 158840,
+                    "text": "SEX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 158840
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 163960,
+                    "start": 160920,
+                    "text": "I WANNA I WANNA WANNA X X YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 160920
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 167360,
+                    "start": 166160,
+                    "text": "$EX SEX YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 166160
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 171120,
+                    "start": 168200,
+                    "text": "I WANNA I WANNA WANNA X ± YOU SEXY GIRL"
+                }
+            ],
+            "part": "N",
+            "start": 168200
+        },
+        {
+            "event": "lyrics",
+            "linepart": [
+                {
+                    "end": 173160,
+                    "start": 171760,
+                    "text": "SEXY BABY"
+                }
+            ],
+            "part": "N",
+            "start": 171760
+        }
+    ],
+    "national": "THA",
+    "optionType": 0,
+    "singer": "",
+    "supportvocal": true,
+    "title": "",
+    "version": 0,
+    "vocaldelay": 1500,
+    "writer": ""
+}
