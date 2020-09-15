@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <direct.h>
-#include <zlib.h>
 #include "testClass.h"
 #include "analyzer.h"
 #include "fileManager.h"

@@ -1,9 +1,11 @@
 
-@ Version Infomation
-	OpenCV420
-	boost_1.72.0
+@ Version Infomation ( *은 빌드 시 추가해줘야 할 라이브러리 )
+	*OpenCV420				| 
+	*boost_1.72.0			| 
+	*nlohmann_json 3.7.3	| https://github.com/nlohmann/json
 	tesseract_5.0
 
-	python	3.6
-	cuDNN	v10.2.89
+	-----------------------------------------------------------
+	python	3.6				| MachinLeaning 파일 실행시 필요
+	cuDNN	v10.2.89		
 	tensorflow v2.1.0
